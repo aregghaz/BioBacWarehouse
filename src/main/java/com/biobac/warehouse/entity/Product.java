@@ -24,6 +24,9 @@ public class Product {
             inverseJoinColumns = @JoinColumn(name = "ingredient_id"))
     private List<Ingredient> ingredients;
     
+    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<RecipeItem> recipeItems;
+    
     @OneToMany(mappedBy = "product")
     private List<InventoryItem> inventoryItems;
 

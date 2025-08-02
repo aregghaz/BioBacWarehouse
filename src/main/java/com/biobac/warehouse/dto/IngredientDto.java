@@ -10,4 +10,6 @@ public class IngredientDto {
     private String unit;
     private boolean active;
     private Long groupId;
+    private Integer initialQuantity;
+    private Long warehouseId;
 }

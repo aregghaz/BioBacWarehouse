@@ -2,16 +2,19 @@
 package com.biobac.warehouse.service.impl;
 
 import com.biobac.warehouse.dto.IngredientDto;
+import com.biobac.warehouse.dto.InventoryItemDto;
 import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.entity.IngredientGroup;
 import com.biobac.warehouse.mapper.IngredientMapper;
 import com.biobac.warehouse.repository.IngredientGroupRepository;
 import com.biobac.warehouse.repository.IngredientRepository;
 import com.biobac.warehouse.service.IngredientService;
+import com.biobac.warehouse.service.InventoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -21,6 +24,7 @@ public class IngredientServiceImpl implements IngredientService {
     private final IngredientRepository ingredientRepo;
     private final IngredientGroupRepository groupRepo;
     private final IngredientMapper mapper;
+    private final InventoryService inventoryService;
 
     @Transactional(readOnly = true)
     @Override
@@ -44,7 +48,21 @@ public class IngredientServiceImpl implements IngredientService {
             IngredientGroup group = groupRepo.findById(dto.getGroupId()).orElseThrow();
             entity.setGroup(group);
         }
-        return mapper.toDto(ingredientRepo.save(entity));
+        
+        // Save the ingredient first to get its ID
+        Ingredient savedIngredient = ingredientRepo.save(entity);
+        
+        // Create inventory item if initialQuantity and warehouseId are provided
+        if (dto.getInitialQuantity() != null && dto.getWarehouseId() != null) {
+            InventoryItemDto inventoryItemDto = new InventoryItemDto();
+            inventoryItemDto.setIngredientId(savedIngredient.getId());
+            inventoryItemDto.setWarehouseId(dto.getWarehouseId());
+            inventoryItemDto.setQuantity(dto.getInitialQuantity());
+            inventoryItemDto.setLastUpdated(LocalDate.now());
+            inventoryService.create(inventoryItemDto);
+        }
+        
+        return mapper.toDto(savedIngredient);
     }
 
     @Transactional
