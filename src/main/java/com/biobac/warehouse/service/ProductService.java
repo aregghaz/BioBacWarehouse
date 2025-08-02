@@ -15,17 +15,17 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public interface ProductService {
-    @Transactional(readOnly = true)
+
     List<ProductDto> getAll();
 
-    @Transactional(readOnly = true)
+
     ProductDto getById(Long id);
 
-    @Transactional
+
     ProductDto create(ProductDto dto);
 
-    ProductDto update(Long id, ProductDto dto)
+    ProductDto update(Long id, ProductDto dto);
 
-    @Transactional
+
     void delete(Long id);
 }
