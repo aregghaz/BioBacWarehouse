@@ -28,6 +28,7 @@ public class ProductServiceImpl implements ProductService {
     private final ProductRepository productRepo;
     private final IngredientRepository ingredientRepo;
     private final ProductMapper mapper;
+    private final RecipeItemMapper recipeItemMapper;
     private final InventoryService inventoryService;
 
     @Transactional(readOnly = true)
@@ -52,8 +53,32 @@ public class ProductServiceImpl implements ProductService {
             product.setIngredients(ingredients);
         }
         
+        // Handle parent product relationship
+        if (dto.getParentProductId() != null) {
+            Product parentProduct = productRepo.findById(dto.getParentProductId()).orElseThrow();
+            product.setParentProduct(parentProduct);
+        }
+        
         // Save the product first to get its ID
         Product savedProduct = productRepo.save(product);
+        
+        // Process recipe items if provided
+        if (dto.getRecipeItems() != null && !dto.getRecipeItems().isEmpty()) {
+            List<RecipeItem> recipeItems = new ArrayList<>();
+            for (RecipeItemDto recipeItemDto : dto.getRecipeItems()) {
+                RecipeItem recipeItem = recipeItemMapper.toEntity(recipeItemDto);
+                recipeItem.setProduct(savedProduct);
+                
+                // Set the ingredient
+                Ingredient ingredient = ingredientRepo.findById(recipeItemDto.getIngredientId())
+                    .orElseThrow(() -> new RuntimeException("Ingredient not found with id: " + recipeItemDto.getIngredientId()));
+                recipeItem.setIngredient(ingredient);
+                
+                recipeItems.add(recipeItem);
+            }
+            savedProduct.setRecipeItems(recipeItems);
+            savedProduct = productRepo.save(savedProduct);
+        }
         
         // Create inventory item if initialQuantity and warehouseId are provided
         if (dto.getInitialQuantity() != null && dto.getWarehouseId() != null) {
@@ -79,6 +104,43 @@ public class ProductServiceImpl implements ProductService {
             List<Ingredient> ingredients = ingredientRepo.findAllById(dto.getIngredientIds());
             product.setIngredients(ingredients);
         }
+        
+        // Handle parent product relationship
+        if (dto.getParentProductId() != null) {
+            // Prevent self-referencing
+            if (dto.getParentProductId().equals(id)) {
+                throw new IllegalArgumentException("A product cannot be its own parent");
+            }
+            
+            Product parentProduct = productRepo.findById(dto.getParentProductId()).orElseThrow();
+            product.setParentProduct(parentProduct);
+        } else {
+            product.setParentProduct(null);
+        }
+        
+        // Update recipe items if provided
+        if (dto.getRecipeItems() != null) {
+            // Clear existing recipe items
+            if (product.getRecipeItems() != null) {
+                product.getRecipeItems().clear();
+            } else {
+                product.setRecipeItems(new ArrayList<>());
+            }
+            
+            // Add new recipe items
+            for (RecipeItemDto recipeItemDto : dto.getRecipeItems()) {
+                RecipeItem recipeItem = recipeItemMapper.toEntity(recipeItemDto);
+                recipeItem.setProduct(product);
+                
+                // Set the ingredient
+                Ingredient ingredient = ingredientRepo.findById(recipeItemDto.getIngredientId())
+                    .orElseThrow(() -> new RuntimeException("Ingredient not found with id: " + recipeItemDto.getIngredientId()));
+                recipeItem.setIngredient(ingredient);
+                
+                product.getRecipeItems().add(recipeItem);
+            }
+        }
+        
         return mapper.toDto(productRepo.save(product));
     }
     @Transactional

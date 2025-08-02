@@ -1,6 +1,7 @@
 package com.biobac.warehouse.dto;
 
 import lombok.Data;
+import java.util.List;
 
 @Data
 public class IngredientDto {
@@ -12,4 +13,6 @@ public class IngredientDto {
     private Long groupId;
     private Integer initialQuantity;
     private Long warehouseId;
+    private Long parentIngredientId;
+    private List<Long> childIngredientIds;
 }

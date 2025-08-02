@@ -21,5 +21,15 @@ public class Ingredient {
 
     @ManyToOne
     private IngredientGroup group;
+    
+    @ManyToOne
+    @JoinColumn(name = "parent_ingredient_id")
+    private Ingredient parentIngredient;
+    
+    @OneToMany(mappedBy = "parentIngredient")
+    private List<Ingredient> childIngredients;
+    
+    @OneToMany(mappedBy = "ingredient")
+    private List<RecipeItem> recipeItems;
 
 }

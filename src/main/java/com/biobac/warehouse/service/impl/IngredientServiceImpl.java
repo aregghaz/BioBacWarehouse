@@ -43,14 +43,33 @@ public class IngredientServiceImpl implements IngredientService {
     @Transactional
     @Override
     public IngredientDto create(IngredientDto dto) {
+        // Use the mapper to convert DTO to entity, which will handle group and parent ingredient
         Ingredient entity = mapper.toEntity(dto);
+        
+        // Replace the placeholder group and parent ingredient with actual entities from the database
         if (dto.getGroupId() != null) {
             IngredientGroup group = groupRepo.findById(dto.getGroupId()).orElseThrow();
             entity.setGroup(group);
         }
         
+        if (dto.getParentIngredientId() != null) {
+            Ingredient parentIngredient = ingredientRepo.findById(dto.getParentIngredientId()).orElseThrow();
+            entity.setParentIngredient(parentIngredient);
+        }
+        
         // Save the ingredient first to get its ID
         Ingredient savedIngredient = ingredientRepo.save(entity);
+        
+        // Handle child ingredients if provided
+        if (dto.getChildIngredientIds() != null && !dto.getChildIngredientIds().isEmpty()) {
+            List<Ingredient> childIngredients = ingredientRepo.findAllById(dto.getChildIngredientIds());
+            for (Ingredient childIngredient : childIngredients) {
+                childIngredient.setParentIngredient(savedIngredient);
+                ingredientRepo.save(childIngredient);
+            }
+            // Refresh the saved ingredient to include updated child ingredients
+            savedIngredient = ingredientRepo.findById(savedIngredient.getId()).orElseThrow();
+        }
         
         // Create inventory item if initialQuantity and warehouseId are provided
         if (dto.getInitialQuantity() != null && dto.getWarehouseId() != null) {
@@ -73,11 +92,58 @@ public class IngredientServiceImpl implements IngredientService {
         existing.setDescription(dto.getDescription());
         existing.setUnit(dto.getUnit());
         existing.setActive(dto.isActive());
+
         if (dto.getGroupId() != null) {
             IngredientGroup group = groupRepo.findById(dto.getGroupId()).orElseThrow();
             existing.setGroup(group);
         }
-        return mapper.toDto(ingredientRepo.save(existing));
+
+        // Handle parent ingredient relationship
+        if (dto.getParentIngredientId() != null) {
+            // Prevent self-referencing
+            if (dto.getParentIngredientId().equals(id)) {
+                throw new IllegalArgumentException("An ingredient cannot be its own parent");
+            }
+
+            Ingredient parentIngredient = ingredientRepo.findById(dto.getParentIngredientId()).orElseThrow();
+            existing.setParentIngredient(parentIngredient);
+        } else {
+            existing.setParentIngredient(null);
+        }
+        
+        // Save the updated ingredient
+        Ingredient savedIngredient = ingredientRepo.save(existing);
+        
+        // Handle child ingredients if provided
+        if (dto.getChildIngredientIds() != null) {
+            // First, remove parent reference from current children that are not in the new list
+            if (existing.getChildIngredients() != null) {
+                for (Ingredient child : existing.getChildIngredients()) {
+                    if (!dto.getChildIngredientIds().contains(child.getId())) {
+                        child.setParentIngredient(null);
+                        ingredientRepo.save(child);
+                    }
+                }
+            }
+            
+            // Then set parent reference for new children
+            if (!dto.getChildIngredientIds().isEmpty()) {
+                List<Ingredient> childIngredients = ingredientRepo.findAllById(dto.getChildIngredientIds());
+                for (Ingredient childIngredient : childIngredients) {
+                    // Prevent circular references
+                    if (childIngredient.getId().equals(id)) {
+                        throw new IllegalArgumentException("An ingredient cannot be its own child");
+                    }
+                    childIngredient.setParentIngredient(savedIngredient);
+                    ingredientRepo.save(childIngredient);
+                }
+            }
+            
+            // Refresh the saved ingredient to include updated child ingredients
+            savedIngredient = ingredientRepo.findById(savedIngredient.getId()).orElseThrow();
+        }
+
+        return mapper.toDto(savedIngredient);
     }
 
     @Transactional

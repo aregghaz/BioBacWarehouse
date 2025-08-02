@@ -36,10 +36,18 @@ public class InventoryServiceImpl implements InventoryService {
 
     public InventoryItemDto create(InventoryItemDto dto) {
         InventoryItem entity = mapper.toEntity(dto);
-        entity.setProduct(productRepo.findById(dto.getProductId()).orElse(null));
-        entity.setIngredient(ingredientRepo.findById(dto.getIngredientId()).orElse(null));
-        entity.setIngredientGroup(ingredientGroupRepo.findById(dto.getIngredientGroupId()).orElse(null));
-        entity.setWarehouse(warehouseRepo.findById(dto.getWarehouseId()).orElse(null));
+        if (dto.getProductId() != null) {
+            entity.setProduct(productRepo.findById(dto.getProductId()).orElse(null));
+        }
+        if (dto.getIngredientId() != null) {
+            entity.setIngredient(ingredientRepo.findById(dto.getIngredientId()).orElse(null));
+        }
+        if (dto.getIngredientGroupId() != null) {
+            entity.setIngredientGroup(ingredientGroupRepo.findById(dto.getIngredientGroupId()).orElse(null));
+        }
+        if (dto.getWarehouseId() != null) {
+            entity.setWarehouse(warehouseRepo.findById(dto.getWarehouseId()).orElse(null));
+        }
         return mapper.toDto(repo.save(entity));
     }
 
