@@ -4,6 +4,7 @@ package com.biobac.warehouse.service.impl;
 import com.biobac.warehouse.dto.InventoryItemDto;
 import com.biobac.warehouse.entity.InventoryItem;
 import com.biobac.warehouse.mapper.InventoryMapper;
+import com.biobac.warehouse.repository.IngredientGroupRepository;
 import com.biobac.warehouse.repository.IngredientRepository;
 import com.biobac.warehouse.repository.InventoryItemRepository;
 import com.biobac.warehouse.repository.ProductRepository;
@@ -21,6 +22,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final InventoryItemRepository repo;
     private final ProductRepository productRepo;
     private final IngredientRepository ingredientRepo;
+    private final IngredientGroupRepository ingredientGroupRepo;
     private final WarehouseRepository warehouseRepo;
     private final InventoryMapper mapper;
 
@@ -36,6 +38,7 @@ public class InventoryServiceImpl implements InventoryService {
         InventoryItem entity = mapper.toEntity(dto);
         entity.setProduct(productRepo.findById(dto.getProductId()).orElse(null));
         entity.setIngredient(ingredientRepo.findById(dto.getIngredientId()).orElse(null));
+        entity.setIngredientGroup(ingredientGroupRepo.findById(dto.getIngredientGroupId()).orElse(null));
         entity.setWarehouse(warehouseRepo.findById(dto.getWarehouseId()).orElse(null));
         return mapper.toDto(repo.save(entity));
     }
@@ -44,10 +47,38 @@ public class InventoryServiceImpl implements InventoryService {
         InventoryItem item = repo.findById(id).orElseThrow();
         item.setQuantity(dto.getQuantity());
         item.setLastUpdated(dto.getLastUpdated());
+        
+        if (dto.getProductId() != null) {
+            item.setProduct(productRepo.findById(dto.getProductId()).orElse(null));
+        }
+        if (dto.getIngredientId() != null) {
+            item.setIngredient(ingredientRepo.findById(dto.getIngredientId()).orElse(null));
+        }
+        if (dto.getIngredientGroupId() != null) {
+            item.setIngredientGroup(ingredientGroupRepo.findById(dto.getIngredientGroupId()).orElse(null));
+        }
+        if (dto.getWarehouseId() != null) {
+            item.setWarehouse(warehouseRepo.findById(dto.getWarehouseId()).orElse(null));
+        }
+        
         return mapper.toDto(repo.save(item));
     }
 
     public void delete(Long id) {
         repo.deleteById(id);
+    }
+    
+    @Override
+    public List<InventoryItemDto> findByProductId(Long productId) {
+        return repo.findByProductId(productId).stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
+    }
+    
+    @Override
+    public List<InventoryItemDto> findByIngredientId(Long ingredientId) {
+        return repo.findByIngredientId(ingredientId).stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
     }
 }

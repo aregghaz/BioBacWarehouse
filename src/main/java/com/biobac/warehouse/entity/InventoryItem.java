@@ -19,6 +19,9 @@ public class InventoryItem {
 
     @ManyToOne
     private Ingredient ingredient;
+    
+    @ManyToOne
+    private IngredientGroup ingredientGroup;
 
     @ManyToOne
     private Warehouse warehouse;

@@ -8,6 +8,7 @@ public class InventoryItemDto {
     private Long id;
     private Long productId;
     private Long ingredientId;
+    private Long ingredientGroupId;
     private Long warehouseId;
     private Integer quantity;
     private LocalDate lastUpdated;

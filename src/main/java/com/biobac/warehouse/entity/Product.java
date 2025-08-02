@@ -23,5 +23,8 @@ public class Product {
             joinColumns = @JoinColumn(name = "product_id"),
             inverseJoinColumns = @JoinColumn(name = "ingredient_id"))
     private List<Ingredient> ingredients;
+    
+    @OneToMany(mappedBy = "product")
+    private List<InventoryItem> inventoryItems;
 
 }
