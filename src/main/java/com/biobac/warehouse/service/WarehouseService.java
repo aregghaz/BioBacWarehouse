@@ -8,37 +8,25 @@ import com.biobac.warehouse.mapper.WarehouseMapper;
 import com.biobac.warehouse.repository.WarehouseRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
-@Service
-@RequiredArgsConstructor
-public class WarehouseService {
-    private final WarehouseRepository repo;
-    private final WarehouseMapper mapper;
+public interface WarehouseService {
 
-    public List<WarehouseDto> getAll() {
-        return repo.findAll().stream().map(mapper::toDto).collect(Collectors.toList());
-    }
+    @Transactional(readOnly = true)
+    List<WarehouseDto> getAll();
 
-    public WarehouseDto getById(Long id) {
-        return mapper.toDto(repo.findById(id).orElseThrow());
-    }
+    @Transactional(readOnly = true)
+    WarehouseDto getById(Long id);
 
-    public WarehouseDto create(WarehouseDto dto) {
-        return mapper.toDto(repo.save(mapper.toEntity(dto)));
-    }
+    @Transactional
+    WarehouseDto create(WarehouseDto dto);
 
-    public WarehouseDto update(Long id, WarehouseDto dto) {
-        Warehouse existing = repo.findById(id).orElseThrow();
-        existing.setName(dto.getName());
-        existing.setLocation(dto.getLocation());
-        existing.setType(dto.getType());
-        return mapper.toDto(repo.save(existing));
-    }
+    @Transactional
+    WarehouseDto update(Long id, WarehouseDto dto);
 
-    public void delete(Long id) {
-        repo.deleteById(id);
-    }
+    @Transactional
+    void delete(Long id);
 }
