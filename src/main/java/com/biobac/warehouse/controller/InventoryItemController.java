@@ -32,6 +32,16 @@ public class InventoryItemController {
     public List<InventoryItemDto> findByIngredientId(@PathVariable Long ingredientId) {
         return service.findByIngredientId(ingredientId);
     }
+    
+    @GetMapping("/warehouse/{warehouseId}")
+    public List<InventoryItemDto> findByWarehouseId(@PathVariable Long warehouseId) {
+        return service.findByWarehouseId(warehouseId);
+    }
+    
+    @GetMapping("/group/{groupId}")
+    public List<InventoryItemDto> findByGroupId(@PathVariable Long groupId) {
+        return service.findByGroupId(groupId);
+    }
 
     @PostMapping
     public InventoryItemDto create(@RequestBody InventoryItemDto dto) {

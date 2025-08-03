@@ -44,9 +44,11 @@ public class InventoryServiceImpl implements InventoryService {
         }
         if (dto.getIngredientGroupId() != null) {
             entity.setIngredientGroup(ingredientGroupRepo.findById(dto.getIngredientGroupId()).orElse(null));
+            entity.setGroupId(dto.getIngredientGroupId());
         }
         if (dto.getWarehouseId() != null) {
             entity.setWarehouse(warehouseRepo.findById(dto.getWarehouseId()).orElse(null));
+            entity.setWarehouseId(dto.getWarehouseId());
         }
         return mapper.toDto(repo.save(entity));
     }
@@ -64,9 +66,11 @@ public class InventoryServiceImpl implements InventoryService {
         }
         if (dto.getIngredientGroupId() != null) {
             item.setIngredientGroup(ingredientGroupRepo.findById(dto.getIngredientGroupId()).orElse(null));
+            item.setGroupId(dto.getIngredientGroupId());
         }
         if (dto.getWarehouseId() != null) {
             item.setWarehouse(warehouseRepo.findById(dto.getWarehouseId()).orElse(null));
+            item.setWarehouseId(dto.getWarehouseId());
         }
         
         return mapper.toDto(repo.save(item));
@@ -86,6 +90,20 @@ public class InventoryServiceImpl implements InventoryService {
     @Override
     public List<InventoryItemDto> findByIngredientId(Long ingredientId) {
         return repo.findByIngredientId(ingredientId).stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
+    }
+    
+    @Override
+    public List<InventoryItemDto> findByWarehouseId(Long warehouseId) {
+        return repo.findByWarehouseId(warehouseId).stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
+    }
+    
+    @Override
+    public List<InventoryItemDto> findByGroupId(Long groupId) {
+        return repo.findByGroupId(groupId).stream()
                 .map(mapper::toDto)
                 .collect(Collectors.toList());
     }

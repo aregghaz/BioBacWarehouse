@@ -5,6 +5,8 @@ import com.biobac.warehouse.dto.IngredientDto;
 import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.entity.IngredientComponent;
 import com.biobac.warehouse.entity.IngredientGroup;
+import com.biobac.warehouse.entity.InventoryItem;
+import com.biobac.warehouse.repository.InventoryItemRepository;
 import org.mapstruct.*;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -17,6 +19,9 @@ public abstract class IngredientMapper {
 
     @Autowired
     private IngredientComponentMapper componentMapper;
+    
+    @Autowired
+    private InventoryItemRepository inventoryItemRepository;
 
     @Mappings({
         @Mapping(target = "id", source = "id"),
@@ -26,6 +31,8 @@ public abstract class IngredientMapper {
         @Mapping(target = "active", source = "active"),
         @Mapping(target = "quantity", source = "quantity"),
         @Mapping(target = "groupId", source = "group.id"),
+        @Mapping(target = "initialQuantity", expression = "java(getInitialQuantity(entity))"),
+        @Mapping(target = "warehouseId", expression = "java(getWarehouseId(entity))"),
         @Mapping(target = "childIngredientComponents", expression = "java(mapChildIngredientComponents(entity))")
     })
     public abstract IngredientDto toDto(Ingredient entity);
@@ -72,5 +79,33 @@ public abstract class IngredientMapper {
         return entity.getChildIngredientComponents().stream()
                 .map(componentMapper::toDto)
                 .collect(Collectors.toList());
+    }
+    
+    protected Integer getInitialQuantity(Ingredient entity) {
+        if (entity.getId() == null) {
+            return null;
+        }
+        
+        List<InventoryItem> inventoryItems = inventoryItemRepository.findByIngredientId(entity.getId());
+        if (inventoryItems == null || inventoryItems.isEmpty()) {
+            return null;
+        }
+        
+        // Return the quantity of the first inventory item
+        return inventoryItems.get(0).getQuantity();
+    }
+    
+    protected Long getWarehouseId(Ingredient entity) {
+        if (entity.getId() == null) {
+            return null;
+        }
+        
+        List<InventoryItem> inventoryItems = inventoryItemRepository.findByIngredientId(entity.getId());
+        if (inventoryItems == null || inventoryItems.isEmpty() || inventoryItems.get(0).getWarehouse() == null) {
+            return null;
+        }
+        
+        // Return the warehouse ID of the first inventory item
+        return inventoryItems.get(0).getWarehouse().getId();
     }
 }

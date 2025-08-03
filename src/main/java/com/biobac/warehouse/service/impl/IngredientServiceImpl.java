@@ -55,7 +55,8 @@ public class IngredientServiceImpl implements IngredientService {
         
         // Replace the placeholder group with actual entity from the database
         if (dto.getGroupId() != null) {
-            IngredientGroup group = groupRepo.findById(dto.getGroupId()).orElseThrow();
+            IngredientGroup group = groupRepo.findById(dto.getGroupId())
+                .orElseThrow(() -> new IllegalArgumentException("Ingredient group not found with ID: " + dto.getGroupId()));
             entity.setGroup(group);
         }
         
@@ -135,7 +136,8 @@ public class IngredientServiceImpl implements IngredientService {
         existing.setQuantity(dto.getQuantity());
 
         if (dto.getGroupId() != null) {
-            IngredientGroup group = groupRepo.findById(dto.getGroupId()).orElseThrow();
+            IngredientGroup group = groupRepo.findById(dto.getGroupId())
+                .orElseThrow(() -> new IllegalArgumentException("Ingredient group not found with ID: " + dto.getGroupId()));
             existing.setGroup(group);
         }
 

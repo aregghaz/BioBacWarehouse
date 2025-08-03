@@ -18,7 +18,9 @@ public interface InventoryMapper {
         @Mapping(target = "product", ignore = true),
         @Mapping(target = "ingredient", ignore = true),
         @Mapping(target = "ingredientGroup", ignore = true),
-        @Mapping(target = "warehouse", ignore = true)
+        @Mapping(target = "warehouse", ignore = true),
+        @Mapping(target = "warehouseId", source = "warehouseId"),
+        @Mapping(target = "groupId", source = "ingredientGroupId")
     })
     InventoryItem toEntity(InventoryItemDto dto);
     

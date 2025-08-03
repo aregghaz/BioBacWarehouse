@@ -15,4 +15,8 @@ public interface InventoryService {
     // Methods for finding by product and ingredient
     List<InventoryItemDto> findByProductId(Long productId);
     List<InventoryItemDto> findByIngredientId(Long ingredientId);
+    
+    // Methods for finding by warehouse and group
+    List<InventoryItemDto> findByWarehouseId(Long warehouseId);
+    List<InventoryItemDto> findByGroupId(Long groupId);
 }
