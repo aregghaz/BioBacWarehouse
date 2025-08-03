@@ -22,16 +22,19 @@ public class InventoryItem {
     
     @ManyToOne
     private IngredientGroup ingredientGroup;
-    
+    @Column(name = "warehouse_id", insertable = false, updatable = false)
+    private Long warehouseId;
+
     @Column(name = "group_id")
     private Long groupId;
 
     @ManyToOne
     private Warehouse warehouse;
     
-    @Column(name = "warehouse_id")
-    private Long warehouseId;
+//    @Column(name = "warehouse_id")
+//    private Long warehouseId;
 
     private Integer quantity;
+    private Integer ingredientCount;
     private LocalDate lastUpdated;
 }

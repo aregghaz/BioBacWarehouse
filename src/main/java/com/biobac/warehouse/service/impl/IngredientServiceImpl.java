@@ -50,6 +50,12 @@ public class IngredientServiceImpl implements IngredientService {
     @Transactional
     @Override
     public IngredientDto create(IngredientDto dto) {
+        // Debug log the incoming DTO
+        System.out.println("[DEBUG_LOG] Creating ingredient with name: " + dto.getName() + 
+            ", quantity: " + dto.getQuantity() + 
+            ", initialQuantity: " + dto.getInitialQuantity() + 
+            ", warehouseId: " + dto.getWarehouseId());
+        
         // Use the mapper to convert DTO to entity, which will handle group
         Ingredient entity = mapper.toEntity(dto);
         
@@ -66,6 +72,11 @@ public class IngredientServiceImpl implements IngredientService {
         // Handle child ingredient components if provided
         if (dto.getChildIngredientComponents() != null && !dto.getChildIngredientComponents().isEmpty()) {
             for (IngredientComponentDto componentDto : dto.getChildIngredientComponents()) {
+                // Skip if childIngredientId is null
+                if (componentDto.getChildIngredientId() == null) {
+                    continue;
+                }
+                
                 // Get the child ingredient
                 Ingredient childIngredient = ingredientRepo.findById(componentDto.getChildIngredientId())
                     .orElseThrow(() -> new IllegalArgumentException("Child ingredient not found: " + componentDto.getChildIngredientId()));
@@ -74,35 +85,75 @@ public class IngredientServiceImpl implements IngredientService {
                 IngredientComponent component = new IngredientComponent(
                     savedIngredient, 
                     childIngredient, 
-                    componentDto.getQuantity()
+                    componentDto.getQuantity() != null ? componentDto.getQuantity() : 0.0
                 );
                 
                 // Save the component
                 componentRepo.save(component);
                 
-                // Decrease inventory quantity for the child ingredient
-                if (dto.getInitialQuantity() != null && dto.getWarehouseId() != null) {
-                    // Get the inventory items for this child ingredient
-                    List<InventoryItemDto> inventoryItems = inventoryService.findByIngredientId(childIngredient.getId());
-                    
-                    // Find the inventory item in the same warehouse
-                    for (InventoryItemDto inventoryItem : inventoryItems) {
-                        if (inventoryItem.getWarehouseId().equals(dto.getWarehouseId())) {
-                            // Calculate the amount to decrease
-                            int amountToDecrease = (int) Math.ceil(componentDto.getQuantity() * dto.getInitialQuantity());
-                            
-                            // Check if there's enough inventory
-                            if (inventoryItem.getQuantity() < amountToDecrease) {
-                                throw new IllegalStateException("Not enough inventory for ingredient: " + childIngredient.getName() + 
-                                    ". Required: " + amountToDecrease + ", Available: " + inventoryItem.getQuantity());
+                // Decrease inventory quantity for the child ingredient only if all required values are present
+                // Check for either quantity or initialQuantity
+                if (dto.getWarehouseId() != null && componentDto.getQuantity() != null) {
+                    // Determine which quantity to use - prioritize initialQuantity over quantity
+                    // but only if initialQuantity is greater than 0
+                    Double quantityToUse = null;
+                    if (dto.getInitialQuantity() != null && dto.getInitialQuantity() > 0) {
+                        quantityToUse = dto.getInitialQuantity().doubleValue();
+                        System.out.println("[DEBUG_LOG] Using initialQuantity: " + quantityToUse);
+                    } else if (dto.getQuantity() != null) {
+                        quantityToUse = dto.getQuantity();
+                        System.out.println("[DEBUG_LOG] Using quantity: " + quantityToUse);
+                    } else {
+                        System.out.println("[DEBUG_LOG] No quantity available, skipping inventory reduction");
+                        continue;
+                    }
+                    try {
+                        // Get the inventory items for this child ingredient
+                        List<InventoryItemDto> inventoryItems = inventoryService.findByIngredientId(childIngredient.getId());
+                        
+                        // Skip if no inventory items found
+                        if (inventoryItems == null || inventoryItems.isEmpty()) {
+                            continue;
+                        }
+                        
+                        // Find the inventory item in the same warehouse
+                        boolean foundMatchingWarehouse = false;
+                        for (InventoryItemDto inventoryItem : inventoryItems) {
+                            // Skip items with null warehouseId or id
+                            if (inventoryItem == null || inventoryItem.getWarehouseId() == null || 
+                                inventoryItem.getId() == null || dto.getWarehouseId() == null) {
+                                continue;
                             }
                             
-                            // Update the inventory quantity
-                            inventoryItem.setQuantity(inventoryItem.getQuantity() - amountToDecrease);
-                            inventoryItem.setLastUpdated(LocalDate.now());
-                            inventoryService.update(inventoryItem.getId(), inventoryItem);
-                            break;
+                            if (inventoryItem.getWarehouseId().equals(dto.getWarehouseId())) {
+                                foundMatchingWarehouse = true;
+                                
+                                // Calculate the amount to decrease
+                                int amountToDecrease = (int) Math.ceil(componentDto.getQuantity() * quantityToUse);
+                                
+                                // Check if there's enough inventory
+                                if (inventoryItem.getQuantity() < amountToDecrease) {
+                                    throw new IllegalStateException("Not enough inventory for ingredient: " + childIngredient.getName() + 
+                                        ". Required: " + amountToDecrease + ", Available: " + inventoryItem.getQuantity());
+                                }
+                                
+                                // Update the inventory quantity
+                                inventoryItem.setQuantity(inventoryItem.getQuantity() - amountToDecrease);
+                                inventoryItem.setLastUpdated(LocalDate.now());
+                                inventoryService.update(inventoryItem.getId(), inventoryItem);
+                                break;
+                            }
                         }
+                        
+                        // If no matching warehouse was found, log it but continue
+                        if (!foundMatchingWarehouse) {
+                            System.out.println("Warning: No inventory found for ingredient " + childIngredient.getName() + 
+                                " in warehouse " + dto.getWarehouseId());
+                        }
+                    } catch (Exception e) {
+                        // Log the error but continue processing
+                        System.err.println("Error processing inventory for child ingredient " + childIngredient.getName() + 
+                            ": " + e.getMessage());
                     }
                 }
             }
@@ -112,13 +163,101 @@ public class IngredientServiceImpl implements IngredientService {
         }
         
         
-        // Create inventory item if initialQuantity and warehouseId are provided
-        if (dto.getInitialQuantity() != null && dto.getWarehouseId() != null) {
+        // Create inventory item if quantity or initialQuantity and warehouseId are provided
+        if ((dto.getQuantity() != null || dto.getInitialQuantity() != null) && dto.getWarehouseId() != null) {
+            // Determine which quantity to use for calculations - prioritize initialQuantity over quantity
+            // but only if initialQuantity is greater than 0
+            Double quantityForCalculations = null;
+            System.out.println("[DEBUG_LOG] Determining quantity - initialQuantity: " + dto.getInitialQuantity() + ", quantity: " + dto.getQuantity());
+            if (dto.getInitialQuantity() != null && dto.getInitialQuantity() > 0) {
+                quantityForCalculations = dto.getInitialQuantity().doubleValue();
+                System.out.println("[DEBUG_LOG] Creating inventory item with initialQuantity: " + dto.getInitialQuantity());
+            } else if (dto.getQuantity() != null) {
+                quantityForCalculations = dto.getQuantity();
+                System.out.println("[DEBUG_LOG] Creating inventory item with quantity: " + dto.getQuantity());
+            } else {
+                System.out.println("[DEBUG_LOG] No quantity available for inventory item");
+                quantityForCalculations = 0.0;
+            }
+            System.out.println("[DEBUG_LOG] Final quantityForCalculations: " + quantityForCalculations);
+            // First, check if this ingredient is created from another ingredient
+            // If so, decrease the inventory of the source ingredient
+            if (dto.getChildIngredientComponents() != null && !dto.getChildIngredientComponents().isEmpty()) {
+                for (IngredientComponentDto componentDto : dto.getChildIngredientComponents()) {
+                    if (componentDto.getChildIngredientId() != null) {
+                        try {
+                            // Get inventory items for the child ingredient
+                            List<InventoryItemDto> inventoryItems = inventoryService.findByIngredientId(componentDto.getChildIngredientId());
+                            
+                            if (inventoryItems != null && !inventoryItems.isEmpty()) {
+                                for (InventoryItemDto inventoryItem : inventoryItems) {
+                                    if (inventoryItem != null && inventoryItem.getWarehouseId() != null && 
+                                        inventoryItem.getId() != null && dto.getWarehouseId().equals(inventoryItem.getWarehouseId())) {
+                                        
+                                        // Decrease the quantity by the quantity of the new ingredient
+                                        int amountToDecrease = (int) Math.ceil(quantityForCalculations);
+                                        
+                                        // Check if there's enough inventory
+                                        if (inventoryItem.getQuantity() < amountToDecrease) {
+                                            System.out.println("Warning: Not enough inventory for ingredient ID " + 
+                                                componentDto.getChildIngredientId() + ". Required: " + amountToDecrease + 
+                                                ", Available: " + inventoryItem.getQuantity());
+                                        } else {
+                                            // Update the inventory quantity
+                                            inventoryItem.setQuantity(inventoryItem.getQuantity() - amountToDecrease);
+                                            inventoryItem.setLastUpdated(LocalDate.now());
+                                            inventoryService.update(inventoryItem.getId(), inventoryItem);
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+                        } catch (Exception e) {
+                            System.err.println("Error decreasing inventory for source ingredient: " + e.getMessage());
+                        }
+                    }
+                }
+            }
+            
+            // Create inventory item for the new ingredient
             InventoryItemDto inventoryItemDto = new InventoryItemDto();
             inventoryItemDto.setIngredientId(savedIngredient.getId());
             inventoryItemDto.setWarehouseId(dto.getWarehouseId());
-            inventoryItemDto.setQuantity(dto.getInitialQuantity());
+            
+            // Determine the quantity to use for the inventory item
+            Integer quantityToUse;
+            
+            // If initialQuantity is 0, use quantity instead
+            if (dto.getInitialQuantity() != null && dto.getInitialQuantity() == 0 && dto.getQuantity() != null) {
+                quantityToUse = (int) Math.ceil(dto.getQuantity());
+                System.err.println("Using quantity for inventory because initialQuantity is 0: " + quantityToUse);
+            } 
+            // If initialQuantity is greater than 0, use it
+            else if (dto.getInitialQuantity() != null && dto.getInitialQuantity() > 0) {
+                quantityToUse = dto.getInitialQuantity();
+                System.err.println("Using initialQuantity for inventory: " + quantityToUse);
+            }
+            // Otherwise use quantity
+            else if (dto.getQuantity() != null) {
+                quantityToUse = (int) Math.ceil(dto.getQuantity());
+                System.err.println("Using quantity for inventory: " + quantityToUse);
+            }
+            // Default to 0 if nothing else is available
+            else {
+                quantityToUse = 0;
+                System.err.println("No quantity available for inventory, using 0");
+            }
+            
+            inventoryItemDto.setQuantity(quantityToUse);
             inventoryItemDto.setLastUpdated(LocalDate.now());
+            
+            // Set the ingredient count based on the number of child ingredients
+            int ingredientCount = 0;
+            if (dto.getChildIngredientComponents() != null && !dto.getChildIngredientComponents().isEmpty()) {
+                ingredientCount = dto.getChildIngredientComponents().size();
+            }
+            inventoryItemDto.setIngredientCount(ingredientCount);
+            
             inventoryService.create(inventoryItemDto);
         }
         

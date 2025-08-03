@@ -20,7 +20,9 @@ public interface ProductMapper {
             @Mapping(target = "description", source = "description"),
             @Mapping(target = "sku", source = "sku"),
             @Mapping(target = "ingredientIds", expression = "java(mapIngredientListToIdList(product.getIngredients()))"),
-            @Mapping(target = "recipeItems", source = "recipeItems")
+            @Mapping(target = "recipeItems", source = "recipeItems"),
+            @Mapping(target = "quantity", ignore = true), // will be set manually in service
+            @Mapping(target = "warehouseId", ignore = true) // will be set manually in service
     })
     ProductDto toDto(Product product);
 
@@ -32,6 +34,7 @@ public interface ProductMapper {
             @Mapping(target = "ingredients", ignore = true), // manually set later in service
             @Mapping(target = "recipeItems", ignore = true),  // manually set later in service
             @Mapping(target = "inventoryItems", ignore = true)
+            // quantity and warehouseId are not entity fields, they're only in the DTO
     })
     Product toEntity(ProductDto dto);
 

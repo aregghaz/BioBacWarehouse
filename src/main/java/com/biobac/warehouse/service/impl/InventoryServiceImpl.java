@@ -58,6 +58,11 @@ public class InventoryServiceImpl implements InventoryService {
         item.setQuantity(dto.getQuantity());
         item.setLastUpdated(dto.getLastUpdated());
         
+        // Update ingredient count if provided
+        if (dto.getIngredientCount() != null) {
+            item.setIngredientCount(dto.getIngredientCount());
+        }
+        
         if (dto.getProductId() != null) {
             item.setProduct(productRepo.findById(dto.getProductId()).orElse(null));
         }

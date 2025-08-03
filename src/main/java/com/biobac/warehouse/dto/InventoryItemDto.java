@@ -11,5 +11,6 @@ public class InventoryItemDto {
     private Long ingredientGroupId;
     private Long warehouseId;
     private Integer quantity;
+    private Integer ingredientCount;
     private LocalDate lastUpdated;
 }

@@ -11,5 +11,6 @@ public class ProductDto {
     private List<Long> ingredientIds;
     private List<RecipeItemDto> recipeItems;
     private Integer initialQuantity;
+    private Double quantity;
     private Long warehouseId;
 }

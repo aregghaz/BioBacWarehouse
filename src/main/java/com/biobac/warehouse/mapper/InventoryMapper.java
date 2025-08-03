@@ -10,7 +10,8 @@ public interface InventoryMapper {
         @Mapping(target = "productId", source = "product.id"),
         @Mapping(target = "ingredientId", source = "ingredient.id"),
         @Mapping(target = "ingredientGroupId", source = "ingredientGroup.id"),
-        @Mapping(target = "warehouseId", source = "warehouse.id")
+        @Mapping(target = "warehouseId", source = "warehouse.id"),
+        @Mapping(target = "ingredientCount", source = "ingredientCount")
     })
     InventoryItemDto toDto(InventoryItem entity);
     
@@ -20,7 +21,8 @@ public interface InventoryMapper {
         @Mapping(target = "ingredientGroup", ignore = true),
         @Mapping(target = "warehouse", ignore = true),
         @Mapping(target = "warehouseId", source = "warehouseId"),
-        @Mapping(target = "groupId", source = "ingredientGroupId")
+        @Mapping(target = "groupId", source = "ingredientGroupId"),
+        @Mapping(target = "ingredientCount", source = "ingredientCount")
     })
     InventoryItem toEntity(InventoryItemDto dto);
     

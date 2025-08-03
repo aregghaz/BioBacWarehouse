@@ -31,7 +31,7 @@ public abstract class IngredientMapper {
         @Mapping(target = "active", source = "active"),
         @Mapping(target = "quantity", source = "quantity"),
         @Mapping(target = "groupId", source = "group.id"),
-        @Mapping(target = "initialQuantity", expression = "java(getInitialQuantity(entity))"),
+        @Mapping(target = "initialQuantity", expression = "java(getExactQuantity(entity))"),
         @Mapping(target = "warehouseId", expression = "java(getWarehouseId(entity))"),
         @Mapping(target = "childIngredientComponents", expression = "java(mapChildIngredientComponents(entity))")
     })
@@ -81,6 +81,10 @@ public abstract class IngredientMapper {
                 .collect(Collectors.toList());
     }
     
+    /**
+     * @deprecated Use getExactQuantity instead
+     */
+    @Deprecated
     protected Integer getInitialQuantity(Ingredient entity) {
         if (entity.getId() == null) {
             return null;
@@ -95,17 +99,59 @@ public abstract class IngredientMapper {
         return inventoryItems.get(0).getQuantity();
     }
     
+    /**
+     * Gets the exact total quantity by summing all inventory items for this ingredient
+     */
+    protected Integer getExactQuantity(Ingredient entity) {
+        if (entity.getId() == null) {
+            System.out.println("[DEBUG_LOG] getExactQuantity: entity.getId() is null");
+            return null;
+        }
+        
+        System.out.println("[DEBUG_LOG] getExactQuantity: Looking for inventory items for ingredient ID: " + entity.getId());
+        List<InventoryItem> inventoryItems = inventoryItemRepository.findByIngredientId(entity.getId());
+        if (inventoryItems == null || inventoryItems.isEmpty()) {
+            System.out.println("[DEBUG_LOG] getExactQuantity: No inventory items found");
+            return null;
+        }
+        
+        System.out.println("[DEBUG_LOG] getExactQuantity: Found " + inventoryItems.size() + " inventory items");
+        // Log each inventory item's quantity
+        for (InventoryItem item : inventoryItems) {
+            System.out.println("[DEBUG_LOG] Inventory item ID: " + item.getId() + ", Quantity: " + item.getQuantity());
+        }
+        
+        // Sum quantities across all inventory items to get exact total quantity
+        int totalQuantity = inventoryItems.stream()
+                .mapToInt(item -> item.getQuantity() != null ? item.getQuantity() : 0)
+                .sum();
+        
+        System.out.println("[DEBUG_LOG] getExactQuantity: Total quantity: " + totalQuantity);
+        return totalQuantity;
+    }
+    
     protected Long getWarehouseId(Ingredient entity) {
         if (entity.getId() == null) {
             return null;
         }
         
         List<InventoryItem> inventoryItems = inventoryItemRepository.findByIngredientId(entity.getId());
-        if (inventoryItems == null || inventoryItems.isEmpty() || inventoryItems.get(0).getWarehouse() == null) {
+        if (inventoryItems == null || inventoryItems.isEmpty()) {
             return null;
         }
         
-        // Return the warehouse ID of the first inventory item
-        return inventoryItems.get(0).getWarehouse().getId();
+        InventoryItem item = inventoryItems.get(0);
+        
+        // First try to get warehouseId directly from the field
+        if (item.getWarehouseId() != null) {
+            return item.getWarehouseId();
+        }
+        
+        // If that's null, try to get it from the warehouse relationship
+        if (item.getWarehouse() != null) {
+            return item.getWarehouse().getId();
+        }
+        
+        return null;
     }
 }
