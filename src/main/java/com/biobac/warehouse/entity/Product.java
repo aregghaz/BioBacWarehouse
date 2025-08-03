@@ -29,12 +29,5 @@ public class Product {
     
     @OneToMany(mappedBy = "product")
     private List<InventoryItem> inventoryItems;
-    
-    @ManyToOne
-    @JoinColumn(name = "parent_product_id")
-    private Product parentProduct;
-    
-    @OneToMany(mappedBy = "parentProduct")
-    private List<Product> childProducts;
 
 }

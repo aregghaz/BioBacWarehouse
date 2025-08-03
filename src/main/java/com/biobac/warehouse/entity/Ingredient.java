@@ -18,16 +18,13 @@ public class Ingredient {
     private String description;
     private String unit;
     private boolean active;
+    private Double quantity;
 
     @ManyToOne
     private IngredientGroup group;
     
-    @ManyToOne
-    @JoinColumn(name = "parent_ingredient_id")
-    private Ingredient parentIngredient;
-    
     @OneToMany(mappedBy = "parentIngredient")
-    private List<Ingredient> childIngredients;
+    private List<IngredientComponent> childIngredientComponents;
     
     @OneToMany(mappedBy = "ingredient")
     private List<RecipeItem> recipeItems;

@@ -20,9 +20,7 @@ public interface ProductMapper {
             @Mapping(target = "description", source = "description"),
             @Mapping(target = "sku", source = "sku"),
             @Mapping(target = "ingredientIds", expression = "java(mapIngredientListToIdList(product.getIngredients()))"),
-            @Mapping(target = "recipeItems", source = "recipeItems"),
-            @Mapping(target = "parentProductId", source = "parentProduct.id"),
-            @Mapping(target = "childProductIds", expression = "java(mapChildProductIds(product))")
+            @Mapping(target = "recipeItems", source = "recipeItems")
     })
     ProductDto toDto(Product product);
 
@@ -33,8 +31,7 @@ public interface ProductMapper {
             @Mapping(target = "sku", source = "sku"),
             @Mapping(target = "ingredients", ignore = true), // manually set later in service
             @Mapping(target = "recipeItems", ignore = true),  // manually set later in service
-            @Mapping(target = "parentProduct", ignore = true),
-            @Mapping(target = "childProducts", ignore = true)
+            @Mapping(target = "inventoryItems", ignore = true)
     })
     Product toEntity(ProductDto dto);
 
@@ -43,21 +40,4 @@ public interface ProductMapper {
         return ingredients.stream().map(Ingredient::getId).collect(Collectors.toList());
     }
     
-    default List<Long> mapChildProductIds(Product product) {
-        if (product.getChildProducts() == null) {
-            return new ArrayList<>();
-        }
-        return product.getChildProducts().stream()
-                .map(Product::getId)
-                .collect(Collectors.toList());
-    }
-    
-    @AfterMapping
-    default void setParentProduct(@MappingTarget Product entity, ProductDto dto) {
-        if (dto.getParentProductId() != null) {
-            Product parentProduct = new Product();
-            parentProduct.setId(dto.getParentProductId());
-            entity.setParentProduct(parentProduct);
-        }
-    }
 }

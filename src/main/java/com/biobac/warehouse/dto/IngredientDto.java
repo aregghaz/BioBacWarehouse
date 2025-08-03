@@ -10,9 +10,9 @@ public class IngredientDto {
     private String description;
     private String unit;
     private boolean active;
+    private Double quantity;
     private Long groupId;
     private Integer initialQuantity;
     private Long warehouseId;
-    private Long parentIngredientId;
-    private List<Long> childIngredientIds;
+    private List<IngredientComponentDto> childIngredientComponents;
 }

@@ -1,89 +1,140 @@
 #!/bin/bash
 
-# Test script for ingredient creation functionality
+# Test script for ingredient creation functionality with many-to-many relationships
 
-echo "Testing ingredient creation with child ingredients..."
+echo "Testing ingredient creation with many-to-many relationships..."
 
-# Create a parent ingredient
-PARENT_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" -d '{
-  "name": "Parent Ingredient",
-  "description": "A parent ingredient for testing",
+# Create ingredient 1
+INGREDIENT1_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" -d '{
+  "name": "Ingredient 1",
+  "description": "First ingredient for testing",
   "unit": "kg",
   "active": true
 }' http://localhost:8080/api/ingredients)
 
-echo "Parent ingredient created:"
-echo $PARENT_RESPONSE
+echo "Ingredient 1 created:"
+echo $INGREDIENT1_RESPONSE
 
-# Extract parent ID
-PARENT_ID=$(echo $PARENT_RESPONSE | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
-echo "Parent ID: $PARENT_ID"
+# Extract ingredient1 ID
+INGREDIENT1_ID=$(echo $INGREDIENT1_RESPONSE | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
+echo "Ingredient 1 ID: $INGREDIENT1_ID"
 
-# Create child ingredients
-CHILD1_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" -d '{
-  "name": "Child Ingredient 1",
-  "description": "A child ingredient for testing",
+# Create ingredient 2
+INGREDIENT2_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" -d '{
+  "name": "Ingredient 2",
+  "description": "Second ingredient for testing",
   "unit": "g",
   "active": true
 }' http://localhost:8080/api/ingredients)
 
-echo "Child ingredient 1 created:"
-echo $CHILD1_RESPONSE
+echo "Ingredient 2 created:"
+echo $INGREDIENT2_RESPONSE
 
-# Extract child1 ID
-CHILD1_ID=$(echo $CHILD1_RESPONSE | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
-echo "Child 1 ID: $CHILD1_ID"
+# Extract ingredient2 ID
+INGREDIENT2_ID=$(echo $INGREDIENT2_RESPONSE | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
+echo "Ingredient 2 ID: $INGREDIENT2_ID"
 
-CHILD2_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" -d '{
-  "name": "Child Ingredient 2",
-  "description": "Another child ingredient for testing",
+# Create ingredient 3
+INGREDIENT3_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" -d '{
+  "name": "Ingredient 3",
+  "description": "Third ingredient for testing",
   "unit": "g",
   "active": true
 }' http://localhost:8080/api/ingredients)
 
-echo "Child ingredient 2 created:"
-echo $CHILD2_RESPONSE
+echo "Ingredient 3 created:"
+echo $INGREDIENT3_RESPONSE
 
-# Extract child2 ID
-CHILD2_ID=$(echo $CHILD2_RESPONSE | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
-echo "Child 2 ID: $CHILD2_ID"
+# Extract ingredient3 ID
+INGREDIENT3_ID=$(echo $INGREDIENT3_RESPONSE | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
+echo "Ingredient 3 ID: $INGREDIENT3_ID"
 
-# Update parent to include children
-UPDATE_RESPONSE=$(curl -s -X PUT -H "Content-Type: application/json" -d "{
-  \"name\": \"Parent Ingredient Updated\",
-  \"description\": \"A parent ingredient for testing\",
+# Update ingredient 1 to include ingredients 2 and 3 as children with quantities
+UPDATE1_RESPONSE=$(curl -s -X PUT -H "Content-Type: application/json" -d "{
+  \"name\": \"Ingredient 1 Updated\",
+  \"description\": \"First ingredient for testing\",
   \"unit\": \"kg\",
   \"active\": true,
-  \"childIngredientIds\": [$CHILD1_ID, $CHILD2_ID]
-}" http://localhost:8080/api/ingredients/$PARENT_ID)
+  \"childIngredientComponents\": [
+    {
+      \"childIngredientId\": $INGREDIENT2_ID,
+      \"quantity\": 2.5
+    },
+    {
+      \"childIngredientId\": $INGREDIENT3_ID,
+      \"quantity\": 1.75
+    }
+  ]
+}" http://localhost:8080/api/ingredients/$INGREDIENT1_ID)
 
-echo "Parent updated with children:"
-echo $UPDATE_RESPONSE
+echo "Ingredient 1 updated with children 2 and 3:"
+echo $UPDATE1_RESPONSE
 
-# Get the parent to verify children are included
-GET_RESPONSE=$(curl -s -X GET http://localhost:8080/api/ingredients/$PARENT_ID)
-echo "Get parent with children:"
-echo $GET_RESPONSE
+# Get ingredient 1 to verify children are included
+GET1_RESPONSE=$(curl -s -X GET http://localhost:8080/api/ingredients/$INGREDIENT1_ID)
+echo "Get ingredient 1 with children:"
+echo $GET1_RESPONSE
 
-# Create a new ingredient with children directly
-NEW_PARENT_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" -d "{
-  \"name\": \"New Parent With Children\",
-  \"description\": \"A new parent ingredient with children\",
+# Update ingredient 2 to include ingredient 3 as a child with quantity
+UPDATE2_RESPONSE=$(curl -s -X PUT -H "Content-Type: application/json" -d "{
+  \"name\": \"Ingredient 2 Updated\",
+  \"description\": \"Second ingredient for testing\",
+  \"unit\": \"g\",
+  \"active\": true,
+  \"childIngredientComponents\": [
+    {
+      \"childIngredientId\": $INGREDIENT3_ID,
+      \"quantity\": 3.0
+    }
+  ]
+}" http://localhost:8080/api/ingredients/$INGREDIENT2_ID)
+
+echo "Ingredient 2 updated with child 3:"
+echo $UPDATE2_RESPONSE
+
+# Get ingredient 2 to verify children are included
+GET2_RESPONSE=$(curl -s -X GET http://localhost:8080/api/ingredients/$INGREDIENT2_ID)
+echo "Get ingredient 2 with children:"
+echo $GET2_RESPONSE
+
+# Get ingredient 3 to verify it has multiple parents
+GET3_RESPONSE=$(curl -s -X GET http://localhost:8080/api/ingredients/$INGREDIENT3_ID)
+echo "Get ingredient 3 with multiple parents:"
+echo $GET3_RESPONSE
+
+# Create a new ingredient with children and quantities directly
+NEW_INGREDIENT_RESPONSE=$(curl -s -X POST -H "Content-Type: application/json" -d "{
+  \"name\": \"New Ingredient With Children\",
+  \"description\": \"A new ingredient with children\",
   \"unit\": \"kg\",
   \"active\": true,
-  \"childIngredientIds\": [$CHILD1_ID, $CHILD2_ID]
+  \"childIngredientComponents\": [
+    {
+      \"childIngredientId\": $INGREDIENT2_ID,
+      \"quantity\": 5.0
+    },
+    {
+      \"childIngredientId\": $INGREDIENT3_ID,
+      \"quantity\": 2.5
+    }
+  ]
 }" http://localhost:8080/api/ingredients)
 
-echo "New parent created with children:"
-echo $NEW_PARENT_RESPONSE
+echo "New ingredient created with children:"
+echo $NEW_INGREDIENT_RESPONSE
 
-# Extract new parent ID
-NEW_PARENT_ID=$(echo $NEW_PARENT_RESPONSE | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
-echo "New Parent ID: $NEW_PARENT_ID"
+# Extract new ingredient ID
+NEW_INGREDIENT_ID=$(echo $NEW_INGREDIENT_RESPONSE | grep -o '"id":[0-9]*' | head -1 | cut -d':' -f2)
+echo "New Ingredient ID: $NEW_INGREDIENT_ID"
 
-# Get the new parent to verify children are included
-NEW_GET_RESPONSE=$(curl -s -X GET http://localhost:8080/api/ingredients/$NEW_PARENT_ID)
-echo "Get new parent with children:"
+# Get the new ingredient to verify children are included
+NEW_GET_RESPONSE=$(curl -s -X GET http://localhost:8080/api/ingredients/$NEW_INGREDIENT_ID)
+echo "Get new ingredient with children:"
 echo $NEW_GET_RESPONSE
+
+# Get ingredient 2 again to verify it now has multiple parents
+GET2_AGAIN_RESPONSE=$(curl -s -X GET http://localhost:8080/api/ingredients/$INGREDIENT2_ID)
+echo "Get ingredient 2 with multiple parents:"
+echo $GET2_AGAIN_RESPONSE
 
 echo "Test completed."

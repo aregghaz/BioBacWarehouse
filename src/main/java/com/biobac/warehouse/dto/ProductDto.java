@@ -12,6 +12,4 @@ public class ProductDto {
     private List<RecipeItemDto> recipeItems;
     private Integer initialQuantity;
     private Long warehouseId;
-    private Long parentProductId;
-    private List<Long> childProductIds;
 }

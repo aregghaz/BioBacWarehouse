@@ -53,11 +53,6 @@ public class ProductServiceImpl implements ProductService {
             product.setIngredients(ingredients);
         }
         
-        // Handle parent product relationship
-        if (dto.getParentProductId() != null) {
-            Product parentProduct = productRepo.findById(dto.getParentProductId()).orElseThrow();
-            product.setParentProduct(parentProduct);
-        }
         
         // Save the product first to get its ID
         Product savedProduct = productRepo.save(product);
@@ -105,18 +100,6 @@ public class ProductServiceImpl implements ProductService {
             product.setIngredients(ingredients);
         }
         
-        // Handle parent product relationship
-        if (dto.getParentProductId() != null) {
-            // Prevent self-referencing
-            if (dto.getParentProductId().equals(id)) {
-                throw new IllegalArgumentException("A product cannot be its own parent");
-            }
-            
-            Product parentProduct = productRepo.findById(dto.getParentProductId()).orElseThrow();
-            product.setParentProduct(parentProduct);
-        } else {
-            product.setParentProduct(null);
-        }
         
         // Update recipe items if provided
         if (dto.getRecipeItems() != null) {
