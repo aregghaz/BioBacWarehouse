@@ -53,7 +53,6 @@ public class IngredientServiceImpl implements IngredientService {
         // Debug log the incoming DTO
         System.out.println("[DEBUG_LOG] Creating ingredient with name: " + dto.getName() + 
             ", quantity: " + dto.getQuantity() + 
-            ", initialQuantity: " + dto.getInitialQuantity() + 
             ", warehouseId: " + dto.getWarehouseId());
         
         // Use the mapper to convert DTO to entity, which will handle group
@@ -92,15 +91,10 @@ public class IngredientServiceImpl implements IngredientService {
                 componentRepo.save(component);
                 
                 // Decrease inventory quantity for the child ingredient only if all required values are present
-                // Check for either quantity or initialQuantity
                 if (dto.getWarehouseId() != null && componentDto.getQuantity() != null) {
-                    // Determine which quantity to use - prioritize initialQuantity over quantity
-                    // but only if initialQuantity is greater than 0
+                    // Use quantity for calculations
                     Double quantityToUse = null;
-                    if (dto.getInitialQuantity() != null && dto.getInitialQuantity() > 0) {
-                        quantityToUse = dto.getInitialQuantity().doubleValue();
-                        System.out.println("[DEBUG_LOG] Using initialQuantity: " + quantityToUse);
-                    } else if (dto.getQuantity() != null) {
+                    if (dto.getQuantity() != null) {
                         quantityToUse = dto.getQuantity();
                         System.out.println("[DEBUG_LOG] Using quantity: " + quantityToUse);
                     } else {
@@ -163,16 +157,12 @@ public class IngredientServiceImpl implements IngredientService {
         }
         
         
-        // Create inventory item if quantity or initialQuantity and warehouseId are provided
-        if ((dto.getQuantity() != null || dto.getInitialQuantity() != null) && dto.getWarehouseId() != null) {
-            // Determine which quantity to use for calculations - prioritize initialQuantity over quantity
-            // but only if initialQuantity is greater than 0
+        // Create inventory item if quantity and warehouseId are provided
+        if (dto.getQuantity() != null && dto.getWarehouseId() != null) {
+            // Use quantity for calculations
             Double quantityForCalculations = null;
-            System.out.println("[DEBUG_LOG] Determining quantity - initialQuantity: " + dto.getInitialQuantity() + ", quantity: " + dto.getQuantity());
-            if (dto.getInitialQuantity() != null && dto.getInitialQuantity() > 0) {
-                quantityForCalculations = dto.getInitialQuantity().doubleValue();
-                System.out.println("[DEBUG_LOG] Creating inventory item with initialQuantity: " + dto.getInitialQuantity());
-            } else if (dto.getQuantity() != null) {
+            System.out.println("[DEBUG_LOG] Determining quantity - quantity: " + dto.getQuantity());
+            if (dto.getQuantity() != null) {
                 quantityForCalculations = dto.getQuantity();
                 System.out.println("[DEBUG_LOG] Creating inventory item with quantity: " + dto.getQuantity());
             } else {
@@ -227,18 +217,8 @@ public class IngredientServiceImpl implements IngredientService {
             // Determine the quantity to use for the inventory item
             Integer quantityToUse;
             
-            // If initialQuantity is 0, use quantity instead
-            if (dto.getInitialQuantity() != null && dto.getInitialQuantity() == 0 && dto.getQuantity() != null) {
-                quantityToUse = (int) Math.ceil(dto.getQuantity());
-                System.err.println("Using quantity for inventory because initialQuantity is 0: " + quantityToUse);
-            } 
-            // If initialQuantity is greater than 0, use it
-            else if (dto.getInitialQuantity() != null && dto.getInitialQuantity() > 0) {
-                quantityToUse = dto.getInitialQuantity();
-                System.err.println("Using initialQuantity for inventory: " + quantityToUse);
-            }
-            // Otherwise use quantity
-            else if (dto.getQuantity() != null) {
+            // Use quantity if available
+            if (dto.getQuantity() != null) {
                 quantityToUse = (int) Math.ceil(dto.getQuantity());
                 System.err.println("Using quantity for inventory: " + quantityToUse);
             }

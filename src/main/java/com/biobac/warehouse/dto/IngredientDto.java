@@ -12,7 +12,6 @@ public class IngredientDto {
     private boolean active;
     private Double quantity;
     private Long groupId;
-    private Integer initialQuantity;
     private Long warehouseId;
     private List<IngredientComponentDto> childIngredientComponents;
 }

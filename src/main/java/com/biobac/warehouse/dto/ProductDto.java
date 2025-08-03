@@ -10,7 +10,6 @@ public class ProductDto {
     private String sku;
     private List<Long> ingredientIds;
     private List<RecipeItemDto> recipeItems;
-    private Integer initialQuantity;
     private Double quantity;
     private Long warehouseId;
 }

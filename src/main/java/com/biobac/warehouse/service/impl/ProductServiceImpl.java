@@ -64,6 +64,37 @@ public class ProductServiceImpl implements ProductService {
             product.setIngredients(ingredients);
         }
         
+        // Check if there are enough ingredients before creating the product
+        if (dto.getRecipeItems() != null && !dto.getRecipeItems().isEmpty() && dto.getWarehouseId() != null) {
+            System.out.println("[DEBUG_LOG] Checking ingredient availability for " + dto.getRecipeItems().size() + " recipe items");
+            
+            for (RecipeItemDto recipeItemDto : dto.getRecipeItems()) {
+                Long ingredientId = recipeItemDto.getIngredientId();
+                double requiredQuantity = recipeItemDto.getQuantity() * dto.getQuantity();
+                
+                // Find inventory items for this ingredient in the specified warehouse
+                List<InventoryItem> inventoryItems = inventoryItemRepo.findByIngredientIdAndWarehouseId(
+                    ingredientId, dto.getWarehouseId());
+                
+                if (inventoryItems.isEmpty()) {
+                    throw new RuntimeException("Ingredient with ID " + ingredientId + " not found in warehouse " + dto.getWarehouseId());
+                }
+                
+                // Check if there's enough quantity available
+                int availableQuantity = 0;
+                for (InventoryItem item : inventoryItems) {
+                    availableQuantity += item.getQuantity() != null ? item.getQuantity() : 0;
+                }
+                
+                if (availableQuantity < requiredQuantity) {
+                    throw new RuntimeException("Not enough quantity for ingredient with ID " + ingredientId + 
+                        ". Required: " + requiredQuantity + ", Available: " + availableQuantity);
+                }
+                
+                System.out.println("[DEBUG_LOG] Sufficient quantity available for ingredient ID: " + ingredientId + 
+                    ". Required: " + requiredQuantity + ", Available: " + availableQuantity);
+            }
+        }
         
         // Save the product first to get its ID
         Product savedProduct = productRepo.save(product);

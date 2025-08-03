@@ -31,7 +31,6 @@ public abstract class IngredientMapper {
         @Mapping(target = "active", source = "active"),
         @Mapping(target = "quantity", source = "quantity"),
         @Mapping(target = "groupId", source = "group.id"),
-        @Mapping(target = "initialQuantity", expression = "java(getExactQuantity(entity))"),
         @Mapping(target = "warehouseId", expression = "java(getWarehouseId(entity))"),
         @Mapping(target = "childIngredientComponents", expression = "java(mapChildIngredientComponents(entity))")
     })
