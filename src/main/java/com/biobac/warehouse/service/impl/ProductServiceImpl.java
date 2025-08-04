@@ -12,6 +12,7 @@ import com.biobac.warehouse.mapper.RecipeItemMapper;
 import com.biobac.warehouse.repository.IngredientRepository;
 import com.biobac.warehouse.repository.InventoryItemRepository;
 import com.biobac.warehouse.repository.ProductRepository;
+import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.InventoryService;
 import com.biobac.warehouse.service.ProductService;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +33,7 @@ public class ProductServiceImpl implements ProductService {
     private final RecipeItemMapper recipeItemMapper;
     private final InventoryService inventoryService;
     private final InventoryItemRepository inventoryItemRepo;
+    private final IngredientHistoryService historyService;
 
     @Transactional(readOnly = true)
     @Override
@@ -168,13 +170,17 @@ public class ProductServiceImpl implements ProductService {
                                 if (updatedRows > 0) {
                                     System.out.println("[DEBUG_LOG] Successfully updated " + updatedRows + " inventory items");
                                     
-                                    // Update the ingredient's quantity field as well
+                                    // Record history for ingredient quantity change without updating ingredient quantity
                                     Ingredient ingredient = recipeItem.getIngredient();
-                                    if (ingredient != null && ingredient.getQuantity() != null) {
-                                        double newQuantity = ingredient.getQuantity() - amountToDecrease;
-                                        ingredient.setQuantity(newQuantity >= 0 ? newQuantity : 0);
-                                        ingredientRepo.save(ingredient);
-                                        System.out.println("[DEBUG_LOG] Updated ingredient quantity to: " + ingredient.getQuantity());
+                                    if (ingredient != null) {
+                                        // Record history for ingredient quantity change
+                                        historyService.recordQuantityChange(
+                                            ingredient,
+                                            0.0,
+                                            0.0,
+                                            "USED_IN_PRODUCT",
+                                            "Used in product: " + savedProduct.getName()
+                                        );
                                     }
                                     
                                     // Refresh the item to get the updated quantity
@@ -353,13 +359,17 @@ public class ProductServiceImpl implements ProductService {
                                 if (updatedRows > 0) {
                                     System.out.println("[DEBUG_LOG] Successfully updated " + updatedRows + " inventory items");
                                     
-                                    // Update the ingredient's quantity field as well
+                                    // Record history for ingredient quantity change without updating ingredient quantity
                                     Ingredient ingredient = recipeItem.getIngredient();
-                                    if (ingredient != null && ingredient.getQuantity() != null) {
-                                        double newQuantity = ingredient.getQuantity() - amountToDecrease;
-                                        ingredient.setQuantity(newQuantity >= 0 ? newQuantity : 0);
-                                        ingredientRepo.save(ingredient);
-                                        System.out.println("[DEBUG_LOG] Updated ingredient quantity to: " + ingredient.getQuantity());
+                                    if (ingredient != null) {
+                                        // Record history for ingredient quantity change
+                                        historyService.recordQuantityChange(
+                                            ingredient,
+                                            0.0,
+                                            0.0,
+                                            "USED_IN_PRODUCT",
+                                            "Used in product update: " + savedProduct.getName()
+                                        );
                                     }
                                     
                                     // Refresh the item to get the updated quantity

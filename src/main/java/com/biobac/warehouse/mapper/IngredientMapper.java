@@ -29,7 +29,7 @@ public abstract class IngredientMapper {
         @Mapping(target = "description", source = "description"),
         @Mapping(target = "unit", source = "unit"),
         @Mapping(target = "active", source = "active"),
-        @Mapping(target = "quantity", source = "quantity"),
+        @Mapping(target = "quantity", expression = "java(getExactQuantity(entity) != null ? getExactQuantity(entity).doubleValue() : null)"),
         @Mapping(target = "groupId", source = "group.id"),
         @Mapping(target = "warehouseId", expression = "java(getWarehouseId(entity))"),
         @Mapping(target = "childIngredientComponents", expression = "java(mapChildIngredientComponents(entity))")
@@ -42,7 +42,7 @@ public abstract class IngredientMapper {
         @Mapping(target = "description", source = "description"),
         @Mapping(target = "unit", source = "unit"),
         @Mapping(target = "active", source = "active"),
-        @Mapping(target = "quantity", source = "quantity"),
+        @Mapping(target = "quantity", ignore = true),
         @Mapping(target = "group", ignore = true),
         @Mapping(target = "childIngredientComponents", ignore = true),
         @Mapping(target = "recipeItems", ignore = true)
@@ -80,23 +80,6 @@ public abstract class IngredientMapper {
                 .collect(Collectors.toList());
     }
     
-    /**
-     * @deprecated Use getExactQuantity instead
-     */
-    @Deprecated
-    protected Integer getInitialQuantity(Ingredient entity) {
-        if (entity.getId() == null) {
-            return null;
-        }
-        
-        List<InventoryItem> inventoryItems = inventoryItemRepository.findByIngredientId(entity.getId());
-        if (inventoryItems == null || inventoryItems.isEmpty()) {
-            return null;
-        }
-        
-        // Return the quantity of the first inventory item
-        return inventoryItems.get(0).getQuantity();
-    }
     
     /**
      * Gets the exact total quantity by summing all inventory items for this ingredient

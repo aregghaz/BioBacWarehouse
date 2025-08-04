@@ -19,7 +19,7 @@ public class Ingredient {
     private String description;
     private String unit;
     private boolean active;
-    private Double quantity;
+    
 
     @ManyToOne
     private IngredientGroup group;

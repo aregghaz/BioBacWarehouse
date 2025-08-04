@@ -2,6 +2,7 @@
 package com.biobac.warehouse.service.impl;
 
 import com.biobac.warehouse.dto.InventoryItemDto;
+import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.entity.InventoryItem;
 import com.biobac.warehouse.mapper.InventoryMapper;
 import com.biobac.warehouse.repository.IngredientGroupRepository;
@@ -9,6 +10,7 @@ import com.biobac.warehouse.repository.IngredientRepository;
 import com.biobac.warehouse.repository.InventoryItemRepository;
 import com.biobac.warehouse.repository.ProductRepository;
 import com.biobac.warehouse.repository.WarehouseRepository;
+import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.InventoryService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +27,7 @@ public class InventoryServiceImpl implements InventoryService {
     private final IngredientGroupRepository ingredientGroupRepo;
     private final WarehouseRepository warehouseRepo;
     private final InventoryMapper mapper;
+    private final IngredientHistoryService historyService;
 
     public List<InventoryItemDto> getAll() {
         return repo.findAll().stream().map(mapper::toDto).collect(Collectors.toList());
@@ -36,25 +39,52 @@ public class InventoryServiceImpl implements InventoryService {
 
     public InventoryItemDto create(InventoryItemDto dto) {
         InventoryItem entity = mapper.toEntity(dto);
+        
+        // Set references
         if (dto.getProductId() != null) {
             entity.setProduct(productRepo.findById(dto.getProductId()).orElse(null));
         }
+        
+        Ingredient ingredient = null;
         if (dto.getIngredientId() != null) {
-            entity.setIngredient(ingredientRepo.findById(dto.getIngredientId()).orElse(null));
+            ingredient = ingredientRepo.findById(dto.getIngredientId()).orElse(null);
+            entity.setIngredient(ingredient);
         }
+        
         if (dto.getIngredientGroupId() != null) {
             entity.setIngredientGroup(ingredientGroupRepo.findById(dto.getIngredientGroupId()).orElse(null));
             entity.setGroupId(dto.getIngredientGroupId());
         }
+        
         if (dto.getWarehouseId() != null) {
             entity.setWarehouse(warehouseRepo.findById(dto.getWarehouseId()).orElse(null));
             entity.setWarehouseId(dto.getWarehouseId());
         }
-        return mapper.toDto(repo.save(entity));
+        
+        // Save the entity
+        InventoryItem savedEntity = repo.save(entity);
+        
+        // Record history if this is an ingredient with quantity
+        if (ingredient != null && dto.getQuantity() != null) {
+            // Record the history for inventory creation
+            historyService.recordQuantityChange(
+                ingredient,
+                0.0,
+                dto.getQuantity().doubleValue(),
+                "INVENTORY_CREATED",
+                "New inventory item created"
+            );
+        }
+        
+        return mapper.toDto(savedEntity);
     }
 
     public InventoryItemDto update(Long id, InventoryItemDto dto) {
         InventoryItem item = repo.findById(id).orElseThrow();
+        
+        // Store original quantity for history tracking
+        Integer originalQuantity = item.getQuantity();
+        
         item.setQuantity(dto.getQuantity());
         item.setLastUpdated(dto.getLastUpdated());
         
@@ -78,10 +108,47 @@ public class InventoryServiceImpl implements InventoryService {
             item.setWarehouseId(dto.getWarehouseId());
         }
         
-        return mapper.toDto(repo.save(item));
+        // Save the updated item
+        InventoryItem savedItem = repo.save(item);
+        
+        // Record history if this is an ingredient and quantity changed
+        if (savedItem.getIngredient() != null && 
+            (originalQuantity == null && dto.getQuantity() != null || 
+             originalQuantity != null && !originalQuantity.equals(dto.getQuantity()))) {
+            
+            Ingredient ingredient = savedItem.getIngredient();
+            
+            // Record the history for inventory update
+            historyService.recordQuantityChange(
+                ingredient,
+                originalQuantity != null ? originalQuantity.doubleValue() : 0.0,
+                dto.getQuantity().doubleValue(),
+                "INVENTORY_UPDATE",
+                "Inventory quantity updated"
+            );
+        }
+        
+        return mapper.toDto(savedItem);
     }
 
     public void delete(Long id) {
+        // Get the inventory item before deleting
+        InventoryItem item = repo.findById(id).orElse(null);
+        
+        if (item != null && item.getIngredient() != null && item.getQuantity() != null) {
+            Ingredient ingredient = item.getIngredient();
+            
+            // Record the history before deleting
+            historyService.recordQuantityChange(
+                ingredient,
+                item.getQuantity().doubleValue(),
+                0.0, // Quantity after deletion is 0
+                "INVENTORY_DELETED",
+                "Inventory item deleted"
+            );
+        }
+        
+        // Delete the inventory item
         repo.deleteById(id);
     }
     

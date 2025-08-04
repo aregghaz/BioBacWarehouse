@@ -30,9 +30,6 @@ public class InventoryItem {
 
     @ManyToOne
     private Warehouse warehouse;
-    
-//    @Column(name = "warehouse_id")
-//    private Long warehouseId;
 
     private Integer quantity;
     private Integer ingredientCount;

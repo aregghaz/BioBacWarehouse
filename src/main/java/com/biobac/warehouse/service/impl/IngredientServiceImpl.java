@@ -71,11 +71,12 @@ public class IngredientServiceImpl implements IngredientService {
         // Save the ingredient first to get its ID
         Ingredient savedIngredient = ingredientRepo.save(entity);
         
-        // Record history for ingredient creation
+        // Record history for ingredient creation with quantity 0
+        // We'll update the history when inventory is created
         historyService.recordQuantityChange(
             savedIngredient, 
             0.0, 
-            savedIngredient.getQuantity(), 
+            0.0, 
             "CREATED", 
             "Initial creation of ingredient");
         
@@ -147,13 +148,8 @@ public class IngredientServiceImpl implements IngredientService {
                                 inventoryItem.setLastUpdated(LocalDate.now());
                                 inventoryService.update(inventoryItem.getId(), inventoryItem);
                                 
-                                // Update the child ingredient's quantity field as well
-                                if (childIngredient != null && childIngredient.getQuantity() != null) {
-                                    double newQuantity = childIngredient.getQuantity() - amountToDecrease;
-                                    childIngredient.setQuantity(newQuantity >= 0 ? newQuantity : 0);
-                                    ingredientRepo.save(childIngredient);
-                                    System.out.println("[DEBUG_LOG] Updated child ingredient quantity to: " + childIngredient.getQuantity());
-                                }
+                                // No longer update the deprecated quantity field on child ingredients
+                                System.out.println("[DEBUG_LOG] Decreased inventory for child ingredient by: " + amountToDecrease);
                                 break;
                             }
                         }
@@ -222,13 +218,8 @@ public class IngredientServiceImpl implements IngredientService {
             
             inventoryService.create(inventoryItemDto);
             
-            // Update the ingredient's quantity field to match the inventory
-            // This ensures simple ingredients have their quantity field updated
-            if (savedIngredient != null) {
-                savedIngredient.setQuantity((double) quantityToUse);
-                savedIngredient = ingredientRepo.save(savedIngredient);
-                System.out.println("[DEBUG_LOG] Updated simple ingredient quantity to: " + savedIngredient.getQuantity());
-            }
+            // No longer update the deprecated quantity field
+            System.out.println("[DEBUG_LOG] Created inventory item with quantity: " + quantityToUse);
         }
         
         return mapper.toDto(savedIngredient);
@@ -239,24 +230,47 @@ public class IngredientServiceImpl implements IngredientService {
     public IngredientDto update(Long id, IngredientDto dto) {
         Ingredient existing = ingredientRepo.findById(id).orElseThrow();
         
-        // Store the original quantity for history tracking
-        Double originalQuantity = existing.getQuantity();
-        
         existing.setName(dto.getName());
         existing.setDescription(dto.getDescription());
         existing.setUnit(dto.getUnit());
         existing.setActive(dto.isActive());
-        existing.setQuantity(dto.getQuantity());
         
-        // Record history if quantity changed
-        if (originalQuantity == null && dto.getQuantity() != null || 
-            originalQuantity != null && !originalQuantity.equals(dto.getQuantity())) {
-            historyService.recordQuantityChange(
-                existing, 
-                originalQuantity != null ? originalQuantity : 0.0, 
-                dto.getQuantity() != null ? dto.getQuantity() : 0.0, 
-                "UPDATED", 
-                "Ingredient updated");
+        // No longer update the deprecated quantity field
+        
+        // Record history if quantity changed in DTO
+        if (dto.getQuantity() != null) {
+            // Get current inventory quantity from inventory items
+            List<InventoryItemDto> inventoryItems = inventoryService.findByIngredientId(id);
+            double currentTotalQuantity = 0.0;
+            if (inventoryItems != null && !inventoryItems.isEmpty()) {
+                currentTotalQuantity = inventoryItems.stream()
+                    .mapToDouble(item -> item.getQuantity() != null ? item.getQuantity() : 0)
+                    .sum();
+            }
+            
+            // Only record history if the quantity in DTO is different from inventory
+            if (Math.abs(currentTotalQuantity - dto.getQuantity()) > 0.001) {
+                historyService.recordQuantityChange(
+                    existing, 
+                    currentTotalQuantity, 
+                    dto.getQuantity(), 
+                    "UPDATED", 
+                    "Ingredient updated");
+                
+                // Update inventory items if warehouseId is provided
+                if (dto.getWarehouseId() != null && !inventoryItems.isEmpty()) {
+                    // Find inventory item in the same warehouse
+                    for (InventoryItemDto inventoryItem : inventoryItems) {
+                        if (inventoryItem.getWarehouseId() != null && 
+                            inventoryItem.getWarehouseId().equals(dto.getWarehouseId())) {
+                            // Update the inventory quantity
+                            inventoryItem.setQuantity((int)Math.ceil(dto.getQuantity()));
+                            inventoryService.update(inventoryItem.getId(), inventoryItem);
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
         if (dto.getGroupId() != null) {
