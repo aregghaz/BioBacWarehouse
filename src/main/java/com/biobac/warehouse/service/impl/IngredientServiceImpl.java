@@ -146,6 +146,14 @@ public class IngredientServiceImpl implements IngredientService {
                                 inventoryItem.setQuantity(inventoryItem.getQuantity() - amountToDecrease);
                                 inventoryItem.setLastUpdated(LocalDate.now());
                                 inventoryService.update(inventoryItem.getId(), inventoryItem);
+                                
+                                // Update the child ingredient's quantity field as well
+                                if (childIngredient != null && childIngredient.getQuantity() != null) {
+                                    double newQuantity = childIngredient.getQuantity() - amountToDecrease;
+                                    childIngredient.setQuantity(newQuantity >= 0 ? newQuantity : 0);
+                                    ingredientRepo.save(childIngredient);
+                                    System.out.println("[DEBUG_LOG] Updated child ingredient quantity to: " + childIngredient.getQuantity());
+                                }
                                 break;
                             }
                         }
@@ -181,53 +189,7 @@ public class IngredientServiceImpl implements IngredientService {
                 quantityForCalculations = 0.0;
             }
             System.out.println("[DEBUG_LOG] Final quantityForCalculations: " + quantityForCalculations);
-            // First, check if this ingredient is created from another ingredient
-            // If so, decrease the inventory of the source ingredient
-            if (dto.getChildIngredientComponents() != null && !dto.getChildIngredientComponents().isEmpty()) {
-                for (IngredientComponentDto componentDto : dto.getChildIngredientComponents()) {
-                    if (componentDto.getChildIngredientId() != null) {
-                        try {
-                            // Get inventory items for the child ingredient
-                            List<InventoryItemDto> inventoryItems = inventoryService.findByIngredientId(componentDto.getChildIngredientId());
-                            
-                            if (inventoryItems != null && !inventoryItems.isEmpty()) {
-                                for (InventoryItemDto inventoryItem : inventoryItems) {
-                                    if (inventoryItem != null && inventoryItem.getWarehouseId() != null && 
-                                        inventoryItem.getId() != null && dto.getWarehouseId().equals(inventoryItem.getWarehouseId())) {
-                                        
-                                        // Decrease the quantity by the quantity of the new ingredient
-                                        int amountToDecrease = (int) Math.ceil(quantityForCalculations);
-                                        
-                                        // Check if there's enough inventory
-                                        if (inventoryItem.getQuantity() < amountToDecrease) {
-                                            System.out.println("Warning: Not enough inventory for ingredient ID " + 
-                                                componentDto.getChildIngredientId() + ". Required: " + amountToDecrease + 
-                                                ", Available: " + inventoryItem.getQuantity());
-                                        } else {
-                                            // Update the inventory quantity
-                                            inventoryItem.setQuantity(inventoryItem.getQuantity() - amountToDecrease);
-                                            inventoryItem.setLastUpdated(LocalDate.now());
-                                            inventoryService.update(inventoryItem.getId(), inventoryItem);
-                                            
-                                            // Update the child ingredient's quantity field as well
-                                            Ingredient childIngredient = ingredientRepo.findById(componentDto.getChildIngredientId()).orElse(null);
-                                            if (childIngredient != null && childIngredient.getQuantity() != null) {
-                                                double newQuantity = childIngredient.getQuantity() - amountToDecrease;
-                                                childIngredient.setQuantity(newQuantity >= 0 ? newQuantity : 0);
-                                                ingredientRepo.save(childIngredient);
-                                                System.out.println("[DEBUG_LOG] Updated child ingredient quantity to: " + childIngredient.getQuantity());
-                                            }
-                                        }
-                                        break;
-                                    }
-                                }
-                            }
-                        } catch (Exception e) {
-                            System.err.println("Error decreasing inventory for source ingredient: " + e.getMessage());
-                        }
-                    }
-                }
-            }
+            // Child ingredient inventory and quantities are already processed in the first section
             
             // Create inventory item for the new ingredient
             InventoryItemDto inventoryItemDto = new InventoryItemDto();
@@ -259,6 +221,14 @@ public class IngredientServiceImpl implements IngredientService {
             inventoryItemDto.setIngredientCount(ingredientCount);
             
             inventoryService.create(inventoryItemDto);
+            
+            // Update the ingredient's quantity field to match the inventory
+            // This ensures simple ingredients have their quantity field updated
+            if (savedIngredient != null) {
+                savedIngredient.setQuantity((double) quantityToUse);
+                savedIngredient = ingredientRepo.save(savedIngredient);
+                System.out.println("[DEBUG_LOG] Updated simple ingredient quantity to: " + savedIngredient.getQuantity());
+            }
         }
         
         return mapper.toDto(savedIngredient);
