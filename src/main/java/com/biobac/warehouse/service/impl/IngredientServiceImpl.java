@@ -208,6 +208,15 @@ public class IngredientServiceImpl implements IngredientService {
                                             inventoryItem.setQuantity(inventoryItem.getQuantity() - amountToDecrease);
                                             inventoryItem.setLastUpdated(LocalDate.now());
                                             inventoryService.update(inventoryItem.getId(), inventoryItem);
+                                            
+                                            // Update the child ingredient's quantity field as well
+                                            Ingredient childIngredient = ingredientRepo.findById(componentDto.getChildIngredientId()).orElse(null);
+                                            if (childIngredient != null && childIngredient.getQuantity() != null) {
+                                                double newQuantity = childIngredient.getQuantity() - amountToDecrease;
+                                                childIngredient.setQuantity(newQuantity >= 0 ? newQuantity : 0);
+                                                ingredientRepo.save(childIngredient);
+                                                System.out.println("[DEBUG_LOG] Updated child ingredient quantity to: " + childIngredient.getQuantity());
+                                            }
                                         }
                                         break;
                                     }
