@@ -170,14 +170,18 @@ public class ProductServiceImpl implements ProductService {
                                 if (updatedRows > 0) {
                                     System.out.println("[DEBUG_LOG] Successfully updated " + updatedRows + " inventory items");
                                     
-                                    // Record history for ingredient quantity change without updating ingredient quantity
+                                    // Record history for ingredient quantity change with actual quantities
                                     Ingredient ingredient = recipeItem.getIngredient();
                                     if (ingredient != null) {
-                                        // Record history for ingredient quantity change
+                                        // Get the current quantity from inventory
+                                        int currentQuantity = item.getQuantity() != null ? item.getQuantity() : 0;
+                                        int previousQuantity = currentQuantity + amountToDecrease;
+                                            
+                                        // Record history for ingredient quantity change with actual values
                                         historyService.recordQuantityChange(
                                             ingredient,
-                                            0.0,
-                                            0.0,
+                                            (double) previousQuantity,
+                                            (double) currentQuantity,
                                             "USED_IN_PRODUCT",
                                             "Used in product: " + savedProduct.getName()
                                         );

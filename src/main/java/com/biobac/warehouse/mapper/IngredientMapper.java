@@ -42,11 +42,12 @@ public abstract class IngredientMapper {
         @Mapping(target = "description", source = "description"),
         @Mapping(target = "unit", source = "unit"),
         @Mapping(target = "active", source = "active"),
-        @Mapping(target = "quantity", ignore = true),
+        @Mapping(target = "history", ignore = true),
         @Mapping(target = "group", ignore = true),
         @Mapping(target = "childIngredientComponents", ignore = true),
         @Mapping(target = "recipeItems", ignore = true)
     })
+    @BeanMapping(ignoreByDefault = false, ignoreUnmappedSourceProperties = {"quantity", "warehouseId"})
     public abstract Ingredient toEntity(IngredientDto dto);
 
     @AfterMapping
