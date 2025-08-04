@@ -3,6 +3,7 @@ package com.biobac.warehouse.service.impl;
 
 import com.biobac.warehouse.dto.IngredientComponentDto;
 import com.biobac.warehouse.dto.IngredientDto;
+import com.biobac.warehouse.dto.IngredientHistoryDto;
 import com.biobac.warehouse.dto.InventoryItemDto;
 import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.entity.IngredientComponent;
@@ -12,6 +13,7 @@ import com.biobac.warehouse.mapper.IngredientMapper;
 import com.biobac.warehouse.repository.IngredientComponentRepository;
 import com.biobac.warehouse.repository.IngredientGroupRepository;
 import com.biobac.warehouse.repository.IngredientRepository;
+import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.IngredientService;
 import com.biobac.warehouse.service.InventoryService;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +34,7 @@ public class IngredientServiceImpl implements IngredientService {
     private final IngredientMapper mapper;
     private final IngredientComponentMapper componentMapper;
     private final InventoryService inventoryService;
+    private final IngredientHistoryService historyService;
 
     @Transactional(readOnly = true)
     @Override
@@ -67,6 +70,14 @@ public class IngredientServiceImpl implements IngredientService {
         
         // Save the ingredient first to get its ID
         Ingredient savedIngredient = ingredientRepo.save(entity);
+        
+        // Record history for ingredient creation
+        historyService.recordQuantityChange(
+            savedIngredient, 
+            0.0, 
+            savedIngredient.getQuantity(), 
+            "CREATED", 
+            "Initial creation of ingredient");
         
         // Handle child ingredient components if provided
         if (dto.getChildIngredientComponents() != null && !dto.getChildIngredientComponents().isEmpty()) {
@@ -248,11 +259,26 @@ public class IngredientServiceImpl implements IngredientService {
     @Override
     public IngredientDto update(Long id, IngredientDto dto) {
         Ingredient existing = ingredientRepo.findById(id).orElseThrow();
+        
+        // Store the original quantity for history tracking
+        Double originalQuantity = existing.getQuantity();
+        
         existing.setName(dto.getName());
         existing.setDescription(dto.getDescription());
         existing.setUnit(dto.getUnit());
         existing.setActive(dto.isActive());
         existing.setQuantity(dto.getQuantity());
+        
+        // Record history if quantity changed
+        if (originalQuantity == null && dto.getQuantity() != null || 
+            originalQuantity != null && !originalQuantity.equals(dto.getQuantity())) {
+            historyService.recordQuantityChange(
+                existing, 
+                originalQuantity != null ? originalQuantity : 0.0, 
+                dto.getQuantity() != null ? dto.getQuantity() : 0.0, 
+                "UPDATED", 
+                "Ingredient updated");
+        }
 
         if (dto.getGroupId() != null) {
             IngredientGroup group = groupRepo.findById(dto.getGroupId())
