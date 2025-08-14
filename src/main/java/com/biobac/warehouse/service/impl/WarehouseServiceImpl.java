@@ -4,6 +4,7 @@ package com.biobac.warehouse.service.impl;
 
 import com.biobac.warehouse.dto.WarehouseDto;
 import com.biobac.warehouse.entity.Warehouse;
+import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.WarehouseMapper;
 import com.biobac.warehouse.repository.WarehouseRepository;
 import com.biobac.warehouse.service.WarehouseService;
@@ -17,36 +18,43 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class WarehouseServiceImpl implements WarehouseService {
-    private final WarehouseRepository repo;
+    private final WarehouseRepository warehouseRepository;
     private final WarehouseMapper mapper;
 
     @Transactional(readOnly = true)
     @Override
     public List<WarehouseDto> getAll() {
-        return repo.findAll().stream().map(mapper::toDto).collect(Collectors.toList());
+        return warehouseRepository.findAll().stream().map(mapper::toDto).collect(Collectors.toList());
     }
+
     @Transactional(readOnly = true)
     @Override
     public WarehouseDto getById(Long id) {
-        return mapper.toDto(repo.findById(id).orElseThrow());
+        return mapper.toDto(warehouseRepository.findById(id).orElseThrow(() -> new NotFoundException("Warehouse not found with id: " + id)));
     }
+
     @Transactional
     @Override
     public WarehouseDto create(WarehouseDto dto) {
-        return mapper.toDto(repo.save(mapper.toEntity(dto)));
+        return mapper.toDto(warehouseRepository.save(mapper.toEntity(dto)));
     }
+
     @Transactional
     @Override
     public WarehouseDto update(Long id, WarehouseDto dto) {
-        Warehouse existing = repo.findById(id).orElseThrow();
+        Warehouse existing = warehouseRepository.findById(id).orElseThrow(() -> new NotFoundException("Warehouse not found with id: " + id));
         existing.setName(dto.getName());
         existing.setLocation(dto.getLocation());
         existing.setType(dto.getType());
-        return mapper.toDto(repo.save(existing));
+        return mapper.toDto(warehouseRepository.save(existing));
     }
+
     @Transactional
     @Override
     public void delete(Long id) {
-        repo.deleteById(id);
+        if (!warehouseRepository.existsById(id)) {
+            throw new NotFoundException("Warehouse not found with id: " + id);
+        }
+        warehouseRepository.deleteById(id);
     }
 }

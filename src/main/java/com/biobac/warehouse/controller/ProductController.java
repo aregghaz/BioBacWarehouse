@@ -1,7 +1,9 @@
 package com.biobac.warehouse.controller;
 
 import com.biobac.warehouse.dto.ProductDto;
+import com.biobac.warehouse.response.ApiResponse;
 import com.biobac.warehouse.service.ProductService;
+import com.biobac.warehouse.utils.ResponseUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,28 +16,33 @@ public class ProductController {
     private final ProductService service;
 
     @GetMapping
-    public List<ProductDto> getAll() {
-        return service.getAll();
+    public ApiResponse<List<ProductDto>> getAll() {
+        List<ProductDto> products = service.getAll();
+        return ResponseUtil.success("Products retrieved successfully", products);
     }
 
     @GetMapping("/{id}")
-    public ProductDto getById(@PathVariable Long id) {
-        return service.getById(id);
+    public ApiResponse<ProductDto> getById(@PathVariable Long id) {
+        ProductDto product = service.getById(id);
+        return ResponseUtil.success("Product retrieved successfully", product);
     }
 
     @PostMapping
-    public ProductDto create(@RequestBody ProductDto dto) {
+    public ApiResponse<ProductDto> create(@RequestBody ProductDto dto) {
         dto.setId(null); // Ensure it's treated as new
-        return service.create(dto);
+        ProductDto productDto = service.create(dto);
+        return ResponseUtil.success("Product created successfully", productDto);
     }
 
     @PutMapping("/{id}")
-    public ProductDto update(@PathVariable Long id, @RequestBody ProductDto dto) {
-        return service.update(id, dto);
+    public ApiResponse<ProductDto> update(@PathVariable Long id, @RequestBody ProductDto dto) {
+        ProductDto productDto = service.update(id, dto);
+        return ResponseUtil.success("Product updated successfully", productDto);
     }
 
     @DeleteMapping("/{id}")
-    public void delete(@PathVariable Long id) {
+    public ApiResponse<String> delete(@PathVariable Long id) {
         service.delete(id);
+        return ResponseUtil.success("Product deleted successfully");
     }
 }

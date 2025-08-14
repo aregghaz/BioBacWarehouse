@@ -4,6 +4,7 @@ import com.biobac.warehouse.dto.RecipeItemDto;
 import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.entity.Product;
 import com.biobac.warehouse.entity.RecipeItem;
+import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.RecipeItemMapper;
 import com.biobac.warehouse.repository.IngredientRepository;
 import com.biobac.warehouse.repository.ProductRepository;
@@ -35,7 +36,7 @@ public class RecipeItemServiceImpl implements RecipeItemService {
     @Override
     public RecipeItemDto getRecipeItemById(Long id) {
         RecipeItem recipeItem = recipeItemRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("RecipeItem not found with id: " + id));
+                .orElseThrow(() -> new NotFoundException("RecipeItem not found with id: " + id));
         return recipeItemMapper.toDto(recipeItem);
     }
 
@@ -59,12 +60,12 @@ public class RecipeItemServiceImpl implements RecipeItemService {
         
         // Set the product
         Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new EntityNotFoundException("Product not found with id: " + productId));
+                .orElseThrow(() -> new NotFoundException("Product not found with id: " + productId));
         recipeItem.setProduct(product);
         
         // Set the ingredient
         Ingredient ingredient = ingredientRepository.findById(recipeItemDto.getIngredientId())
-                .orElseThrow(() -> new EntityNotFoundException("Ingredient not found with id: " + recipeItemDto.getIngredientId()));
+                .orElseThrow(() -> new NotFoundException("Ingredient not found with id: " + recipeItemDto.getIngredientId()));
         recipeItem.setIngredient(ingredient);
         
         RecipeItem savedRecipeItem = recipeItemRepository.save(recipeItem);
@@ -74,7 +75,7 @@ public class RecipeItemServiceImpl implements RecipeItemService {
     @Override
     public RecipeItemDto updateRecipeItem(Long id, RecipeItemDto recipeItemDto) {
         RecipeItem existingRecipeItem = recipeItemRepository.findById(id)
-                .orElseThrow(() -> new EntityNotFoundException("RecipeItem not found with id: " + id));
+                .orElseThrow(() -> new NotFoundException("RecipeItem not found with id: " + id));
         
         // Update fields
         existingRecipeItem.setQuantity(recipeItemDto.getQuantity());
@@ -83,7 +84,7 @@ public class RecipeItemServiceImpl implements RecipeItemService {
         // Update ingredient if changed
         if (!existingRecipeItem.getIngredient().getId().equals(recipeItemDto.getIngredientId())) {
             Ingredient ingredient = ingredientRepository.findById(recipeItemDto.getIngredientId())
-                    .orElseThrow(() -> new EntityNotFoundException("Ingredient not found with id: " + recipeItemDto.getIngredientId()));
+                    .orElseThrow(() -> new NotFoundException("Ingredient not found with id: " + recipeItemDto.getIngredientId()));
             existingRecipeItem.setIngredient(ingredient);
         }
         
@@ -94,7 +95,7 @@ public class RecipeItemServiceImpl implements RecipeItemService {
     @Override
     public void deleteRecipeItem(Long id) {
         if (!recipeItemRepository.existsById(id)) {
-            throw new EntityNotFoundException("RecipeItem not found with id: " + id);
+            throw new NotFoundException("RecipeItem not found with id: " + id);
         }
         recipeItemRepository.deleteById(id);
     }
