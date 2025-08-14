@@ -1,14 +1,21 @@
 package com.biobac.warehouse.controller;
 
 import com.biobac.warehouse.dto.IngredientHistoryDto;
+import com.biobac.warehouse.response.ApiResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
+import com.biobac.warehouse.utils.ResponseUtil;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+
+import static com.biobac.warehouse.utils.DateUtil.DATE_TIME_FORMAT;
 
 @RestController
 @RequestMapping("/api/ingredient-history")
@@ -18,14 +25,21 @@ public class IngredientHistoryController {
     private final IngredientHistoryService ingredientHistoryService;
 
     @GetMapping("/ingredient/{ingredientId}")
-    public ResponseEntity<List<IngredientHistoryDto>> getHistoryForIngredient(@PathVariable Long ingredientId) {
-        return ResponseEntity.ok(ingredientHistoryService.getHistoryForIngredient(ingredientId));
+    public ApiResponse<List<IngredientHistoryDto>> getHistoryForIngredient(@PathVariable Long ingredientId) {
+        List<IngredientHistoryDto> ingredientHistoryDtos = ingredientHistoryService.getHistoryForIngredient(ingredientId);
+        return ResponseUtil.success("Ingredient history retrieved successfully", ingredientHistoryDtos);
     }
 
     @GetMapping("/date-range")
-    public ResponseEntity<List<IngredientHistoryDto>> getHistoryForDateRange(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startDate,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endDate) {
-        return ResponseEntity.ok(ingredientHistoryService.getHistoryForDateRange(startDate, endDate));
+    public ApiResponse<List<IngredientHistoryDto>> getHistoryForDateRange(
+            @Parameter(description = "Start date (dd/MM/yyyy:HH:mm:ss)", example = "10/10/2025:10:10:10", schema = @Schema(type = "string"))
+            @RequestParam
+            LocalDateTime startDate,
+
+            @Parameter(description = "Start date (dd/MM/yyyy:HH:mm:ss)", example = "10/10/2025:10:10:10", schema = @Schema(type = "string"))
+            @RequestParam
+            LocalDateTime endDate) {
+        List<IngredientHistoryDto> ingredientHistoryDtos = ingredientHistoryService.getHistoryForDateRange(startDate, endDate);
+        return ResponseUtil.success("Ingredient history for date range retrieved successfully", ingredientHistoryDtos);
     }
 }

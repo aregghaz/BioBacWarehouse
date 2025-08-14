@@ -8,6 +8,8 @@ import com.biobac.warehouse.dto.InventoryItemDto;
 import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.entity.IngredientComponent;
 import com.biobac.warehouse.entity.IngredientGroup;
+import com.biobac.warehouse.exception.InvalidDataException;
+import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.IngredientComponentMapper;
 import com.biobac.warehouse.mapper.IngredientMapper;
 import com.biobac.warehouse.repository.IngredientComponentRepository;
@@ -64,7 +66,7 @@ public class IngredientServiceImpl implements IngredientService {
         // Replace the placeholder group with actual entity from the database
         if (dto.getGroupId() != null) {
             IngredientGroup group = groupRepo.findById(dto.getGroupId())
-                .orElseThrow(() -> new IllegalArgumentException("Ingredient group not found with ID: " + dto.getGroupId()));
+                .orElseThrow(() -> new NotFoundException("Ingredient group not found with ID: " + dto.getGroupId()));
             entity.setGroup(group);
         }
         
@@ -90,7 +92,7 @@ public class IngredientServiceImpl implements IngredientService {
                 
                 // Get the child ingredient
                 Ingredient childIngredient = ingredientRepo.findById(componentDto.getChildIngredientId())
-                    .orElseThrow(() -> new IllegalArgumentException("Child ingredient not found: " + componentDto.getChildIngredientId()));
+                    .orElseThrow(() -> new NotFoundException("Child ingredient not found: " + componentDto.getChildIngredientId()));
                 
                 // Create a new component entity using the constructor
                 IngredientComponent component = new IngredientComponent(
@@ -139,7 +141,7 @@ public class IngredientServiceImpl implements IngredientService {
                                 
                                 // Check if there's enough inventory
                                 if (inventoryItem.getQuantity() < amountToDecrease) {
-                                    throw new IllegalStateException("Not enough inventory for ingredient: " + childIngredient.getName() + 
+                                    throw new InvalidDataException("Not enough inventory for ingredient: " + childIngredient.getName() +
                                         ". Required: " + amountToDecrease + ", Available: " + inventoryItem.getQuantity());
                                 }
                                 

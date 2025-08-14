@@ -7,6 +7,8 @@ import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.entity.InventoryItem;
 import com.biobac.warehouse.entity.Product;
 import com.biobac.warehouse.entity.RecipeItem;
+import com.biobac.warehouse.exception.InvalidDataException;
+import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.ProductMapper;
 import com.biobac.warehouse.mapper.RecipeItemMapper;
 import com.biobac.warehouse.repository.IngredientRepository;
@@ -79,7 +81,7 @@ public class ProductServiceImpl implements ProductService {
                     ingredientId, dto.getWarehouseId());
                 
                 if (inventoryItems.isEmpty()) {
-                    throw new RuntimeException("Ingredient with ID " + ingredientId + " not found in warehouse " + dto.getWarehouseId());
+                    throw new NotFoundException("Ingredient with ID " + ingredientId + " not found in warehouse " + dto.getWarehouseId());
                 }
                 
                 // Check if there's enough quantity available
@@ -89,7 +91,7 @@ public class ProductServiceImpl implements ProductService {
                 }
                 
                 if (availableQuantity < requiredQuantity) {
-                    throw new RuntimeException("Not enough quantity for ingredient with ID " + ingredientId + 
+                    throw new InvalidDataException("Not enough quantity for ingredient with ID " + ingredientId +
                         ". Required: " + requiredQuantity + ", Available: " + availableQuantity);
                 }
                 
@@ -110,7 +112,7 @@ public class ProductServiceImpl implements ProductService {
                 
                 // Set the ingredient
                 Ingredient ingredient = ingredientRepo.findById(recipeItemDto.getIngredientId())
-                    .orElseThrow(() -> new RuntimeException("Ingredient not found with id: " + recipeItemDto.getIngredientId()));
+                    .orElseThrow(() -> new NotFoundException("Ingredient not found with id: " + recipeItemDto.getIngredientId()));
                 recipeItem.setIngredient(ingredient);
                 
                 recipeItems.add(recipeItem);
@@ -266,7 +268,7 @@ public class ProductServiceImpl implements ProductService {
                 
                 // Set the ingredient
                 Ingredient ingredient = ingredientRepo.findById(recipeItemDto.getIngredientId())
-                    .orElseThrow(() -> new RuntimeException("Ingredient not found with id: " + recipeItemDto.getIngredientId()));
+                    .orElseThrow(() -> new NotFoundException("Ingredient not found with id: " + recipeItemDto.getIngredientId()));
                 recipeItem.setIngredient(ingredient);
                 
                 product.getRecipeItems().add(recipeItem);
