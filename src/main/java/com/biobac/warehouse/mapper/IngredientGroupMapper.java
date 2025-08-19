@@ -2,6 +2,7 @@ package com.biobac.warehouse.mapper;
 
 import com.biobac.warehouse.dto.IngredientGroupDto;
 import com.biobac.warehouse.entity.IngredientGroup;
+import com.biobac.warehouse.response.IngredientGroupTableResponse;
 import org.mapstruct.*;
 
 @Mapper(componentModel = "spring")
@@ -18,4 +19,6 @@ public interface IngredientGroupMapper {
         @Mapping(target = "name", source = "name")
     })
     IngredientGroup toEntity(IngredientGroupDto dto);
+
+    IngredientGroupTableResponse toTableResponse(IngredientGroup ingredientGroup);
 }

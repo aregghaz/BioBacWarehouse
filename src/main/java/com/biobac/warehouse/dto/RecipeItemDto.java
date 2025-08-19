@@ -6,6 +6,7 @@ import lombok.Data;
 public class RecipeItemDto {
     private Long id;
     private Long ingredientId;
+    private Long productId;
     private String ingredientName;
     private String ingredientUnit;
     private Double quantity;

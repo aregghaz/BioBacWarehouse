@@ -2,21 +2,24 @@
 package com.biobac.warehouse.service;
 
 
+import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.dto.WarehouseDto;
-import com.biobac.warehouse.entity.Warehouse;
-import com.biobac.warehouse.mapper.WarehouseMapper;
-import com.biobac.warehouse.repository.WarehouseRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import com.biobac.warehouse.request.FilterCriteria;
+import com.biobac.warehouse.response.WarehouseTableResponse;
+import org.springframework.data.util.Pair;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Map;
 
 public interface WarehouseService {
 
     @Transactional(readOnly = true)
-    List<WarehouseDto> getAll();
+    Pair<List<WarehouseTableResponse>, PaginationMetadata> getAll(Map<String, FilterCriteria> filters,
+                                                                  Integer page,
+                                                                  Integer size,
+                                                                  String sortBy,
+                                                                  String sortDir);
 
     @Transactional(readOnly = true)
     WarehouseDto getById(Long id);

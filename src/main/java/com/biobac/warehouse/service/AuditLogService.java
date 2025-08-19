@@ -1,12 +1,13 @@
 package com.biobac.warehouse.service;
 
 import com.biobac.warehouse.entity.AuditLog;
-import com.biobac.warehouse.repository.AuditLogRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
-
+import java.util.List;
 
 public interface AuditLogService {
+    void logCreate(String entityName, Long entityId, Object newObject, String username);
+
+    void logUpdate(String entityName, Long entityId, Object oldObject, Object newObject, String username);
+
+    List<AuditLog> getAuditLogs();
 }

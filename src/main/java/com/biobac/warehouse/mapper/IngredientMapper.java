@@ -7,6 +7,7 @@ import com.biobac.warehouse.entity.IngredientComponent;
 import com.biobac.warehouse.entity.IngredientGroup;
 import com.biobac.warehouse.entity.InventoryItem;
 import com.biobac.warehouse.repository.InventoryItemRepository;
+import com.biobac.warehouse.response.IngredientTableResponse;
 import org.mapstruct.*;
 import org.springframework.beans.factory.annotation.Autowired;
 
@@ -18,34 +19,46 @@ import java.util.stream.Collectors;
 public abstract class IngredientMapper {
 
     @Autowired
-    private IngredientComponentMapper componentMapper;
-    
+    protected IngredientComponentMapper componentMapper;
+
     @Autowired
-    private InventoryItemRepository inventoryItemRepository;
+    protected InventoryItemRepository inventoryItemRepository;
 
     @Mappings({
-        @Mapping(target = "id", source = "id"),
-        @Mapping(target = "name", source = "name"),
-        @Mapping(target = "description", source = "description"),
-        @Mapping(target = "unit", source = "unit"),
-        @Mapping(target = "active", source = "active"),
-        @Mapping(target = "quantity", expression = "java(getExactQuantity(entity) != null ? getExactQuantity(entity).doubleValue() : null)"),
-        @Mapping(target = "groupId", source = "group.id"),
-        @Mapping(target = "warehouseId", expression = "java(getWarehouseId(entity))"),
-        @Mapping(target = "childIngredientComponents", expression = "java(mapChildIngredientComponents(entity))")
+            @Mapping(target = "id", source = "id"),
+            @Mapping(target = "name", source = "name"),
+            @Mapping(target = "description", source = "description"),
+            @Mapping(target = "unit", source = "unit"),
+            @Mapping(target = "active", source = "active"),
+            @Mapping(target = "quantity", expression = "java(getExactQuantity(entity) != null ? getExactQuantity(entity).doubleValue() : null)"),
+            @Mapping(target = "groupName", expression = "java(getGroupName(entity))"),
+            @Mapping(target = "warehouseName", expression = "java(getWarehouseName(entity))")
+    })
+    public abstract IngredientTableResponse toTableResponse(Ingredient entity);
+
+    @Mappings({
+            @Mapping(target = "id", source = "id"),
+            @Mapping(target = "name", source = "name"),
+            @Mapping(target = "description", source = "description"),
+            @Mapping(target = "unit", source = "unit"),
+            @Mapping(target = "active", source = "active"),
+            @Mapping(target = "quantity", expression = "java(getExactQuantity(entity) != null ? getExactQuantity(entity).doubleValue() : null)"),
+            @Mapping(target = "groupId", source = "group.id"),
+            @Mapping(target = "warehouseId", expression = "java(getWarehouseId(entity))"),
+            @Mapping(target = "childIngredientComponents", expression = "java(mapChildIngredientComponents(entity))")
     })
     public abstract IngredientDto toDto(Ingredient entity);
 
     @Mappings({
-        @Mapping(target = "id", source = "id"),
-        @Mapping(target = "name", source = "name"),
-        @Mapping(target = "description", source = "description"),
-        @Mapping(target = "unit", source = "unit"),
-        @Mapping(target = "active", source = "active"),
-        @Mapping(target = "history", ignore = true),
-        @Mapping(target = "group", ignore = true),
-        @Mapping(target = "childIngredientComponents", ignore = true),
-        @Mapping(target = "recipeItems", ignore = true)
+            @Mapping(target = "id", source = "id"),
+            @Mapping(target = "name", source = "name"),
+            @Mapping(target = "description", source = "description"),
+            @Mapping(target = "unit", source = "unit"),
+            @Mapping(target = "active", source = "active"),
+            @Mapping(target = "history", ignore = true),
+            @Mapping(target = "group", ignore = true),
+            @Mapping(target = "childIngredientComponents", ignore = true),
+            @Mapping(target = "recipeItems", ignore = true)
     })
     @BeanMapping(ignoreByDefault = false, ignoreUnmappedSourceProperties = {"quantity", "warehouseId"})
     public abstract Ingredient toEntity(IngredientDto dto);
@@ -80,8 +93,8 @@ public abstract class IngredientMapper {
                 .map(componentMapper::toDto)
                 .collect(Collectors.toList());
     }
-    
-    
+
+
     /**
      * Gets the exact total quantity by summing all inventory items for this ingredient
      */
@@ -90,51 +103,83 @@ public abstract class IngredientMapper {
             System.out.println("[DEBUG_LOG] getExactQuantity: entity.getId() is null");
             return null;
         }
-        
+
         System.out.println("[DEBUG_LOG] getExactQuantity: Looking for inventory items for ingredient ID: " + entity.getId());
         List<InventoryItem> inventoryItems = inventoryItemRepository.findByIngredientId(entity.getId());
         if (inventoryItems == null || inventoryItems.isEmpty()) {
             System.out.println("[DEBUG_LOG] getExactQuantity: No inventory items found");
             return null;
         }
-        
+
         System.out.println("[DEBUG_LOG] getExactQuantity: Found " + inventoryItems.size() + " inventory items");
         // Log each inventory item's quantity
         for (InventoryItem item : inventoryItems) {
             System.out.println("[DEBUG_LOG] Inventory item ID: " + item.getId() + ", Quantity: " + item.getQuantity());
         }
-        
+
         // Sum quantities across all inventory items to get exact total quantity
         int totalQuantity = inventoryItems.stream()
                 .mapToInt(item -> item.getQuantity() != null ? item.getQuantity() : 0)
                 .sum();
-        
+
         System.out.println("[DEBUG_LOG] getExactQuantity: Total quantity: " + totalQuantity);
         return totalQuantity;
     }
-    
+
     protected Long getWarehouseId(Ingredient entity) {
         if (entity.getId() == null) {
             return null;
         }
-        
+
         List<InventoryItem> inventoryItems = inventoryItemRepository.findByIngredientId(entity.getId());
         if (inventoryItems == null || inventoryItems.isEmpty()) {
             return null;
         }
-        
+
         InventoryItem item = inventoryItems.get(0);
-        
+
         // First try to get warehouseId directly from the field
         if (item.getWarehouseId() != null) {
             return item.getWarehouseId();
         }
-        
+
         // If that's null, try to get it from the warehouse relationship
         if (item.getWarehouse() != null) {
             return item.getWarehouse().getId();
         }
-        
+
+        return null;
+    }
+
+    protected String getGroupName(Ingredient entity) {
+        if (entity.getGroup() != null) {
+            return entity.getGroup().getName();
+        }
+        return null;
+    }
+
+    protected String getWarehouseName(Ingredient entity) {
+        if (entity.getId() == null) {
+            return null;
+        }
+
+        List<InventoryItem> inventoryItems = inventoryItemRepository.findByIngredientId(entity.getId());
+        if (inventoryItems == null || inventoryItems.isEmpty()) {
+            return null;
+        }
+
+        InventoryItem item = inventoryItems.get(0);
+
+        // First try to get warehouseId directly from the field
+        if (item.getWarehouseId() != null) {
+            return item.getWarehouse().getName();
+        }
+
+        // If that's null, try to get it from the warehouse relationship
+        if (item.getWarehouse() != null) {
+            return item.getWarehouse().getName();
+        }
+
         return null;
     }
 }
