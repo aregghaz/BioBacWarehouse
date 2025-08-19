@@ -9,11 +9,15 @@ public class ResponseUtil {
     }
 
     public static <T> ApiResponse<T> success(String message, T data) {
-        return success(message, data, null);
+        return new ApiResponse<>(true, message, data, null);
     }
 
     public static <T> ApiResponse<T> success(String message) {
-        return success(message, null, null);
+        return new ApiResponse<>(true, message, null, null);
+    }
+
+    public static <T> ApiResponse<T> success(T data) {
+        return new ApiResponse<>(true, "Success", data, null);
     }
 
     public static <T> ApiResponse<T> error(String message, T data) {
@@ -21,6 +25,11 @@ public class ResponseUtil {
     }
 
     public static <T> ApiResponse<T> error(String message) {
-        return error(message, null);
+        return new ApiResponse<>(false, message, null, null);
+    }
+
+    public static <T> ApiResponse<T> error(T data) {
+        return new ApiResponse<>(false, "Error", data, null);
     }
 }
+

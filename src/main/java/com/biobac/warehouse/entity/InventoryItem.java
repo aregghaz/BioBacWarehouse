@@ -1,4 +1,5 @@
 package com.biobac.warehouse.entity;
+
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -17,9 +18,12 @@ public class InventoryItem {
     @ManyToOne
     private Product product;
 
+    @Column(name = "product_id", insertable = false, updatable = false)
+    private Long productId;
+
     @ManyToOne
     private Ingredient ingredient;
-    
+
     @ManyToOne
     private IngredientGroup ingredientGroup;
     @Column(name = "warehouse_id", insertable = false, updatable = false)

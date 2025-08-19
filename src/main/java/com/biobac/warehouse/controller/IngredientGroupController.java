@@ -1,25 +1,37 @@
 package com.biobac.warehouse.controller;
 
 import com.biobac.warehouse.dto.IngredientGroupDto;
+import com.biobac.warehouse.dto.PaginationMetadata;
+import com.biobac.warehouse.entity.Entities;
+import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.ApiResponse;
+import com.biobac.warehouse.response.IngredientGroupTableResponse;
+import com.biobac.warehouse.service.AuditLogService;
 import com.biobac.warehouse.service.IngredientGroupService;
 import com.biobac.warehouse.utils.ResponseUtil;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.util.Pair;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/ingredient-groups")
 @RequiredArgsConstructor
-public class IngredientGroupController {
-
+public class IngredientGroupController extends BaseController {
+    private final AuditLogService auditLogService;
     private final IngredientGroupService service;
 
-    @GetMapping
-    public ApiResponse<List<IngredientGroupDto>> getAll() {
-        List<IngredientGroupDto> ingredientGroups = service.getAll();
-        return ResponseUtil.success("Ingredient groups retrieved successfully", ingredientGroups);
+    @PostMapping("/all")
+    public ApiResponse<List<IngredientGroupTableResponse>> getAll(@RequestParam(required = false, defaultValue = "0") Integer page,
+                                                                  @RequestParam(required = false, defaultValue = "10") Integer size,
+                                                                  @RequestParam(required = false, defaultValue = "id") String sortBy,
+                                                                  @RequestParam(required = false, defaultValue = "asc") String sortDir,
+                                                                  @RequestBody Map<String, FilterCriteria> filters) {
+        Pair<List<IngredientGroupTableResponse>, PaginationMetadata> result = service.getAll(filters, page, size, sortBy, sortDir);
+        return ResponseUtil.success("Ingredient groups retrieved successfully", result.getFirst(), result.getSecond());
     }
 
     @GetMapping("/{id}")
@@ -29,15 +41,19 @@ public class IngredientGroupController {
     }
 
     @PostMapping
-    public ApiResponse<IngredientGroupDto> create(@RequestBody IngredientGroupDto dto) {
+    public ApiResponse<IngredientGroupDto> create(@RequestBody IngredientGroupDto dto, HttpServletRequest request) {
         dto.setId(null); // Ensure it's treated as a new entity
         IngredientGroupDto createdGroup = service.create(dto);
+        auditLogService.logCreate(Entities.INGREDIENGROUP.name(), createdGroup.getId(), dto, getUsername(request));
+
         return ResponseUtil.success("Ingredient group created successfully", createdGroup);
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<IngredientGroupDto> update(@PathVariable Long id, @RequestBody IngredientGroupDto dto) {
+    public ApiResponse<IngredientGroupDto> update(@PathVariable Long id, @RequestBody IngredientGroupDto dto, HttpServletRequest request) {
+        IngredientGroupDto existingGroup = service.getById(id);
         IngredientGroupDto updatedGroup = service.update(id, dto);
+        auditLogService.logUpdate(Entities.INGREDIENGROUP.name(), updatedGroup.getId(), existingGroup, dto, getUsername(request));
         return ResponseUtil.success("Ingredient group updated successfully", updatedGroup);
     }
 

@@ -2,11 +2,20 @@
 package com.biobac.warehouse.service;
 
 import com.biobac.warehouse.dto.InventoryItemDto;
+import com.biobac.warehouse.dto.PaginationMetadata;
+import com.biobac.warehouse.request.FilterCriteria;
+import com.biobac.warehouse.response.InventoryItemTableResponse;
+import org.springframework.data.util.Pair;
 
 import java.util.List;
+import java.util.Map;
 
 public interface InventoryService {
-    List<InventoryItemDto> getAll();
+    Pair<List<InventoryItemTableResponse>, PaginationMetadata> getAll(Map<String, FilterCriteria> filters,
+                                                                      Integer page,
+                                                                      Integer size,
+                                                                      String sortBy,
+                                                                      String sortDi);
     InventoryItemDto getById(Long id);
     InventoryItemDto create(InventoryItemDto dto);
     InventoryItemDto update(Long id, InventoryItemDto dto);

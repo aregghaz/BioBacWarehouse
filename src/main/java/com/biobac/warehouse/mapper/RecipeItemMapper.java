@@ -1,9 +1,11 @@
 package com.biobac.warehouse.mapper;
 
 import com.biobac.warehouse.dto.RecipeItemDto;
-import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.entity.RecipeItem;
-import org.mapstruct.*;
+import com.biobac.warehouse.response.RecipeItemTableResponse;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.Mappings;
 
 @Mapper(componentModel = "spring")
 public interface RecipeItemMapper {
@@ -14,7 +16,8 @@ public interface RecipeItemMapper {
             @Mapping(target = "ingredientName", source = "ingredient.name"),
             @Mapping(target = "ingredientUnit", source = "ingredient.unit"),
             @Mapping(target = "quantity", source = "quantity"),
-            @Mapping(target = "notes", source = "notes")
+            @Mapping(target = "notes", source = "notes"),
+            @Mapping(target = "productId", source = "product.id")
     })
     RecipeItemDto toDto(RecipeItem recipeItem);
 
@@ -26,4 +29,14 @@ public interface RecipeItemMapper {
             @Mapping(target = "notes", source = "notes")
     })
     RecipeItem toEntity(RecipeItemDto dto);
+
+    @Mappings({
+            @Mapping(target = "id", source = "id"),
+            @Mapping(target = "ingredientName", source = "ingredient.name"),
+            @Mapping(target = "ingredientUnit", source = "ingredient.unit"),
+            @Mapping(target = "quantity", source = "quantity"),
+            @Mapping(target = "notes", source = "notes"),
+            @Mapping(target = "productName", source = "product.name")
+    })
+    RecipeItemTableResponse toTableResponse(RecipeItem recipeItem);
 }
