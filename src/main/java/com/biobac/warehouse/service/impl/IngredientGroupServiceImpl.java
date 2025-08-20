@@ -30,13 +30,21 @@ public class IngredientGroupServiceImpl implements IngredientGroupService {
     private final IngredientGroupRepository repository;
     private final IngredientGroupMapper mapper;
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<IngredientGroupDto> getPagination() {
+        return repository.findAll().stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
+    }
+
     @Transactional(readOnly = true)
     @Override
-    public Pair<List<IngredientGroupTableResponse>, PaginationMetadata> getAll(Map<String, FilterCriteria> filters,
-                                                                               Integer page,
-                                                                               Integer size,
-                                                                               String sortBy,
-                                                                               String sortDir) {
+    public Pair<List<IngredientGroupTableResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters,
+                                                                                      Integer page,
+                                                                                      Integer size,
+                                                                                      String sortBy,
+                                                                                      String sortDir) {
         Sort sort = sortDir.equalsIgnoreCase("asc") ?
                 Sort.by(sortBy).ascending() :
                 Sort.by(sortBy).descending();

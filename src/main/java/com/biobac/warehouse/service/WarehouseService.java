@@ -15,11 +15,11 @@ import java.util.Map;
 public interface WarehouseService {
 
     @Transactional(readOnly = true)
-    Pair<List<WarehouseTableResponse>, PaginationMetadata> getAll(Map<String, FilterCriteria> filters,
-                                                                  Integer page,
-                                                                  Integer size,
-                                                                  String sortBy,
-                                                                  String sortDir);
+    Pair<List<WarehouseTableResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters,
+                                                                         Integer page,
+                                                                         Integer size,
+                                                                         String sortBy,
+                                                                         String sortDir);
 
     @Transactional(readOnly = true)
     WarehouseDto getById(Long id);
@@ -32,4 +32,7 @@ public interface WarehouseService {
 
     @Transactional
     void delete(Long id);
+
+    @Transactional(readOnly = true)
+    List<WarehouseDto> getAll();
 }

@@ -14,7 +14,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.util.Pair;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -34,9 +33,15 @@ public class WarehouseController extends BaseController {
             @RequestBody Map<String, FilterCriteria> filters
     ) {
         Pair<List<WarehouseTableResponse>, PaginationMetadata> result =
-                warehouseService.getAll(filters, page, size, sortBy, sortDir);
+                warehouseService.getPagination(filters, page, size, sortBy, sortDir);
 
         return ResponseUtil.success("Warehouses retrieved successfully", result.getFirst(), result.getSecond());
+    }
+
+    @GetMapping
+    public ApiResponse<List<WarehouseDto>> getAll() {
+        List<WarehouseDto> warehouses = warehouseService.getAll();
+        return ResponseUtil.success("Warehouses retrieved successfully", warehouses);
     }
 
     @GetMapping("/{id}")
