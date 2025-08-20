@@ -25,6 +25,12 @@ public class IngredientController extends BaseController {
     private final AuditLogService auditLogService;
     private final IngredientService ingredientService;
 
+    @GetMapping
+    public ApiResponse<List<IngredientDto>> getAll() {
+        List<IngredientDto> ingredients = ingredientService.getAll();
+        return ResponseUtil.success("Ingredients retrieved successfully", ingredients);
+    }
+
     @PostMapping("/all")
     public ApiResponse<List<IngredientTableResponse>> getAll(@RequestParam(required = false, defaultValue = "0") Integer page,
                                                              @RequestParam(required = false, defaultValue = "10") Integer size,
@@ -32,7 +38,7 @@ public class IngredientController extends BaseController {
                                                              @RequestParam(required = false, defaultValue = "asc") String sortDir,
                                                              @RequestBody Map<String, FilterCriteria> filters) {
         Pair<List<IngredientTableResponse>, PaginationMetadata> result =
-                ingredientService.getAll(filters, page, size, sortBy, sortDir);
+                ingredientService.getPagination(filters, page, size, sortBy, sortDir);
         return ResponseUtil.success("Ingredients retrieved successfully", result.getFirst(), result.getSecond());
     }
 

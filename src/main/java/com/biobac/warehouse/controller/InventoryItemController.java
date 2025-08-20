@@ -6,7 +6,6 @@ import com.biobac.warehouse.entity.Entities;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.ApiResponse;
 import com.biobac.warehouse.response.InventoryItemTableResponse;
-import com.biobac.warehouse.response.WarehouseTableResponse;
 import com.biobac.warehouse.service.AuditLogService;
 import com.biobac.warehouse.service.InventoryService;
 import com.biobac.warehouse.utils.ResponseUtil;
@@ -25,13 +24,19 @@ public class InventoryItemController extends BaseController {
     private final InventoryService service;
     private final AuditLogService auditLogService;
 
+    @GetMapping
+    public ApiResponse<List<InventoryItemDto>> getAll() {
+        List<InventoryItemDto> inventoryItemDtos = service.getAll();
+        return ResponseUtil.success("Inventory items retrieved successfully", inventoryItemDtos);
+    }
+
     @PostMapping("/all")
     public ApiResponse<List<InventoryItemTableResponse>> getAll(@RequestParam(required = false, defaultValue = "0") Integer page,
                                                                 @RequestParam(required = false, defaultValue = "10") Integer size,
                                                                 @RequestParam(required = false, defaultValue = "id") String sortBy,
                                                                 @RequestParam(required = false, defaultValue = "asc") String sortDir,
                                                                 @RequestBody Map<String, FilterCriteria> filters) {
-        Pair<List<InventoryItemTableResponse>, PaginationMetadata> result = service.getAll(filters, page, size, sortBy, sortDir);
+        Pair<List<InventoryItemTableResponse>, PaginationMetadata> result = service.getPagination(filters, page, size, sortBy, sortDir);
         return ResponseUtil.success("Inventory items retrieved successfully", result.getFirst(), result.getSecond());
     }
 

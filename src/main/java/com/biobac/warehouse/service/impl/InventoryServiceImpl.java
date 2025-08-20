@@ -5,16 +5,13 @@ import com.biobac.warehouse.dto.InventoryItemDto;
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.entity.InventoryItem;
-import com.biobac.warehouse.entity.Warehouse;
 import com.biobac.warehouse.mapper.InventoryMapper;
 import com.biobac.warehouse.repository.*;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.InventoryItemTableResponse;
-import com.biobac.warehouse.response.WarehouseTableResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.InventoryService;
 import com.biobac.warehouse.utils.specifications.InventoryItemSpecification;
-import com.biobac.warehouse.utils.specifications.WarehouseSpecification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -23,6 +20,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -40,11 +38,20 @@ public class InventoryServiceImpl implements InventoryService {
     private final IngredientHistoryService historyService;
 
     @Override
-    public Pair<List<InventoryItemTableResponse>, PaginationMetadata> getAll(Map<String, FilterCriteria> filters,
-                                                                             Integer page,
-                                                                             Integer size,
-                                                                             String sortBy,
-                                                                             String sortDir) {
+    @Transactional(readOnly = true)
+    public List<InventoryItemDto> getAll() {
+        return repo.findAll().stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Pair<List<InventoryItemTableResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters,
+                                                                                    Integer page,
+                                                                                    Integer size,
+                                                                                    String sortBy,
+                                                                                    String sortDir) {
         Sort sort = sortDir.equalsIgnoreCase("asc") ?
                 Sort.by(sortBy).ascending() :
                 Sort.by(sortBy).descending();
@@ -75,10 +82,14 @@ public class InventoryServiceImpl implements InventoryService {
         return Pair.of(content, metadata);
     }
 
+    @Override
+    @Transactional(readOnly = true)
     public InventoryItemDto getById(Long id) {
         return mapper.toDto(repo.findById(id).orElseThrow());
     }
 
+    @Override
+    @Transactional
     public InventoryItemDto create(InventoryItemDto dto) {
         InventoryItem entity = mapper.toEntity(dto);
 
@@ -121,6 +132,8 @@ public class InventoryServiceImpl implements InventoryService {
         return mapper.toDto(savedEntity);
     }
 
+    @Override
+    @Transactional
     public InventoryItemDto update(Long id, InventoryItemDto dto) {
         InventoryItem item = repo.findById(id).orElseThrow();
 
@@ -173,6 +186,8 @@ public class InventoryServiceImpl implements InventoryService {
         return mapper.toDto(savedItem);
     }
 
+    @Override
+    @Transactional
     public void delete(Long id) {
         // Get the inventory item before deleting
         InventoryItem item = repo.findById(id).orElse(null);
@@ -195,6 +210,7 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<InventoryItemDto> findByProductId(Long productId) {
         return repo.findByProductId(productId).stream()
                 .map(mapper::toDto)
@@ -202,6 +218,7 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<InventoryItemDto> findByIngredientId(Long ingredientId) {
         return repo.findByIngredientId(ingredientId).stream()
                 .map(mapper::toDto)
@@ -209,6 +226,7 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<InventoryItemDto> findByWarehouseId(Long warehouseId) {
         return repo.findByWarehouseId(warehouseId).stream()
                 .map(mapper::toDto)
@@ -216,6 +234,7 @@ public class InventoryServiceImpl implements InventoryService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<InventoryItemDto> findByGroupId(Long groupId) {
         return repo.findByGroupId(groupId).stream()
                 .map(mapper::toDto)

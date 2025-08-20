@@ -7,15 +7,10 @@ import com.biobac.warehouse.utils.ResponseUtil;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.RequiredArgsConstructor;
-import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
-
-import static com.biobac.warehouse.utils.DateUtil.DATE_TIME_FORMAT;
 
 @RestController
 @RequestMapping("/api/ingredient-history")

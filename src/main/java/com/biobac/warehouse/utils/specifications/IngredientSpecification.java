@@ -13,6 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
+import static com.biobac.warehouse.utils.SpecificationUtil.*;
+
 public class IngredientSpecification {
 
     private static String isIngredientGroupField(String field) {
@@ -47,15 +49,14 @@ public class IngredientSpecification {
                     }
 
                     switch (criteria.getOperator()) {
-                        case "equals" -> {
-                            predicate = cb.equal(path, criteria.getValue());
-                        }
-                        case "notEquals" -> {
-                            predicate = cb.notEqual(path, criteria.getValue());
-                        }
-                        case "contains" -> {
-                            predicate = cb.like(path.as(String.class), "%" + criteria.getValue().toString().toLowerCase() + "%");
-                        }
+                        case "equals" -> predicate = buildEquals(cb, path, criteria.getValue());
+                        case "notEquals" -> predicate = buildNotEquals(cb, path, criteria.getValue());
+                        case "contains" -> predicate = cb.like(cb.lower(path.as(String.class)),
+                                criteria.getValue().toString().toLowerCase().trim().replaceAll("\\s+", " "));
+                        case "greaterThanOrEqualTo" ->
+                                predicate = buildGreaterThanOrEqualTo(cb, path, criteria.getValue());
+                        case "lessThanOrEqualTo" -> predicate = buildLessThanOrEqualTo(cb, path, criteria.getValue());
+                        case "between" -> predicate = buildBetween(cb, path, criteria.getValue());
                     }
 
                     if (predicate != null) {

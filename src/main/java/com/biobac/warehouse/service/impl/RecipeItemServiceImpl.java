@@ -23,6 +23,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -38,11 +39,12 @@ public class RecipeItemServiceImpl implements RecipeItemService {
     private final RecipeItemMapper mapper;
 
     @Override
-    public Pair<List<RecipeItemTableResponse>, PaginationMetadata> getAllRecipeItems(Map<String, FilterCriteria> filters,
-                                                                                     Integer page,
-                                                                                     Integer size,
-                                                                                     String sortBy,
-                                                                                     String sortDir) {
+    @Transactional(readOnly = true)
+    public Pair<List<RecipeItemTableResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters,
+                                                                                 Integer page,
+                                                                                 Integer size,
+                                                                                 String sortBy,
+                                                                                 String sortDir) {
         Sort sort = sortDir.equalsIgnoreCase("asc") ?
                 Sort.by(sortBy).ascending() :
                 Sort.by(sortBy).descending();
@@ -74,6 +76,15 @@ public class RecipeItemServiceImpl implements RecipeItemService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<RecipeItemDto> getAll() {
+        return recipeItemRepository.findAll().stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public RecipeItemDto getRecipeItemById(Long id) {
         RecipeItem recipeItem = recipeItemRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("RecipeItem not found with id: " + id));
@@ -81,6 +92,7 @@ public class RecipeItemServiceImpl implements RecipeItemService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<RecipeItemDto> getRecipeItemsByProductId(Long productId) {
         return recipeItemRepository.findByProductId(productId).stream()
                 .map(mapper::toDto)
@@ -88,6 +100,7 @@ public class RecipeItemServiceImpl implements RecipeItemService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<RecipeItemDto> getRecipeItemsByIngredientId(Long ingredientId) {
         return recipeItemRepository.findByIngredientId(ingredientId).stream()
                 .map(mapper::toDto)
@@ -95,6 +108,7 @@ public class RecipeItemServiceImpl implements RecipeItemService {
     }
 
     @Override
+    @Transactional
     public RecipeItemDto createRecipeItem(RecipeItemDto recipeItemDto, Long productId) {
         RecipeItem recipeItem = mapper.toEntity(recipeItemDto);
 
@@ -113,6 +127,7 @@ public class RecipeItemServiceImpl implements RecipeItemService {
     }
 
     @Override
+    @Transactional
     public RecipeItemDto updateRecipeItem(Long id, RecipeItemDto recipeItemDto) {
         RecipeItem existingRecipeItem = recipeItemRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("RecipeItem not found with id: " + id));
@@ -133,6 +148,7 @@ public class RecipeItemServiceImpl implements RecipeItemService {
     }
 
     @Override
+    @Transactional
     public void deleteRecipeItem(Long id) {
         if (!recipeItemRepository.existsById(id)) {
             throw new NotFoundException("RecipeItem not found with id: " + id);

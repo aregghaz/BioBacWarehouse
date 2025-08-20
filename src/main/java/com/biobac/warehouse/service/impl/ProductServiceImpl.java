@@ -48,13 +48,22 @@ public class ProductServiceImpl implements ProductService {
     private final InventoryItemRepository inventoryItemRepo;
     private final IngredientHistoryService historyService;
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductDto> getAll() {
+        List<Product> products = productRepo.findAll();
+        return products.stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
+    }
+
     @Transactional(readOnly = true)
     @Override
-    public Pair<List<ProductTableResponse>, PaginationMetadata> getAll(Map<String, FilterCriteria> filters,
-                                                                       Integer page,
-                                                                       Integer size,
-                                                                       String sortBy,
-                                                                       String sortDir) {
+    public Pair<List<ProductTableResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters,
+                                                                              Integer page,
+                                                                              Integer size,
+                                                                              String sortBy,
+                                                                              String sortDir) {
         Sort sort = sortDir.equalsIgnoreCase("asc") ?
                 Sort.by(sortBy).ascending() :
                 Sort.by(sortBy).descending();

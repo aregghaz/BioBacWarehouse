@@ -1,11 +1,13 @@
 
 package com.biobac.warehouse.service.impl;
 
-import com.biobac.warehouse.dto.*;
+import com.biobac.warehouse.dto.IngredientComponentDto;
+import com.biobac.warehouse.dto.IngredientDto;
+import com.biobac.warehouse.dto.InventoryItemDto;
+import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.entity.IngredientComponent;
 import com.biobac.warehouse.entity.IngredientGroup;
-import com.biobac.warehouse.entity.Warehouse;
 import com.biobac.warehouse.exception.InvalidDataException;
 import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.IngredientComponentMapper;
@@ -15,12 +17,10 @@ import com.biobac.warehouse.repository.IngredientGroupRepository;
 import com.biobac.warehouse.repository.IngredientRepository;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.IngredientTableResponse;
-import com.biobac.warehouse.response.WarehouseTableResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.IngredientService;
 import com.biobac.warehouse.service.InventoryService;
 import com.biobac.warehouse.utils.specifications.IngredientSpecification;
-import com.biobac.warehouse.utils.specifications.WarehouseSpecification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -32,7 +32,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -48,13 +47,22 @@ public class IngredientServiceImpl implements IngredientService {
     private final InventoryService inventoryService;
     private final IngredientHistoryService historyService;
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<IngredientDto> getAll() {
+        List<Ingredient> ingredients = ingredientRepo.findAll();
+        return ingredients.stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
+    }
+
     @Transactional(readOnly = true)
     @Override
-    public Pair<List<IngredientTableResponse>, PaginationMetadata> getAll(Map<String, FilterCriteria> filters,
-                                                                         Integer page,
-                                                                         Integer size,
-                                                                         String sortBy,
-                                                                         String sortDir) {
+    public Pair<List<IngredientTableResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters,
+                                                                                 Integer page,
+                                                                                 Integer size,
+                                                                                 String sortBy,
+                                                                                 String sortDir) {
         Sort sort = sortDir.equalsIgnoreCase("asc") ?
                 Sort.by(sortBy).ascending() :
                 Sort.by(sortBy).descending();

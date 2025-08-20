@@ -24,13 +24,19 @@ public class ProductController extends BaseController {
     private final ProductService productService;
     private final AuditLogService auditLogService;
 
+    @GetMapping
+    public ApiResponse<List<ProductDto>> getAll() {
+        List<ProductDto> products = productService.getAll();
+        return ResponseUtil.success("Products retrieved successfully", products);
+    }
+
     @PostMapping("/all")
     public ApiResponse<List<ProductTableResponse>> getAll(@RequestParam(required = false, defaultValue = "0") Integer page,
                                                           @RequestParam(required = false, defaultValue = "10") Integer size,
                                                           @RequestParam(required = false, defaultValue = "id") String sortBy,
                                                           @RequestParam(required = false, defaultValue = "asc") String sortDir,
                                                           @RequestBody Map<String, FilterCriteria> filters) {
-        Pair<List<ProductTableResponse>, PaginationMetadata> result = productService.getAll(filters, page, size, sortBy, sortDir);
+        Pair<List<ProductTableResponse>, PaginationMetadata> result = productService.getPagination(filters, page, size, sortBy, sortDir);
         return ResponseUtil.success("Products retrieved successfully", result.getFirst(), result.getSecond());
     }
 

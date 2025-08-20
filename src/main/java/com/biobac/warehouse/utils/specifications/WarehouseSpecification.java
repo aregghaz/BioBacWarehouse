@@ -2,13 +2,15 @@ package com.biobac.warehouse.utils.specifications;
 
 import com.biobac.warehouse.entity.Warehouse;
 import com.biobac.warehouse.request.FilterCriteria;
+import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
 
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import static com.biobac.warehouse.utils.SpecificationUtil.*;
 
 public class WarehouseSpecification {
 
@@ -20,16 +22,19 @@ public class WarehouseSpecification {
             if (filters != null) {
                 for (Map.Entry<String, FilterCriteria> entry : filters.entrySet()) {
                     String field = entry.getKey();
+                    Path<?> path = root.get(field);
                     FilterCriteria criteria = entry.getValue();
                     Predicate predicate = null;
 
                     switch (criteria.getOperator()) {
-                        case "equals" -> {
-                            predicate = cb.equal(root.get(field), criteria.getValue());
-                        }
-                        case "contains" -> {
-                            predicate = cb.like(cb.lower(root.get(field)), "%" + criteria.getValue().toString().toLowerCase() + "%");
-                        }
+                        case "equals" -> predicate = buildEquals(cb, path, criteria.getValue());
+                        case "notEquals" -> predicate = buildNotEquals(cb, path, criteria.getValue());
+                        case "contains" -> predicate = cb.like(cb.lower(path.as(String.class)),
+                                criteria.getValue().toString().toLowerCase().trim().replaceAll("\\s+", " "));
+                        case "greaterThanOrEqualTo" ->
+                                predicate = buildGreaterThanOrEqualTo(cb, path, criteria.getValue());
+                        case "lessThanOrEqualTo" -> predicate = buildLessThanOrEqualTo(cb, path, criteria.getValue());
+                        case "between" -> predicate = buildBetween(cb, path, criteria.getValue());
                     }
 
                     if (predicate != null) {

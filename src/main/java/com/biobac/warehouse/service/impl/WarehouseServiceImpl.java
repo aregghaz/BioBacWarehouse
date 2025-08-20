@@ -34,7 +34,7 @@ public class WarehouseServiceImpl implements WarehouseService {
 
     @Transactional(readOnly = true)
     @Override
-    public Pair<List<WarehouseTableResponse>, PaginationMetadata> getAll(
+    public Pair<List<WarehouseTableResponse>, PaginationMetadata> getPagination(
             Map<String, FilterCriteria> filters,
             Integer page,
             Integer size,
@@ -100,5 +100,14 @@ public class WarehouseServiceImpl implements WarehouseService {
             throw new NotFoundException("Warehouse not found with id: " + id);
         }
         warehouseRepository.deleteById(id);
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public List<WarehouseDto> getAll() {
+        return warehouseRepository.findAll()
+                .stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
     }
 }

@@ -24,13 +24,19 @@ public class IngredientGroupController extends BaseController {
     private final AuditLogService auditLogService;
     private final IngredientGroupService service;
 
+    @GetMapping
+    public ApiResponse<List<IngredientGroupDto>> getAll() {
+        List<IngredientGroupDto> ingredientGroupDtos = service.getPagination();
+        return ResponseUtil.success("Ingredient groups retrieved successfully", ingredientGroupDtos);
+    }
+
     @PostMapping("/all")
     public ApiResponse<List<IngredientGroupTableResponse>> getAll(@RequestParam(required = false, defaultValue = "0") Integer page,
                                                                   @RequestParam(required = false, defaultValue = "10") Integer size,
                                                                   @RequestParam(required = false, defaultValue = "id") String sortBy,
                                                                   @RequestParam(required = false, defaultValue = "asc") String sortDir,
                                                                   @RequestBody Map<String, FilterCriteria> filters) {
-        Pair<List<IngredientGroupTableResponse>, PaginationMetadata> result = service.getAll(filters, page, size, sortBy, sortDir);
+        Pair<List<IngredientGroupTableResponse>, PaginationMetadata> result = service.getPagination(filters, page, size, sortBy, sortDir);
         return ResponseUtil.success("Ingredient groups retrieved successfully", result.getFirst(), result.getSecond());
     }
 

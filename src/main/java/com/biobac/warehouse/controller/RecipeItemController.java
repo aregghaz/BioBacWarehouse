@@ -2,11 +2,11 @@ package com.biobac.warehouse.controller;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.dto.RecipeItemDto;
+import com.biobac.warehouse.dto.WarehouseDto;
 import com.biobac.warehouse.entity.Entities;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.ApiResponse;
 import com.biobac.warehouse.response.RecipeItemTableResponse;
-import com.biobac.warehouse.response.WarehouseTableResponse;
 import com.biobac.warehouse.service.AuditLogService;
 import com.biobac.warehouse.service.RecipeItemService;
 import com.biobac.warehouse.utils.ResponseUtil;
@@ -25,13 +25,20 @@ public class RecipeItemController extends BaseController {
     private final AuditLogService auditLogService;
     private final RecipeItemService recipeItemService;
 
+    @GetMapping
+    public ApiResponse<List<RecipeItemDto>> getAll() {
+        List<RecipeItemDto> recipeItemDtos = recipeItemService.getAll();
+        return ResponseUtil.success("Recipe Items retrieved successfully", recipeItemDtos);
+    }
+
+
     @PostMapping("/all")
     public ApiResponse<List<RecipeItemTableResponse>> getAllRecipeItems(@RequestParam(required = false, defaultValue = "0") Integer page,
                                                                         @RequestParam(required = false, defaultValue = "10") Integer size,
                                                                         @RequestParam(required = false, defaultValue = "id") String sortBy,
                                                                         @RequestParam(required = false, defaultValue = "asc") String sortDir,
                                                                         @RequestBody Map<String, FilterCriteria> filters) {
-        Pair<List<RecipeItemTableResponse>, PaginationMetadata> result = recipeItemService.getAllRecipeItems(filters, page, size, sortBy, sortDir);
+        Pair<List<RecipeItemTableResponse>, PaginationMetadata> result = recipeItemService.getPagination(filters, page, size, sortBy, sortDir);
         return ResponseUtil.success("Recipe items retrieved successfully", result.getFirst(), result.getSecond());
     }
 
