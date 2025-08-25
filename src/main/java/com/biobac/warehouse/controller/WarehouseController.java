@@ -3,8 +3,10 @@ package com.biobac.warehouse.controller;
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.dto.WarehouseDto;
 import com.biobac.warehouse.entity.Entities;
+import com.biobac.warehouse.mapper.WarehouseMapper;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.ApiResponse;
+import com.biobac.warehouse.response.WarehouseResponse;
 import com.biobac.warehouse.response.WarehouseTableResponse;
 import com.biobac.warehouse.service.AuditLogService;
 import com.biobac.warehouse.service.WarehouseService;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/warehouses")
@@ -23,6 +26,7 @@ import java.util.Map;
 public class WarehouseController extends BaseController {
     private final AuditLogService auditLogService;
     private final WarehouseService warehouseService;
+    private final WarehouseMapper warehouseMapper;
 
     @PostMapping("/all")
     public ApiResponse<List<WarehouseTableResponse>> getAll(
@@ -39,36 +43,39 @@ public class WarehouseController extends BaseController {
     }
 
     @GetMapping
-    public ApiResponse<List<WarehouseDto>> getAll() {
-        List<WarehouseDto> warehouses = warehouseService.getAll();
+    public ApiResponse<List<WarehouseResponse>> getAll() {
+        List<WarehouseResponse> warehouses = warehouseService.getAll().stream()
+                .map(dto -> warehouseMapper.toResponse(warehouseMapper.toEntity(dto)))
+                .collect(Collectors.toList());
         return ResponseUtil.success("Warehouses retrieved successfully", warehouses);
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<WarehouseDto> getById(@PathVariable Long id) {
+    public ApiResponse<WarehouseResponse> getById(@PathVariable Long id) {
         WarehouseDto warehouse = warehouseService.getById(id);
-        return ResponseUtil.success("Warehouse retrieved successfully", warehouse);
+        return ResponseUtil.success("Warehouse retrieved successfully", warehouseMapper.toResponse(warehouseMapper.toEntity(warehouse)));
     }
 
     @PostMapping
-    public ApiResponse<WarehouseDto> create(@RequestBody WarehouseDto dto, HttpServletRequest request) {
+    public ApiResponse<WarehouseResponse> create(@RequestBody WarehouseDto dto, HttpServletRequest request) {
         dto.setId(null); // new entity
         WarehouseDto createdWarehouse = warehouseService.create(dto);
         auditLogService.logCreate(Entities.WAREHOUSE.name(), createdWarehouse.getId(), dto, getUsername(request));
-        return ResponseUtil.success("Warehouse created successfully", createdWarehouse);
+        return ResponseUtil.success("Warehouse created successfully", warehouseMapper.toResponse(warehouseMapper.toEntity(createdWarehouse)));
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<WarehouseDto> update(@PathVariable Long id, @RequestBody WarehouseDto dto, HttpServletRequest request) {
+    public ApiResponse<WarehouseResponse> update(@PathVariable Long id, @RequestBody WarehouseDto dto, HttpServletRequest request) {
         WarehouseDto existingWarehouse = warehouseService.getById(id);
         WarehouseDto warehouseDto = warehouseService.update(id, dto);
         auditLogService.logUpdate(Entities.WAREHOUSE.name(), id, existingWarehouse, warehouseDto, getUsername(request));
-        return ResponseUtil.success("Warehouse updated successfully", warehouseDto);
+        return ResponseUtil.success("Warehouse updated successfully", warehouseMapper.toResponse(warehouseMapper.toEntity(warehouseDto)));
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<String> delete(@PathVariable Long id) {
+    public ApiResponse<String> delete(@PathVariable Long id, HttpServletRequest request) {
         warehouseService.delete(id);
+        auditLogService.logDelete(Entities.WAREHOUSE.name(), id, getUsername(request));
         return ResponseUtil.success("Warehouse deleted successfully");
     }
 }

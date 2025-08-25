@@ -9,5 +9,7 @@ public interface AuditLogService {
 
     void logUpdate(String entityName, Long entityId, Object oldObject, Object newObject, String username);
 
+    void logDelete(String entityName, Long entityId, String username);
+
     List<AuditLog> getAuditLogs();
 }

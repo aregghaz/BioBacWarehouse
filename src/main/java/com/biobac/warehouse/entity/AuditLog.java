@@ -19,7 +19,7 @@ public class AuditLog {
     private String field;
     private String oldValue;
     private String newValue;
-
+    private String action;
     private String user;
     private LocalDateTime timestamp;
 }

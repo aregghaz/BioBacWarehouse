@@ -16,3 +16,5 @@ server:
 jwt:
   secret: b10bac_super_secret_key_which_is_long_enough_please_change
   expiration-ms: 86400000
+services:
+  company-url: http://kinomino.ru:8060/api/company

@@ -1,9 +1,14 @@
-package com.biobac.warehouse.dto;
-import lombok.Data;
+package com.biobac.warehouse.response;
+
+import com.biobac.warehouse.dto.RecipeItemDto;
+import lombok.Getter;
+import lombok.Setter;
+
 import java.util.List;
 
-@Data
-public class ProductDto {
+@Getter
+@Setter
+public class ProductResponse {
     private Long id;
     private String name;
     private String description;

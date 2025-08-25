@@ -16,6 +16,8 @@ import com.biobac.warehouse.repository.IngredientRepository;
 import com.biobac.warehouse.repository.InventoryItemRepository;
 import com.biobac.warehouse.repository.ProductRepository;
 import com.biobac.warehouse.request.FilterCriteria;
+import com.biobac.warehouse.request.ProductCreateRequest;
+import com.biobac.warehouse.request.ProductUpdateRequest;
 import com.biobac.warehouse.response.ProductTableResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.InventoryService;
@@ -102,7 +104,7 @@ public class ProductServiceImpl implements ProductService {
 
     @Transactional
     @Override
-    public ProductDto create(ProductDto dto) {
+    public ProductDto create(ProductCreateRequest dto) {
         // Ensure quantity is not null for calculations
         if (dto.getQuantity() == null) {
             dto.setQuantity(1.0); // Default to 1 if not specified
@@ -112,10 +114,6 @@ public class ProductServiceImpl implements ProductService {
                 ", warehouseId: " + dto.getWarehouseId());
 
         Product product = mapper.toEntity(dto);
-        if (dto.getIngredientIds() != null) {
-            List<Ingredient> ingredients = ingredientRepo.findAllById(dto.getIngredientIds());
-            product.setIngredients(ingredients);
-        }
 
         // Check if there are enough ingredients before creating the product
         if (dto.getRecipeItems() != null && !dto.getRecipeItems().isEmpty() && dto.getWarehouseId() != null) {
@@ -277,6 +275,7 @@ public class ProductServiceImpl implements ProductService {
     @Transactional
     @Override
     public ProductDto update(Long id, ProductDto dto) {
+        // existing DTO-based update retained for backward compatibility
         // Ensure quantity is not null for calculations
         if (dto.getQuantity() == null) {
             dto.setQuantity(1.0); // Default to 1 if not specified
@@ -288,17 +287,11 @@ public class ProductServiceImpl implements ProductService {
                 ", warehouseId: " + dto.getWarehouseId());
 
         Product product = productRepo.findById(id).orElseThrow(() -> new NotFoundException("Product not found with id: " + id));
-        if (dto.getName() != null) product.setName(dto.getName());
-        if (dto.getDescription() != null) product.setDescription(dto.getDescription());
-        if (dto.getSku() != null) product.setSku(dto.getSku());
+        // Apply DTO fields to entity using mapper (nulls are ignored)
+        mapper.updateEntityFromDto(dto, product);
         // Store the quantity and warehouseId for later use in the response
         Double quantity = dto.getQuantity();
         Long warehouseId = dto.getWarehouseId();
-
-        if (dto.getIngredientIds() != null) {
-            List<Ingredient> ingredients = ingredientRepo.findAllById(dto.getIngredientIds());
-            product.setIngredients(ingredients);
-        }
 
 
         // Update recipe items if provided
@@ -467,6 +460,116 @@ public class ProductServiceImpl implements ProductService {
             throw new NotFoundException("Product not found with id: " + id);
         }
         productRepo.deleteById(id);
+    }
+
+    @Transactional
+    @Override
+    public ProductDto update(Long id, ProductUpdateRequest dto) {
+        if (dto.getQuantity() == null) {
+            dto.setQuantity(1.0);
+        }
+
+        Product product = productRepo.findById(id).orElseThrow(() -> new NotFoundException("Product not found with id: " + id));
+
+        // Apply fields from update request (ignores nulls)
+        mapper.updateEntityFromUpdateRequest(dto, product);
+
+        Double quantity = dto.getQuantity();
+        Long warehouseId = dto.getWarehouseId();
+
+        // Update recipe items if provided
+        if (dto.getRecipeItems() != null) {
+            if (product.getRecipeItems() != null) {
+                product.getRecipeItems().clear();
+            } else {
+                product.setRecipeItems(new java.util.ArrayList<>());
+            }
+
+            for (RecipeItemDto recipeItemDto : dto.getRecipeItems()) {
+                RecipeItem recipeItem = recipeItemMapper.toEntity(recipeItemDto);
+                recipeItem.setProduct(product);
+                Ingredient ingredient = ingredientRepo.findById(recipeItemDto.getIngredientId())
+                        .orElseThrow(() -> new NotFoundException("Ingredient not found with id: " + recipeItemDto.getIngredientId()));
+                recipeItem.setIngredient(ingredient);
+                product.getRecipeItems().add(recipeItem);
+            }
+        }
+
+        Product savedProduct = productRepo.save(product);
+
+        // Update or create inventory item
+        if (dto.getQuantity() != null && dto.getWarehouseId() != null) {
+            List<InventoryItem> existingItems = inventoryItemRepo.findByProductId(savedProduct.getId());
+            InventoryItem inventoryItem = null;
+            for (InventoryItem item : existingItems) {
+                if (item.getWarehouseId() != null && item.getWarehouseId().equals(dto.getWarehouseId())) {
+                    inventoryItem = item;
+                    break;
+                }
+            }
+
+            if (inventoryItem != null) {
+                InventoryItemDto inventoryItemDto = new InventoryItemDto();
+                inventoryItemDto.setId(inventoryItem.getId());
+                inventoryItemDto.setProductId(savedProduct.getId());
+                inventoryItemDto.setWarehouseId(dto.getWarehouseId());
+                inventoryItemDto.setQuantity(dto.getQuantity() != null ? dto.getQuantity().intValue() : 0);
+                inventoryItemDto.setLastUpdated(LocalDate.now());
+                int ingredientCount = 0;
+                if (savedProduct.getRecipeItems() != null && !savedProduct.getRecipeItems().isEmpty()) {
+                    ingredientCount = savedProduct.getRecipeItems().size();
+                }
+                inventoryItemDto.setIngredientCount(ingredientCount);
+                inventoryService.update(inventoryItem.getId(), inventoryItemDto);
+            } else {
+                InventoryItemDto inventoryItemDto = new InventoryItemDto();
+                inventoryItemDto.setProductId(savedProduct.getId());
+                inventoryItemDto.setWarehouseId(dto.getWarehouseId());
+                inventoryItemDto.setQuantity(dto.getQuantity() != null ? dto.getQuantity().intValue() : 0);
+                inventoryItemDto.setLastUpdated(LocalDate.now());
+                int ingredientCount = 0;
+                if (savedProduct.getRecipeItems() != null && !savedProduct.getRecipeItems().isEmpty()) {
+                    ingredientCount = savedProduct.getRecipeItems().size();
+                }
+                inventoryItemDto.setIngredientCount(ingredientCount);
+                inventoryService.create(inventoryItemDto);
+            }
+
+            // Update ingredient counts (and decrement) as in original method
+            if (savedProduct.getRecipeItems() != null && !savedProduct.getRecipeItems().isEmpty()) {
+                updateIngredientCounts(savedProduct.getRecipeItems(), dto.getWarehouseId());
+                for (RecipeItem recipeItem : savedProduct.getRecipeItems()) {
+                    Long ingredientId = recipeItem.getIngredient().getId();
+                    if (dto.getWarehouseId() != null) {
+                        List<InventoryItem> inventoryItems = inventoryItemRepo.findByIngredientIdAndWarehouseId(
+                                ingredientId, dto.getWarehouseId());
+                        if (!inventoryItems.isEmpty()) {
+                            for (InventoryItem item : inventoryItems) {
+                                int amountToDecrease = (int) Math.ceil(recipeItem.getQuantity() * dto.getQuantity());
+                                int updatedRows = inventoryItemRepo.decrementIngredientQuantity(ingredientId, dto.getWarehouseId(), amountToDecrease);
+                                if (updatedRows > 0) {
+                                    Ingredient ingredient = recipeItem.getIngredient();
+                                    if (ingredient != null) {
+                                        historyService.recordQuantityChange(
+                                                ingredient,
+                                                0.0,
+                                                0.0,
+                                                "USED_IN_PRODUCT",
+                                                "Used in product update: " + savedProduct.getName()
+                                        );
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        ProductDto responseDto = mapper.toDto(savedProduct);
+        responseDto.setQuantity(quantity);
+        responseDto.setWarehouseId(warehouseId);
+        return responseDto;
     }
 
     /**

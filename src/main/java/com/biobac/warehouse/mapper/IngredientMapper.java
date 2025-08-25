@@ -7,6 +7,7 @@ import com.biobac.warehouse.entity.IngredientComponent;
 import com.biobac.warehouse.entity.IngredientGroup;
 import com.biobac.warehouse.entity.InventoryItem;
 import com.biobac.warehouse.repository.InventoryItemRepository;
+import com.biobac.warehouse.response.IngredientResponse;
 import com.biobac.warehouse.response.IngredientTableResponse;
 import org.mapstruct.*;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +49,32 @@ public abstract class IngredientMapper {
             @Mapping(target = "childIngredientComponents", expression = "java(mapChildIngredientComponents(entity))")
     })
     public abstract IngredientDto toDto(Ingredient entity);
+
+    @Mappings({
+            @Mapping(target = "id", source = "id"),
+            @Mapping(target = "name", source = "name"),
+            @Mapping(target = "description", source = "description"),
+            @Mapping(target = "unit", source = "unit"),
+            @Mapping(target = "active", source = "active"),
+            @Mapping(target = "quantity", expression = "java(getExactQuantity(entity) != null ? getExactQuantity(entity).doubleValue() : null)"),
+            @Mapping(target = "groupId", source = "group.id"),
+            @Mapping(target = "warehouseId", expression = "java(getWarehouseId(entity))"),
+            @Mapping(target = "childIngredientComponents", expression = "java(mapChildIngredientComponents(entity))")
+    })
+    public abstract IngredientResponse toResponse(Ingredient entity);
+
+    @Mappings({
+            @Mapping(target = "id", source = "id"),
+            @Mapping(target = "name", source = "name"),
+            @Mapping(target = "description", source = "description"),
+            @Mapping(target = "unit", source = "unit"),
+            @Mapping(target = "active", source = "active"),
+            @Mapping(target = "quantity", source = "quantity"),
+            @Mapping(target = "groupId", source = "groupId"),
+            @Mapping(target = "warehouseId", source = "warehouseId"),
+            @Mapping(target = "childIngredientComponents", source = "childIngredientComponents")
+    })
+    public abstract IngredientResponse toResponse(IngredientDto dto);
 
     @Mappings({
             @Mapping(target = "id", source = "id"),
@@ -170,16 +197,12 @@ public abstract class IngredientMapper {
 
         InventoryItem item = inventoryItems.get(0);
 
-        // First try to get warehouseId directly from the field
-        if (item.getWarehouseId() != null) {
-            return item.getWarehouse().getName();
-        }
-
-        // If that's null, try to get it from the warehouse relationship
+        // Prefer the relationship; it is the authoritative source for the name
         if (item.getWarehouse() != null) {
             return item.getWarehouse().getName();
         }
 
+        // If relation is not initialized, we cannot derive a name safely just from an ID
         return null;
     }
 }

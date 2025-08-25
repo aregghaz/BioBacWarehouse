@@ -398,6 +398,9 @@ public class IngredientServiceImpl implements IngredientService {
     @Transactional
     @Override
     public void delete(Long id) {
+        if (!ingredientRepo.existsById(id)) {
+            throw new NotFoundException("Ingredient not found with id: " + id);
+        }
         ingredientRepo.deleteById(id);
     }
 }

@@ -4,6 +4,8 @@ package com.biobac.warehouse.service;
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.dto.ProductDto;
 import com.biobac.warehouse.request.FilterCriteria;
+import com.biobac.warehouse.request.ProductCreateRequest;
+import com.biobac.warehouse.request.ProductUpdateRequest;
 import com.biobac.warehouse.response.ProductTableResponse;
 import org.springframework.data.util.Pair;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,10 +31,13 @@ public interface ProductService {
 
 
     @Transactional
-    ProductDto create(ProductDto dto);
+    ProductDto create(ProductCreateRequest dto);
 
     @Transactional
     ProductDto update(Long id, ProductDto dto);
+
+    @Transactional
+    ProductDto update(Long id, ProductUpdateRequest dto);
 
     @Transactional
     void delete(Long id);

@@ -50,7 +50,7 @@ public class IngredientGroupController extends BaseController {
     public ApiResponse<IngredientGroupDto> create(@RequestBody IngredientGroupDto dto, HttpServletRequest request) {
         dto.setId(null); // Ensure it's treated as a new entity
         IngredientGroupDto createdGroup = service.create(dto);
-        auditLogService.logCreate(Entities.INGREDIENGROUP.name(), createdGroup.getId(), dto, getUsername(request));
+        auditLogService.logCreate(Entities.INGREDIENTGROUP.name(), createdGroup.getId(), dto, getUsername(request));
 
         return ResponseUtil.success("Ingredient group created successfully", createdGroup);
     }
@@ -59,13 +59,14 @@ public class IngredientGroupController extends BaseController {
     public ApiResponse<IngredientGroupDto> update(@PathVariable Long id, @RequestBody IngredientGroupDto dto, HttpServletRequest request) {
         IngredientGroupDto existingGroup = service.getById(id);
         IngredientGroupDto updatedGroup = service.update(id, dto);
-        auditLogService.logUpdate(Entities.INGREDIENGROUP.name(), updatedGroup.getId(), existingGroup, dto, getUsername(request));
+        auditLogService.logUpdate(Entities.INGREDIENTGROUP.name(), updatedGroup.getId(), existingGroup, dto, getUsername(request));
         return ResponseUtil.success("Ingredient group updated successfully", updatedGroup);
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<String> delete(@PathVariable Long id) {
+    public ApiResponse<String> delete(@PathVariable Long id, HttpServletRequest request) {
         service.delete(id);
+        auditLogService.logDelete(Entities.INGREDIENTGROUP.name(), id, getUsername(request));
         return ResponseUtil.success("Ingredient group deleted successfully");
     }
 }

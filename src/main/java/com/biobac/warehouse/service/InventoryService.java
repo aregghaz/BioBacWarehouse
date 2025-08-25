@@ -4,6 +4,8 @@ package com.biobac.warehouse.service;
 import com.biobac.warehouse.dto.InventoryItemDto;
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.request.FilterCriteria;
+import com.biobac.warehouse.request.InventoryItemCreateRequest;
+import com.biobac.warehouse.request.InventoryItemUpdateRequest;
 import com.biobac.warehouse.response.InventoryItemTableResponse;
 import org.springframework.data.util.Pair;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,7 +31,13 @@ public interface InventoryService {
     InventoryItemDto create(InventoryItemDto dto);
 
     @Transactional
+    InventoryItemDto create(InventoryItemCreateRequest dto);
+
+    @Transactional
     InventoryItemDto update(Long id, InventoryItemDto dto);
+
+    @Transactional
+    InventoryItemDto update(Long id, InventoryItemUpdateRequest dto);
 
     @Transactional
     void delete(Long id);

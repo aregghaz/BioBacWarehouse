@@ -62,8 +62,7 @@ public class ProductSpecification {
                     switch (criteria.getOperator()) {
                         case "equals" -> predicate = buildEquals(cb, path, criteria.getValue());
                         case "notEquals" -> predicate = buildNotEquals(cb, path, criteria.getValue());
-                        case "contains" -> predicate = cb.like(cb.lower(path.as(String.class)),
-                                criteria.getValue().toString().toLowerCase().trim().replaceAll("\\s+", " "));
+                        case "contains" -> predicate = buildContains(cb, path, criteria.getValue());
                         case "greaterThanOrEqualTo" ->
                                 predicate = buildGreaterThanOrEqualTo(cb, path, criteria.getValue());
                         case "lessThanOrEqualTo" -> predicate = buildLessThanOrEqualTo(cb, path, criteria.getValue());

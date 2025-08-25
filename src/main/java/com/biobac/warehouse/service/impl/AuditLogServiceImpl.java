@@ -24,9 +24,9 @@ public class AuditLogServiceImpl implements AuditLogService {
                 Object newValue = field.get(newObject);
                 if (newValue != null) {
                     if (isEntity(newValue)) {
-                        parseNestedObject(newValue, entityName, entityId, username);
+                        parseNestedObject(newValue, entityName, entityId, username, "CREATE");
                     } else {
-                        saveLog(entityName, entityId, field.getName(), null, newValue.toString(), username);
+                        saveLog(entityName, entityId, field.getName(), null, newValue.toString(), username, "CREATE");
                     }
                 }
             } catch (IllegalAccessException e) {
@@ -45,12 +45,12 @@ public class AuditLogServiceImpl implements AuditLogService {
 
                 if (!Objects.equals(oldValue, newValue)) {
                     if (newValue != null && isEntity(newValue)) {
-                        parseNestedObject(newValue, entityName, entityId, username);
+                        parseNestedObject(newValue, entityName, entityId, username, "UPDATE");
                     } else {
                         saveLog(entityName, entityId, field.getName(),
                                 oldValue != null ? oldValue.toString() : null,
                                 newValue != null ? newValue.toString() : null,
-                                username);
+                                username, "UPDATE");
                     }
                 }
             } catch (IllegalAccessException e) {
@@ -60,11 +60,16 @@ public class AuditLogServiceImpl implements AuditLogService {
     }
 
     @Override
+    public void logDelete(String entityName, Long entityId, String username) {
+        saveLog(entityName, entityId, null, null, null, username, "DELETE");
+    }
+
+    @Override
     public List<AuditLog> getAuditLogs() {
         return repo.findAll();
     }
 
-    private void saveLog(String entityName, Long entityId, String field, String oldValue, String newValue, String username) {
+    private void saveLog(String entityName, Long entityId, String field, String oldValue, String newValue, String username, String action) {
         AuditLog log = new AuditLog();
         log.setEntityName(entityName);
         log.setEntityId(entityId);
@@ -73,20 +78,21 @@ public class AuditLogServiceImpl implements AuditLogService {
         log.setNewValue(newValue);
         log.setUser(username);
         log.setTimestamp(LocalDateTime.now());
+        log.setAction(action);
 
         repo.save(log);
     }
 
-    private void parseNestedObject(Object object, String entityName, Long entityId, String username) {
+    private void parseNestedObject(Object object, String entityName, Long entityId, String username, String action) {
         for (Field field : object.getClass().getDeclaredFields()) {
             field.setAccessible(true);
             try {
                 Object value = field.get(object);
                 if (value != null) {
-                    if (value.getClass().getPackageName().startsWith("com.biobac.warehouse.entity")) {
-                        saveLog(entityName, entityId, field.getName(), null, value.toString(), username);
+                    if (isEntity(value)) {
+                        parseNestedObject(value, entityName, entityId, username, action);
                     } else {
-                        parseNestedObject(value, entityName, entityId, username);
+                        saveLog(entityName, entityId, field.getName(), null, value.toString(), username, action);
                     }
                 }
             } catch (IllegalAccessException e) {
@@ -94,6 +100,7 @@ public class AuditLogServiceImpl implements AuditLogService {
             }
         }
     }
+
     private boolean isEntity(Object obj) {
         String packageName = obj.getClass().getPackageName();
         return packageName.startsWith("com.biobac.warehouse.entity") ||

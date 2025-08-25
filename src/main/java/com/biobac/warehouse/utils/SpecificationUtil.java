@@ -111,4 +111,10 @@ public class SpecificationUtil {
         }
         return null;
     }
+
+    public static Predicate buildContains(CriteriaBuilder cb, Path<?> path, Object value) {
+        if (value == null) return null;
+        String pattern = "%" + value.toString().toLowerCase().trim().replaceAll("\\s+", " ") + "%";
+        return cb.like(cb.lower(path.as(String.class)), pattern);
+    }
 }

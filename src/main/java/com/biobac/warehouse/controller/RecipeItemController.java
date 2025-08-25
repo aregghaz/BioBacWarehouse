@@ -83,8 +83,9 @@ public class RecipeItemController extends BaseController {
     }
 
     @DeleteMapping("/{id}")
-    public ApiResponse<String> deleteRecipeItem(@PathVariable Long id) {
+    public ApiResponse<String> deleteRecipeItem(@PathVariable Long id, HttpServletRequest request) {
         recipeItemService.deleteRecipeItem(id);
+        auditLogService.logDelete(Entities.RECIPEITEM.name(), id, getUsername(request));
         return ResponseUtil.success("Recipe item deleted successfully");
     }
 }
