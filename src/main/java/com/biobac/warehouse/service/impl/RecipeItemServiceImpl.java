@@ -3,16 +3,17 @@ package com.biobac.warehouse.service.impl;
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.dto.RecipeItemDto;
 import com.biobac.warehouse.entity.Ingredient;
-import com.biobac.warehouse.entity.Product;
+import com.biobac.warehouse.entity.RecipeComponent;
 import com.biobac.warehouse.entity.RecipeItem;
-import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.RecipeItemMapper;
 import com.biobac.warehouse.repository.IngredientRepository;
 import com.biobac.warehouse.repository.ProductRepository;
 import com.biobac.warehouse.repository.RecipeItemRepository;
 import com.biobac.warehouse.request.FilterCriteria;
+import com.biobac.warehouse.request.RecipeComponentRequest;
+import com.biobac.warehouse.request.RecipeItemCreateRequest;
+import com.biobac.warehouse.response.RecipeItemResponse;
 import com.biobac.warehouse.response.RecipeItemTableResponse;
-import com.biobac.warehouse.response.WarehouseTableResponse;
 import com.biobac.warehouse.service.RecipeItemService;
 import com.biobac.warehouse.utils.specifications.RecipeItemSpecification;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,7 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -78,81 +80,62 @@ public class RecipeItemServiceImpl implements RecipeItemService {
     @Override
     @Transactional(readOnly = true)
     public List<RecipeItemDto> getAll() {
-        return recipeItemRepository.findAll().stream()
-                .map(mapper::toDto)
-                .collect(Collectors.toList());
+        return null;
     }
 
     @Override
     @Transactional(readOnly = true)
     public RecipeItemDto getRecipeItemById(Long id) {
-        RecipeItem recipeItem = recipeItemRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("RecipeItem not found with id: " + id));
-        return mapper.toDto(recipeItem);
+        return null;
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<RecipeItemDto> getRecipeItemsByProductId(Long productId) {
-        return recipeItemRepository.findByProductId(productId).stream()
-                .map(mapper::toDto)
-                .collect(Collectors.toList());
+        return null;
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<RecipeItemDto> getRecipeItemsByIngredientId(Long ingredientId) {
-        return recipeItemRepository.findByIngredientId(ingredientId).stream()
-                .map(mapper::toDto)
-                .collect(Collectors.toList());
+        return null;
     }
 
     @Override
-    @Transactional
-    public RecipeItemDto createRecipeItem(RecipeItemDto recipeItemDto, Long productId) {
-        RecipeItem recipeItem = mapper.toEntity(recipeItemDto);
+    public RecipeItemResponse createRecipeItem(RecipeItemCreateRequest recipeItemCreateRequest) {
+        RecipeItem recipeItem = new RecipeItem();
+        recipeItem.setName(recipeItemCreateRequest.getName());
+        recipeItem.setNotes(recipeItemCreateRequest.getNotes());
 
-        // Set the product
-        Product product = productRepository.findById(productId)
-                .orElseThrow(() -> new NotFoundException("Product not found with id: " + productId));
-        recipeItem.setProduct(product);
+        List<RecipeComponent> components = new ArrayList<>();
+        for (RecipeComponentRequest compReq : recipeItemCreateRequest.getComponents()) {
+            Ingredient ingredient = ingredientRepository.findById(compReq.getIngredientId())
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid ingredient ID: " + compReq.getIngredientId()));
 
-        // Set the ingredient
-        Ingredient ingredient = ingredientRepository.findById(recipeItemDto.getIngredientId())
-                .orElseThrow(() -> new NotFoundException("Ingredient not found with id: " + recipeItemDto.getIngredientId()));
-        recipeItem.setIngredient(ingredient);
+            RecipeComponent component = new RecipeComponent();
+            component.setIngredient(ingredient);
+            component.setRecipeItem(recipeItem);
+            component.setQuantity(compReq.getQuantity());
 
-        RecipeItem savedRecipeItem = recipeItemRepository.save(recipeItem);
-        return mapper.toDto(savedRecipeItem);
+            components.add(component);
+        }
+
+        recipeItem.setComponents(components);
+
+        RecipeItem saved = recipeItemRepository.save(recipeItem);
+
+        return mapper.toDto(saved);
     }
 
     @Override
-    @Transactional
     public RecipeItemDto updateRecipeItem(Long id, RecipeItemDto recipeItemDto) {
-        RecipeItem existingRecipeItem = recipeItemRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("RecipeItem not found with id: " + id));
-
-        // Update fields
-        existingRecipeItem.setQuantity(recipeItemDto.getQuantity());
-        existingRecipeItem.setNotes(recipeItemDto.getNotes());
-
-        // Update ingredient if changed
-        if (!existingRecipeItem.getIngredient().getId().equals(recipeItemDto.getIngredientId())) {
-            Ingredient ingredient = ingredientRepository.findById(recipeItemDto.getIngredientId())
-                    .orElseThrow(() -> new NotFoundException("Ingredient not found with id: " + recipeItemDto.getIngredientId()));
-            existingRecipeItem.setIngredient(ingredient);
-        }
-
-        RecipeItem updatedRecipeItem = recipeItemRepository.save(existingRecipeItem);
-        return mapper.toDto(updatedRecipeItem);
+        return null;
     }
 
     @Override
-    @Transactional
     public void deleteRecipeItem(Long id) {
-        if (!recipeItemRepository.existsById(id)) {
-            throw new NotFoundException("RecipeItem not found with id: " + id);
-        }
-        recipeItemRepository.deleteById(id);
+
     }
+
+
 }

@@ -3,6 +3,9 @@ package com.biobac.warehouse.service;
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.dto.RecipeItemDto;
 import com.biobac.warehouse.request.FilterCriteria;
+import com.biobac.warehouse.request.IngredientCreateRequest;
+import com.biobac.warehouse.request.RecipeItemCreateRequest;
+import com.biobac.warehouse.response.RecipeItemResponse;
 import com.biobac.warehouse.response.RecipeItemTableResponse;
 import org.springframework.data.util.Pair;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,7 +34,7 @@ public interface RecipeItemService {
     List<RecipeItemDto> getRecipeItemsByIngredientId(Long ingredientId);
 
     @Transactional
-    RecipeItemDto createRecipeItem(RecipeItemDto recipeItemDto, Long productId);
+    RecipeItemResponse createRecipeItem(RecipeItemCreateRequest recipeItemCreateRequest);
 
     @Transactional
     RecipeItemDto updateRecipeItem(Long id, RecipeItemDto recipeItemDto);

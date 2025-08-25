@@ -12,10 +12,8 @@ public class IngredientResponse {
     private Long id;
     private String name;
     private String description;
-    private String unit;
     private boolean active;
-    private Double quantity;
     private Long groupId;
-    private Long warehouseId;
-    private List<IngredientComponentDto> childIngredientComponents;
+
+    private List<InventoryItemResponse> inventoryItems;
 }

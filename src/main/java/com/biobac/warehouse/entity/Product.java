@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.ArrayList;
 import java.util.List;
 
 @Entity
@@ -18,17 +19,11 @@ public class Product {
     private String description;
     private String sku;
 
-    @ManyToMany
-    @JoinTable(name = "product_ingredient",
-            joinColumns = @JoinColumn(name = "product_id"),
-            inverseJoinColumns = @JoinColumn(name = "ingredient_id"))
-    private List<Ingredient> ingredients;
-    
-    @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<RecipeItem> recipeItems;
-    
+    @OneToOne(mappedBy = "product")
+    private RecipeItem recipeItem;
+
     @OneToMany(mappedBy = "product")
-    private List<InventoryItem> inventoryItems;
+    private List<InventoryItem> inventoryItems = new ArrayList<>();
 
     private Long companyId;
 }

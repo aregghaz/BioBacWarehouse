@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Getter
 @Setter
@@ -11,16 +14,18 @@ public class RecipeItem {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
-    @ManyToOne
-    @JoinColumn(name = "product_id")
+
+    private String name;
+
+    @OneToOne
+    @JoinColumn(name = "product_id", unique = true)
     private Product product;
-    
-    @ManyToOne
-    @JoinColumn(name = "ingredient_id")
+
+    @OneToOne
+    @JoinColumn(name = "ingredient_id", unique = true)
     private Ingredient ingredient;
-    
-    private Double quantity;
-    
+
+    @OneToMany(mappedBy = "recipeItem")
+    private List<RecipeComponent> components = new ArrayList<>();
     private String notes;
 }

@@ -5,7 +5,9 @@ import com.biobac.warehouse.dto.RecipeItemDto;
 import com.biobac.warehouse.dto.WarehouseDto;
 import com.biobac.warehouse.entity.Entities;
 import com.biobac.warehouse.request.FilterCriteria;
+import com.biobac.warehouse.request.RecipeItemCreateRequest;
 import com.biobac.warehouse.response.ApiResponse;
+import com.biobac.warehouse.response.RecipeItemResponse;
 import com.biobac.warehouse.response.RecipeItemTableResponse;
 import com.biobac.warehouse.service.AuditLogService;
 import com.biobac.warehouse.service.RecipeItemService;
@@ -60,12 +62,11 @@ public class RecipeItemController extends BaseController {
         return ResponseUtil.success("Recipe items for ingredient retrieved successfully", recipeItems);
     }
 
-    @PostMapping("/product/{productId}")
-    public ApiResponse<RecipeItemDto> createRecipeItem(
-            @RequestBody RecipeItemDto recipeItemDto,
-            @PathVariable Long productId,
+    @PostMapping
+    public ApiResponse<RecipeItemResponse> createRecipeItem(
+            @RequestBody RecipeItemCreateRequest recipeItemDto,
             HttpServletRequest request) {
-        RecipeItemDto createdRecipeItem = recipeItemService.createRecipeItem(recipeItemDto, productId);
+        RecipeItemResponse createdRecipeItem = recipeItemService.createRecipeItem(recipeItemDto);
         auditLogService.logCreate(Entities.RECIPEITEM.name(), createdRecipeItem.getId(), recipeItemDto, getUsername(request));
 
         return ResponseUtil.success("Recipe item created successfully", createdRecipeItem);
