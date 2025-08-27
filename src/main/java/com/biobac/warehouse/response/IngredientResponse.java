@@ -14,6 +14,8 @@ public class IngredientResponse {
     private String description;
     private boolean active;
     private Long groupId;
+    private Long unitId;
+    private String unitName;
 
     private List<InventoryItemResponse> inventoryItems;
 }

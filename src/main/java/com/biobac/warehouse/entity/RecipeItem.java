@@ -27,5 +27,6 @@ public class RecipeItem {
 
     @OneToMany(mappedBy = "recipeItem")
     private List<RecipeComponent> components = new ArrayList<>();
+
     private String notes;
 }

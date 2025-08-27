@@ -18,7 +18,6 @@ public class Ingredient {
 
     private String name;
     private String description;
-    private String unit;
     private boolean active;
 
     @ManyToOne
@@ -32,4 +31,6 @@ public class Ingredient {
 
     @OneToMany(mappedBy = "ingredient")
     private List<InventoryItem> inventoryItems = new ArrayList<>();
+
+    private Long unitId;
 }

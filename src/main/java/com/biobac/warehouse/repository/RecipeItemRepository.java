@@ -11,11 +11,4 @@ import java.util.List;
 
 @Repository
 public interface RecipeItemRepository extends JpaRepository<RecipeItem, Long>, JpaSpecificationExecutor<RecipeItem> {
-    List<RecipeItem> findByProduct(Product product);
-
-    List<RecipeItem> findByIngredient(Ingredient ingredient);
-
-    List<RecipeItem> findByProductId(Long productId);
-
-    List<RecipeItem> findByIngredientId(Long ingredientId);
 }

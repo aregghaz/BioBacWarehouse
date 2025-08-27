@@ -29,5 +29,8 @@ public class InventoryItem {
     private Warehouse warehouse;
 
     private Double quantity;
+
+    private Long unitId;
+
     private LocalDateTime lastUpdated;
 }

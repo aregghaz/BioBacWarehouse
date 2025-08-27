@@ -1,6 +1,6 @@
 package com.biobac.warehouse.utils.specifications;
 
-import com.biobac.warehouse.entity.Ingredient;
+import com.biobac.warehouse.entity.Unit;
 import com.biobac.warehouse.request.FilterCriteria;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
@@ -12,9 +12,8 @@ import java.util.Map;
 
 import static com.biobac.warehouse.utils.SpecificationUtil.*;
 
-public class IngredientSpecification {
-
-    public static Specification<Ingredient> buildSpecification(Map<String, FilterCriteria> filters) {
+public class UnitSpecification {
+    public static Specification<Unit> buildSpecification(Map<String, FilterCriteria> filters) {
         return (root, query, cb) -> {
             query.distinct(true);
             List<Predicate> predicates = new ArrayList<>();
@@ -23,14 +22,16 @@ public class IngredientSpecification {
                 for (Map.Entry<String, FilterCriteria> entry : filters.entrySet()) {
                     String field = entry.getKey();
                     FilterCriteria criteria = entry.getValue();
-                    Path<?> path = root.get(field);
                     Predicate predicate = null;
+
+                    Path<?> path = root.get(field);
 
                     switch (criteria.getOperator()) {
                         case "equals" -> predicate = buildEquals(cb, path, criteria.getValue());
                         case "notEquals" -> predicate = buildNotEquals(cb, path, criteria.getValue());
                         case "contains" -> predicate = buildContains(cb, path, criteria.getValue());
-                        case "greaterThanOrEqualTo" -> predicate = buildGreaterThanOrEqualTo(cb, path, criteria.getValue());
+                        case "greaterThanOrEqualTo" ->
+                                predicate = buildGreaterThanOrEqualTo(cb, path, criteria.getValue());
                         case "lessThanOrEqualTo" -> predicate = buildLessThanOrEqualTo(cb, path, criteria.getValue());
                         case "between" -> predicate = buildBetween(cb, path, criteria.getValue());
                     }

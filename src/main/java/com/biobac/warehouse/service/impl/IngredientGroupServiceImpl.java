@@ -68,7 +68,7 @@ public class IngredientGroupServiceImpl implements IngredientGroupService {
                 filters,
                 sortDir,
                 sortBy,
-                "ingredientTable"
+                "ingredientGroupTable"
         );
 
         return Pair.of(content, metadata);

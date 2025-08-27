@@ -1,6 +1,5 @@
 package com.biobac.warehouse.mapper;
 
-import com.biobac.warehouse.dto.RecipeItemDto;
 import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.entity.RecipeComponent;
 import com.biobac.warehouse.entity.RecipeItem;
@@ -11,7 +10,6 @@ import com.biobac.warehouse.response.RecipeItemTableResponse;
 import org.mapstruct.Context;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.mapstruct.Mappings;
 
 import java.util.List;
 
@@ -25,11 +23,13 @@ public interface RecipeItemMapper {
 
     @Mapping(target = "ingredient", source = "ingredient")
     @Mapping(target = "recipeItem", ignore = true) // will set in service
+    @Mapping(target = "unitId", ignore = true) // handled/validated in service layer
     RecipeComponent toEntity(RecipeComponentRequest request, Ingredient ingredient);
 
     // ------------------ ENTITY → DTO ------------------ //
 
     @Mapping(target = "components", source = "components")
+    @Mapping(target = "notes", source = "notes")
     RecipeItemResponse toDto(RecipeItem entity);
 
     @Mapping(target = "ingredientId", source = "ingredient.id")

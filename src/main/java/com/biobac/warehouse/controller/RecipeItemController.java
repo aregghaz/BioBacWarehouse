@@ -1,7 +1,6 @@
 package com.biobac.warehouse.controller;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
-import com.biobac.warehouse.dto.RecipeItemDto;
 import com.biobac.warehouse.dto.WarehouseDto;
 import com.biobac.warehouse.entity.Entities;
 import com.biobac.warehouse.request.FilterCriteria;
@@ -28,8 +27,8 @@ public class RecipeItemController extends BaseController {
     private final RecipeItemService recipeItemService;
 
     @GetMapping
-    public ApiResponse<List<RecipeItemDto>> getAll() {
-        List<RecipeItemDto> recipeItemDtos = recipeItemService.getAll();
+    public ApiResponse<List<RecipeItemResponse>> getAll() {
+        List<RecipeItemResponse> recipeItemDtos = recipeItemService.getAll();
         return ResponseUtil.success("Recipe Items retrieved successfully", recipeItemDtos);
     }
 
@@ -45,21 +44,9 @@ public class RecipeItemController extends BaseController {
     }
 
     @GetMapping("/{id}")
-    public ApiResponse<RecipeItemDto> getRecipeItemById(@PathVariable Long id) {
-        RecipeItemDto recipeItem = recipeItemService.getRecipeItemById(id);
+    public ApiResponse<RecipeItemResponse> getRecipeItemById(@PathVariable Long id) {
+        RecipeItemResponse recipeItem = recipeItemService.getRecipeItemById(id);
         return ResponseUtil.success("Recipe item retrieved successfully", recipeItem);
-    }
-
-    @GetMapping("/product/{productId}")
-    public ApiResponse<List<RecipeItemDto>> getRecipeItemsByProductId(@PathVariable Long productId) {
-        List<RecipeItemDto> recipeItems = recipeItemService.getRecipeItemsByProductId(productId);
-        return ResponseUtil.success("Recipe items for product retrieved successfully", recipeItems);
-    }
-
-    @GetMapping("/ingredient/{ingredientId}")
-    public ApiResponse<List<RecipeItemDto>> getRecipeItemsByIngredientId(@PathVariable Long ingredientId) {
-        List<RecipeItemDto> recipeItems = recipeItemService.getRecipeItemsByIngredientId(ingredientId);
-        return ResponseUtil.success("Recipe items for ingredient retrieved successfully", recipeItems);
     }
 
     @PostMapping
@@ -73,12 +60,12 @@ public class RecipeItemController extends BaseController {
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<RecipeItemDto> updateRecipeItem(
+    public ApiResponse<RecipeItemResponse> updateRecipeItem(
             @PathVariable Long id,
-            @RequestBody RecipeItemDto recipeItemDto,
+            @RequestBody RecipeItemCreateRequest recipeItemDto,
             HttpServletRequest request) {
-        RecipeItemDto existingRecipeItem = recipeItemService.getRecipeItemById(id);
-        RecipeItemDto updatedRecipeItem = recipeItemService.updateRecipeItem(id, recipeItemDto);
+        RecipeItemResponse existingRecipeItem = recipeItemService.getRecipeItemById(id);
+        RecipeItemResponse updatedRecipeItem = recipeItemService.updateRecipeItem(id, recipeItemDto);
         auditLogService.logUpdate(Entities.RECIPEITEM.name(), updatedRecipeItem.getId(), existingRecipeItem, recipeItemDto, getUsername(request));
         return ResponseUtil.success("Recipe item updated successfully", updatedRecipeItem);
     }

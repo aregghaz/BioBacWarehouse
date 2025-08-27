@@ -1,9 +1,7 @@
 package com.biobac.warehouse.service;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
-import com.biobac.warehouse.dto.RecipeItemDto;
 import com.biobac.warehouse.request.FilterCriteria;
-import com.biobac.warehouse.request.IngredientCreateRequest;
 import com.biobac.warehouse.request.RecipeItemCreateRequest;
 import com.biobac.warehouse.response.RecipeItemResponse;
 import com.biobac.warehouse.response.RecipeItemTableResponse;
@@ -22,22 +20,16 @@ public interface RecipeItemService {
                                                                           String sortDir);
 
     @Transactional(readOnly = true)
-    List<RecipeItemDto> getAll();
+    List<RecipeItemResponse> getAll();
 
     @Transactional(readOnly = true)
-    RecipeItemDto getRecipeItemById(Long id);
-
-    @Transactional(readOnly = true)
-    List<RecipeItemDto> getRecipeItemsByProductId(Long productId);
-
-    @Transactional(readOnly = true)
-    List<RecipeItemDto> getRecipeItemsByIngredientId(Long ingredientId);
+    RecipeItemResponse getRecipeItemById(Long id);
 
     @Transactional
     RecipeItemResponse createRecipeItem(RecipeItemCreateRequest recipeItemCreateRequest);
 
     @Transactional
-    RecipeItemDto updateRecipeItem(Long id, RecipeItemDto recipeItemDto);
+    RecipeItemResponse updateRecipeItem(Long id, RecipeItemCreateRequest recipeItemCreateRequest);
 
     @Transactional
     void deleteRecipeItem(Long id);

@@ -23,4 +23,6 @@ public class RecipeComponent {
 
     @Column(nullable = false)
     private Double quantity;
+
+    private Long unitId;
 }
