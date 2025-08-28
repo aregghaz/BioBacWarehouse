@@ -13,6 +13,5 @@ public class IngredientCreateRequest {
     private Long recipeItemId;
     private Double quantity;
     private Long warehouseId;
-    // Optional: applies to Ingredient.unitRef and the created InventoryItem.unit when provided
     private Long unitId;
 }

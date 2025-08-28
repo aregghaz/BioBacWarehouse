@@ -1,7 +1,7 @@
 package com.biobac.warehouse.utils.specifications;
 
-import com.biobac.warehouse.entity.Unit;
-import com.biobac.warehouse.entity.UnitType;
+import com.biobac.warehouse.entity.Ingredient;
+import com.biobac.warehouse.entity.IngredientHistory;
 import com.biobac.warehouse.request.FilterCriteria;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -15,20 +15,20 @@ import java.util.Map;
 
 import static com.biobac.warehouse.utils.SpecificationUtil.*;
 
-public class UnitSpecification {
-    private static String isUnitTypeField(String field) {
-        Map<String, String> unitTypeField = Map.of(
-                "unitTypeId", "id",
-                "unitTypeName", "name"
+public class IngredientHistorySpecification {
+    private static String isIngredientField(String field) {
+        Map<String, String> ingredientField = Map.of(
+                "ingredientId", "id",
+                "ingredientName", "name"
         );
-        return unitTypeField.getOrDefault(field, null);
+        return ingredientField.getOrDefault(field, null);
     }
 
-    public static Specification<Unit> buildSpecification(Map<String, FilterCriteria> filters) {
+    public static Specification<IngredientHistory> buildSpecification(Map<String, FilterCriteria> filters) {
         return (root, query, cb) -> {
             query.distinct(true);
             List<Predicate> predicates = new ArrayList<>();
-            Join<Unit, UnitType> unitUnitTypeJoin = null;
+            Join<IngredientHistory, Ingredient> ingredientJoin = null;
 
             if (filters != null) {
                 for (Map.Entry<String, FilterCriteria> entry : filters.entrySet()) {
@@ -38,11 +38,11 @@ public class UnitSpecification {
 
                     Path<?> path;
 
-                    if (isUnitTypeField(field) != null) {
-                        if (unitUnitTypeJoin == null) {
-                            unitUnitTypeJoin = root.join("unitType", JoinType.LEFT);
+                    if (isIngredientField(field) != null) {
+                        if (ingredientJoin == null) {
+                            ingredientJoin = root.join("ingredient", JoinType.LEFT);
                         }
-                        path = unitUnitTypeJoin.get(isUnitTypeField(field));
+                        path = ingredientJoin.get(isIngredientField(field));
                     } else {
                         path = root.get(field);
                     }

@@ -14,6 +14,8 @@ public class ProductResponse {
     private String sku;
     private Double totalQuantity;
     private String recipeItemName;
+    private Long unitId;
+    private String unitName;
     private Long companyId;
     private List<InventoryItemResponse> inventoryItems;
 }

@@ -8,6 +8,7 @@ import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.repository.*;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.request.ProductCreateRequest;
+import com.biobac.warehouse.request.ProductUpdateRequest;
 import com.biobac.warehouse.response.InventoryItemResponse;
 import com.biobac.warehouse.response.ProductResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
@@ -24,7 +25,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.*;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -74,6 +78,12 @@ public class ProductServiceImpl implements ProductService {
         inventoryItem.setQuantity(request.getQuantity());
         inventoryItem.setProduct(product);
         inventoryItem.setLastUpdated(LocalDateTime.now());
+        if (request.getUnitId() != null) {
+            Unit unit = unitRepository.findById(request.getUnitId())
+                    .orElseThrow(() -> new NotFoundException("Unit not found"));
+            product.setUnitId(unit.getId());
+            inventoryItem.setUnitId(unit.getId());
+        }
         product.getInventoryItems().add(inventoryItem);
         Product saved = productRepository.save(product);
         inventoryItemRepository.save(inventoryItem);
@@ -96,8 +106,52 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     @Transactional
-    public ProductResponse update(Long id, ProductCreateRequest request) {
-        return null;
+    public ProductResponse update(Long id, ProductUpdateRequest request) {
+        Product existing = productRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Product not found"));
+
+        if (request.getName() != null) {
+            existing.setName(request.getName());
+        }
+        if (request.getDescription() != null) {
+            existing.setDescription(request.getDescription());
+        }
+        if (request.getSku() != null) {
+            existing.setSku(request.getSku());
+        }
+        if (request.getCompanyId() != null) {
+            existing.setCompanyId(request.getCompanyId());
+        }
+
+        boolean inventoryNeedsUpdate = false;
+        List<InventoryItem> items = existing.getInventoryItems();
+        LocalDateTime now = LocalDateTime.now();
+
+        if (request.getUnitId() != null) {
+            Unit unit = unitRepository.findById(request.getUnitId())
+                    .orElseThrow(() -> new NotFoundException("Unit not found"));
+            existing.setUnitId(unit.getId());
+            if (items != null) {
+                for (InventoryItem item : items) {
+                    item.setUnitId(unit.getId());
+                    item.setLastUpdated(now);
+                }
+            }
+            inventoryNeedsUpdate = true;
+        }
+
+        if (request.getRecipeItemId() != null) {
+            RecipeItem recipeItem = recipeItemRepository.findById(request.getRecipeItemId())
+                    .orElseThrow(() -> new NotFoundException("Recipe not found"));
+            recipeItem.setProduct(existing);
+            existing.setRecipeItem(recipeItem);
+        }
+
+        Product saved = productRepository.save(existing);
+        if (inventoryNeedsUpdate && items != null && !items.isEmpty()) {
+            inventoryItemRepository.saveAll(items);
+        }
+        return toResponse(saved);
     }
 
     @Override
@@ -160,12 +214,17 @@ public class ProductServiceImpl implements ProductService {
                 .mapToDouble(InventoryItem::getQuantity)
                 .sum();
 
+        if (product.getUnitId() != null) {
+            response.setUnitId(product.getUnitId());
+            unitRepository.findById(product.getUnitId()).ifPresent(u -> response.setUnitName(u.getName()));
+        }
+
         List<InventoryItemResponse> inventoryResponses = product.getInventoryItems().stream()
                 .map(item -> {
                     InventoryItemResponse ir = new InventoryItemResponse();
                     ir.setId(item.getId());
                     ir.setQuantity(item.getQuantity());
-                    ir.setIngredientName(product.getName());
+                    ir.setProductName(product.getName());
                     ir.setWarehouseName(item.getWarehouse().getName());
                     if (item.getUnitId() != null) {
                         unitRepository.findById(item.getUnitId()).ifPresent(u -> ir.setUnitName(u.getName()));

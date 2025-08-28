@@ -8,6 +8,7 @@ import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.repository.*;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.request.IngredientCreateRequest;
+import com.biobac.warehouse.request.IngredientUpdateRequest;
 import com.biobac.warehouse.response.IngredientResponse;
 import com.biobac.warehouse.response.InventoryItemResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
@@ -121,31 +122,61 @@ public class IngredientServiceImpl implements IngredientService {
 
     @Override
     @Transactional
-    public IngredientResponse update(Long id, Ingredient payload) {
+    public IngredientResponse update(Long id, IngredientUpdateRequest request) {
         Ingredient existing = ingredientRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Ingredient not found"));
 
-        if (payload.getName() != null) existing.setName(payload.getName());
-        if (payload.getDescription() != null) existing.setDescription(payload.getDescription());
+        if (request.getName() != null) {
+            existing.setName(request.getName());
+        }
+        if (request.getDescription() != null) {
+            existing.setDescription(request.getDescription());
+        }
+        existing.setActive(request.isActive());
 
-        // Update group if provided
-        if (payload.getGroup() != null && payload.getGroup().getId() != null) {
-            IngredientGroup group = ingredientGroupRepository.findById(payload.getGroup().getId())
+        boolean inventoryNeedsUpdate = false;
+        List<InventoryItem> items = existing.getInventoryItems();
+        LocalDateTime now = LocalDateTime.now();
+
+        if (request.getIngredientGroupId() != null) {
+            IngredientGroup ingredientGroup = ingredientGroupRepository.findById(request.getIngredientGroupId())
                     .orElseThrow(() -> new NotFoundException("Ingredient group not found"));
-            existing.setGroup(group);
+            existing.setGroup(ingredientGroup);
+            if (items != null) {
+                for (InventoryItem item : items) {
+                    item.setIngredientGroup(ingredientGroup);
+                    item.setLastUpdated(now);
+                }
+            }
+            inventoryNeedsUpdate = true;
         }
 
-        // Unit update: only if provided
-        if (payload.getUnitId() != null) {
-            // validate id exists
-            Unit unit = unitRepository.findById(payload.getUnitId())
+        if (request.getUnitId() != null) {
+            Unit unit = unitRepository.findById(request.getUnitId())
                     .orElseThrow(() -> new NotFoundException("Unit not found"));
             existing.setUnitId(unit.getId());
+            if (items != null) {
+                for (InventoryItem item : items) {
+                    item.setUnitId(unit.getId());
+                    item.setLastUpdated(now);
+                }
+            }
+            inventoryNeedsUpdate = true;
+        }
+
+        if (request.getRecipeItemId() != null) {
+            RecipeItem recipeItem = recipeItemRepository.findById(request.getRecipeItemId())
+                    .orElseThrow(() -> new NotFoundException("Recipe not found"));
+            recipeItem.setIngredient(existing);
+            existing.setRecipeItem(recipeItem);
         }
 
         Ingredient saved = ingredientRepository.save(existing);
-        return toResponse(saved);
+        if (inventoryNeedsUpdate && items != null && !items.isEmpty()) {
+            inventoryItemRepository.saveAll(items);
+        }
 
+        return toResponse(saved);
     }
 
     @Override

@@ -4,6 +4,7 @@ import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.request.IngredientCreateRequest;
+import com.biobac.warehouse.request.IngredientUpdateRequest;
 import com.biobac.warehouse.response.IngredientResponse;
 import org.springframework.data.util.Pair;
 
@@ -15,6 +16,6 @@ public interface IngredientService {
     IngredientResponse getById(Long id);
     List<IngredientResponse> getAll();
     Pair<List<IngredientResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir);
-    IngredientResponse update(Long id, Ingredient ingredient);
+    IngredientResponse update(Long id, IngredientUpdateRequest request);
     void delete(Long id);
 }

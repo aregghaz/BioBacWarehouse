@@ -3,6 +3,7 @@ package com.biobac.warehouse.controller;
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.request.ProductCreateRequest;
+import com.biobac.warehouse.request.ProductUpdateRequest;
 import com.biobac.warehouse.response.ApiResponse;
 import com.biobac.warehouse.response.ProductResponse;
 import com.biobac.warehouse.service.ProductService;
@@ -49,7 +50,7 @@ public class ProductController {
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<ProductResponse> update(@PathVariable Long id, @RequestBody ProductCreateRequest request) {
+    public ApiResponse<ProductResponse> update(@PathVariable Long id, @RequestBody ProductUpdateRequest request) {
         ProductResponse response = productService.update(id, request);
         return ResponseUtil.success("Product updated successfully", response);
     }

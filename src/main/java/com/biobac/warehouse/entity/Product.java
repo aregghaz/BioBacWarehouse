@@ -26,4 +26,6 @@ public class Product {
     private List<InventoryItem> inventoryItems = new ArrayList<>();
 
     private Long companyId;
+
+    private Long unitId;
 }

@@ -4,6 +4,7 @@ import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.request.IngredientCreateRequest;
+import com.biobac.warehouse.request.IngredientUpdateRequest;
 import com.biobac.warehouse.response.ApiResponse;
 import com.biobac.warehouse.response.IngredientResponse;
 import com.biobac.warehouse.service.IngredientService;
@@ -50,7 +51,7 @@ public class IngredientController {
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<IngredientResponse> update(@PathVariable Long id, @RequestBody Ingredient ingredient) {
+    public ApiResponse<IngredientResponse> update(@PathVariable Long id, @RequestBody IngredientUpdateRequest ingredient) {
         IngredientResponse updated = ingredientService.update(id, ingredient);
         return ResponseUtil.success("Ingredient updated successfully", updated);
     }

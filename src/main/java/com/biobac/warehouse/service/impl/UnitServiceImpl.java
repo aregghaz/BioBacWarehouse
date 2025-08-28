@@ -110,6 +110,7 @@ public class UnitServiceImpl implements UnitService {
         dto.setId(unit.getId());
         dto.setName(unit.getName());
         if (unit.getUnitType() != null) {
+            dto.setUnitTypeId(unit.getUnitType().getId());
             dto.setUnitTypeName(unit.getUnitType().getName());
         }
         return dto;

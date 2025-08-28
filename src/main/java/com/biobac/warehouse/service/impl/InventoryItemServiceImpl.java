@@ -14,6 +14,7 @@ import com.biobac.warehouse.response.InventoryItemResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.InventoryItemService;
 import com.biobac.warehouse.utils.specifications.InventoryItemSpecification;
+import jakarta.persistence.criteria.JoinType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -184,7 +185,7 @@ public class InventoryItemServiceImpl implements InventoryItemService {
         Pageable pageable = PageRequest.of(page, size, sort);
 
         Specification<InventoryItem> spec = InventoryItemSpecification.buildSpecification(filters)
-                .and((root, query, cb) -> root.join("product", jakarta.persistence.criteria.JoinType.LEFT).get("id").in(productId));
+                .and((root, query, cb) -> root.join("product", JoinType.LEFT).get("id").in(productId));
 
         Page<InventoryItem> pageResult = inventoryItemRepository.findAll(spec, pageable);
 
@@ -228,7 +229,7 @@ public class InventoryItemServiceImpl implements InventoryItemService {
         Pageable pageable = PageRequest.of(page, size, sort);
 
         Specification<InventoryItem> spec = InventoryItemSpecification.buildSpecification(filters)
-                .and((root, query, cb) -> root.join("ingredient", jakarta.persistence.criteria.JoinType.LEFT).get("id").in(ingredientId));
+                .and((root, query, cb) -> root.join("ingredient", JoinType.LEFT).get("id").in(ingredientId));
 
         Page<InventoryItem> pageResult = inventoryItemRepository.findAll(spec, pageable);
 

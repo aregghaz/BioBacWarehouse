@@ -16,4 +16,5 @@ public class ProductCreateRequest {
     private Double quantity;
     private Long warehouseId;
     private Long companyId;
+    private Long unitId;
 }

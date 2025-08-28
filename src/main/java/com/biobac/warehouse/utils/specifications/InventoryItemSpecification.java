@@ -51,6 +51,10 @@ public class InventoryItemSpecification {
         return (root, query, cb) -> {
             query.distinct(true);
             List<Predicate> predicates = new ArrayList<>();
+            Join<InventoryItem, Product> productJoin = null;
+            Join<InventoryItem, Ingredient> ingredientJoin = null;
+            Join<InventoryItem, IngredientGroup> ingredientGroupJoin = null;
+            Join<InventoryItem, Warehouse> warehouseJoin = null;
 
             if (filters != null) {
                 for (Map.Entry<String, FilterCriteria> entry : filters.entrySet()) {
@@ -58,10 +62,6 @@ public class InventoryItemSpecification {
                     Path<?> path;
                     FilterCriteria criteria = entry.getValue();
                     Predicate predicate = null;
-                    Join<InventoryItem, Product> productJoin = null;
-                    Join<InventoryItem, Ingredient> ingredientJoin = null;
-                    Join<InventoryItem, IngredientGroup> ingredientGroupJoin = null;
-                    Join<InventoryItem, Warehouse> warehouseJoin = null;
 
                     if (isProductField(field) != null) {
                         if (productJoin == null) {

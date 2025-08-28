@@ -1,18 +1,15 @@
 package com.biobac.warehouse.request;
 
-import com.biobac.warehouse.dto.RecipeItemDto;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.List;
-
 @Getter
 @Setter
-public class ProductUpdateRequest {
+public class IngredientUpdateRequest {
     private String name;
     private String description;
-    private String sku;
+    private boolean active;
+    private Long ingredientGroupId;
     private Long recipeItemId;
     private Long unitId;
-    private Long companyId;
 }
