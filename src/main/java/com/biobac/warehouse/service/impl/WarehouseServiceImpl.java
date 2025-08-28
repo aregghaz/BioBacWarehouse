@@ -9,7 +9,7 @@ import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.WarehouseMapper;
 import com.biobac.warehouse.repository.WarehouseRepository;
 import com.biobac.warehouse.request.FilterCriteria;
-import com.biobac.warehouse.response.WarehouseTableResponse;
+import com.biobac.warehouse.response.WarehouseResponse;
 import com.biobac.warehouse.service.WarehouseService;
 import com.biobac.warehouse.utils.specifications.WarehouseSpecification;
 import lombok.RequiredArgsConstructor;
@@ -34,7 +34,7 @@ public class WarehouseServiceImpl implements WarehouseService {
 
     @Transactional(readOnly = true)
     @Override
-    public Pair<List<WarehouseTableResponse>, PaginationMetadata> getPagination(
+    public Pair<List<WarehouseResponse>, PaginationMetadata> getPagination(
             Map<String, FilterCriteria> filters,
             Integer page,
             Integer size,
@@ -51,9 +51,9 @@ public class WarehouseServiceImpl implements WarehouseService {
 
         Page<Warehouse> warehousePage = warehouseRepository.findAll(spec, pageable);
 
-        List<WarehouseTableResponse> content = warehousePage.getContent()
+        List<WarehouseResponse> content = warehousePage.getContent()
                 .stream()
-                .map(mapper::toTableResponse)
+                .map(mapper::toResponse)
                 .collect(Collectors.toList());
 
         PaginationMetadata metadata = new PaginationMetadata(
@@ -73,24 +73,24 @@ public class WarehouseServiceImpl implements WarehouseService {
 
     @Transactional(readOnly = true)
     @Override
-    public WarehouseDto getById(Long id) {
-        return mapper.toDto(warehouseRepository.findById(id).orElseThrow(() -> new NotFoundException("Warehouse not found with id: " + id)));
+    public WarehouseResponse getById(Long id) {
+        return mapper.toResponse(warehouseRepository.findById(id).orElseThrow(() -> new NotFoundException("Warehouse not found with id: " + id)));
     }
 
     @Transactional
     @Override
-    public WarehouseDto create(WarehouseDto dto) {
-        return mapper.toDto(warehouseRepository.save(mapper.toEntity(dto)));
+    public WarehouseResponse create(WarehouseDto dto) {
+        return mapper.toResponse(warehouseRepository.save(mapper.toEntity(dto)));
     }
 
     @Transactional
     @Override
-    public WarehouseDto update(Long id, WarehouseDto dto) {
+    public WarehouseResponse update(Long id, WarehouseDto dto) {
         Warehouse existing = warehouseRepository.findById(id).orElseThrow(() -> new NotFoundException("Warehouse not found with id: " + id));
         existing.setName(dto.getName());
         existing.setLocation(dto.getLocation());
         existing.setType(dto.getType());
-        return mapper.toDto(warehouseRepository.save(existing));
+        return mapper.toResponse(warehouseRepository.save(existing));
     }
 
     @Transactional
@@ -104,10 +104,10 @@ public class WarehouseServiceImpl implements WarehouseService {
 
     @Transactional(readOnly = true)
     @Override
-    public List<WarehouseDto> getAll() {
+    public List<WarehouseResponse> getAll() {
         return warehouseRepository.findAll()
                 .stream()
-                .map(mapper::toDto)
+                .map(mapper::toResponse)
                 .collect(Collectors.toList());
     }
 }

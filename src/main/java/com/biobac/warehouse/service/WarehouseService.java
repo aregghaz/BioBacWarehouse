@@ -5,7 +5,7 @@ package com.biobac.warehouse.service;
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.dto.WarehouseDto;
 import com.biobac.warehouse.request.FilterCriteria;
-import com.biobac.warehouse.response.WarehouseTableResponse;
+import com.biobac.warehouse.response.WarehouseResponse;
 import org.springframework.data.util.Pair;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,24 +15,24 @@ import java.util.Map;
 public interface WarehouseService {
 
     @Transactional(readOnly = true)
-    Pair<List<WarehouseTableResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters,
-                                                                         Integer page,
-                                                                         Integer size,
-                                                                         String sortBy,
-                                                                         String sortDir);
+    Pair<List<WarehouseResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters,
+                                                                    Integer page,
+                                                                    Integer size,
+                                                                    String sortBy,
+                                                                    String sortDir);
 
     @Transactional(readOnly = true)
-    WarehouseDto getById(Long id);
+    WarehouseResponse getById(Long id);
 
     @Transactional
-    WarehouseDto create(WarehouseDto dto);
+    WarehouseResponse create(WarehouseDto dto);
 
     @Transactional
-    WarehouseDto update(Long id, WarehouseDto dto);
+    WarehouseResponse update(Long id, WarehouseDto dto);
 
     @Transactional
     void delete(Long id);
 
     @Transactional(readOnly = true)
-    List<WarehouseDto> getAll();
+    List<WarehouseResponse> getAll();
 }

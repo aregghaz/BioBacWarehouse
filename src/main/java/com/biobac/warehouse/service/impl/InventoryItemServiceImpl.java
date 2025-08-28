@@ -75,19 +75,18 @@ public class InventoryItemServiceImpl implements InventoryItemService {
         }
 
         inventoryItem.setQuantity(request.getQuantity());
-        // Optional unit handling
         if (request.getUnitId() != null) {
             Unit unit = unitRepository.findById(request.getUnitId())
                     .orElseThrow(() -> new NotFoundException("Unit not found"));
-            inventoryItem.setUnitId(unit.getId());
+            inventoryItem.setUnit(unit);
         }
         inventoryItem.setLastUpdated(LocalDateTime.now());
 
         InventoryItem saved = inventoryItemRepository.save(inventoryItem);
 
         InventoryItemResponse response = inventoryItemMapper.toSingleResponse(saved);
-        if (saved.getUnitId() != null) {
-            unitRepository.findById(saved.getUnitId()).ifPresent(u -> response.setUnitName(u.getName()));
+        if (saved.getUnit() != null) {
+            response.setUnitName(saved.getUnit().getName());
         }
         return response;
     }
@@ -117,7 +116,7 @@ public class InventoryItemServiceImpl implements InventoryItemService {
             ingredientForHistory = ingredient;
 
             // If ingredient has a recipe
-            Double reqQty = request.getQuantity() != null ? request.getQuantity() : 1.0;
+            double reqQty = request.getQuantity() != null ? request.getQuantity() : 1.0;
             RecipeItem recipeItem = ingredient.getRecipeItem();
             if (recipeItem != null && recipeItem.getComponents() != null && !recipeItem.getComponents().isEmpty() && reqQty > 0) {
                 for (RecipeComponent component : recipeItem.getComponents()) {
@@ -133,24 +132,19 @@ public class InventoryItemServiceImpl implements InventoryItemService {
             inventoryItem.setIngredient(ingredient);
         }
 
-        if (request.getIngredientGroupId() != null) {
-            IngredientGroup ingredientGroup = ingredientGroupRepository.findById(request.getIngredientGroupId())
-                    .orElseThrow(() -> new NotFoundException("Ingredient Group not found"));
-            inventoryItem.setIngredientGroup(ingredientGroup);
-        }
 
         inventoryItem.setQuantity(request.getQuantity());
         if (request.getUnitId() != null) {
             Unit unit = unitRepository.findById(request.getUnitId())
                     .orElseThrow(() -> new NotFoundException("Unit not found"));
-            inventoryItem.setUnitId(unit.getId());
+            inventoryItem.setUnit(unit);
         }
         inventoryItem.setLastUpdated(LocalDateTime.now());
 
         InventoryItem saved = inventoryItemRepository.save(inventoryItem);
 
         // Record history for added ingredient quantity
-        Double addedQty = request.getQuantity() != null ? request.getQuantity() : 0.0;
+        double addedQty = request.getQuantity() != null ? request.getQuantity() : 0.0;
         if (ingredientForHistory != null && totalBeforeForHistory != null && addedQty > 0) {
             String warehouseNote = saved.getWarehouse() != null && saved.getWarehouse().getId() != null
                     ? " to warehouse id=" + saved.getWarehouse().getId()
@@ -165,8 +159,8 @@ public class InventoryItemServiceImpl implements InventoryItemService {
         }
 
         InventoryItemResponse response = inventoryItemMapper.toSingleResponse(saved);
-        if (saved.getUnitId() != null) {
-            unitRepository.findById(saved.getUnitId()).ifPresent(u -> response.setUnitName(u.getName()));
+        if (saved.getUnit() != null) {
+            response.setUnitName(saved.getUnit().getName());
         }
         return response;
     }
@@ -193,8 +187,8 @@ public class InventoryItemServiceImpl implements InventoryItemService {
                 .stream()
                 .map(item -> {
                     InventoryItemResponse r = inventoryItemMapper.toSingleResponse(item);
-                    if (item.getUnitId() != null) {
-                        unitRepository.findById(item.getUnitId()).ifPresent(u -> r.setUnitName(u.getName()));
+                    if (item.getUnit() != null) {
+                        r.setUnitName(item.getUnit().getName());
                     }
                     return r;
                 })
@@ -222,7 +216,6 @@ public class InventoryItemServiceImpl implements InventoryItemService {
                                                                                    Integer size,
                                                                                    String sortBy,
                                                                                    String sortDir) {
-        // Validate ingredient exists
         ingredientRepository.findById(ingredientId).orElseThrow(() -> new NotFoundException("Ingredient not found"));
 
         Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
@@ -237,8 +230,8 @@ public class InventoryItemServiceImpl implements InventoryItemService {
                 .stream()
                 .map(item -> {
                     InventoryItemResponse r = inventoryItemMapper.toSingleResponse(item);
-                    if (item.getUnitId() != null) {
-                        unitRepository.findById(item.getUnitId()).ifPresent(u -> r.setUnitName(u.getName()));
+                    if (item.getUnit() != null) {
+                        r.setUnitName(item.getUnit().getName());
                     }
                     return r;
                 })
@@ -277,8 +270,8 @@ public class InventoryItemServiceImpl implements InventoryItemService {
                 .stream()
                 .map(item -> {
                     InventoryItemResponse r = inventoryItemMapper.toSingleResponse(item);
-                    if (item.getUnitId() != null) {
-                        unitRepository.findById(item.getUnitId()).ifPresent(u -> r.setUnitName(u.getName()));
+                    if (item.getUnit() != null) {
+                        r.setUnitName(item.getUnit().getName());
                     }
                     return r;
                 })

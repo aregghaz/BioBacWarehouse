@@ -21,7 +21,7 @@ public class Ingredient {
     private boolean active;
 
     @ManyToOne
-    private IngredientGroup group;
+    private IngredientGroup ingredientGroup;
 
     @OneToOne(mappedBy = "ingredient")
     private RecipeItem recipeItem;
@@ -32,5 +32,7 @@ public class Ingredient {
     @OneToMany(mappedBy = "ingredient")
     private List<InventoryItem> inventoryItems = new ArrayList<>();
 
-    private Long unitId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "unit_id")
+    private Unit unit;
 }

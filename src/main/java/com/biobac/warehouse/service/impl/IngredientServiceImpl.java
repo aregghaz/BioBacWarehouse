@@ -54,8 +54,7 @@ public class IngredientServiceImpl implements IngredientService {
         if (request.getGroupId() != null) {
             IngredientGroup ingredientGroup = ingredientGroupRepository.findById(request.getGroupId())
                     .orElseThrow(() -> new NotFoundException("Ingredient group not found"));
-            ingredient.setGroup(ingredientGroup);
-            inventoryItem.setIngredientGroup(ingredientGroup);
+            ingredient.setIngredientGroup(ingredientGroup);
         }
 
         if (request.getRecipeItemId() != null) {
@@ -86,8 +85,8 @@ public class IngredientServiceImpl implements IngredientService {
         if (request.getUnitId() != null) {
             Unit unit = unitRepository.findById(request.getUnitId())
                     .orElseThrow(() -> new NotFoundException("Unit not found"));
-            ingredient.setUnitId(unit.getId());
-            inventoryItem.setUnitId(unit.getId());
+            ingredient.setUnit(unit);
+            inventoryItem.setUnit(unit);
         }
         ingredient.getInventoryItems().add(inventoryItem);
         Ingredient saved = ingredientRepository.save(ingredient);
@@ -141,10 +140,9 @@ public class IngredientServiceImpl implements IngredientService {
         if (request.getIngredientGroupId() != null) {
             IngredientGroup ingredientGroup = ingredientGroupRepository.findById(request.getIngredientGroupId())
                     .orElseThrow(() -> new NotFoundException("Ingredient group not found"));
-            existing.setGroup(ingredientGroup);
+            existing.setIngredientGroup(ingredientGroup);
             if (items != null) {
                 for (InventoryItem item : items) {
-                    item.setIngredientGroup(ingredientGroup);
                     item.setLastUpdated(now);
                 }
             }
@@ -154,10 +152,10 @@ public class IngredientServiceImpl implements IngredientService {
         if (request.getUnitId() != null) {
             Unit unit = unitRepository.findById(request.getUnitId())
                     .orElseThrow(() -> new NotFoundException("Unit not found"));
-            existing.setUnitId(unit.getId());
+            existing.setUnit(unit);
             if (items != null) {
                 for (InventoryItem item : items) {
-                    item.setUnitId(unit.getId());
+                    item.setUnit(unit);
                     item.setLastUpdated(now);
                 }
             }
@@ -229,16 +227,16 @@ public class IngredientServiceImpl implements IngredientService {
         response.setName(ingredient.getName());
         response.setDescription(ingredient.getDescription());
         response.setActive(ingredient.isActive());
-        response.setIngredientGroupId(ingredient.getGroup().getId());
-        response.setIngredientGroupName(ingredient.getGroup().getName());
+        response.setIngredientGroupId(ingredient.getIngredientGroup().getId());
+        response.setIngredientGroupName(ingredient.getIngredientGroup().getName());
 
-        if(ingredient.getRecipeItem() != null) {
+        if (ingredient.getRecipeItem() != null) {
             response.setRecipeItemName(ingredient.getRecipeItem().getName());
         }
 
-        if (ingredient.getUnitId() != null) {
-            response.setUnitId(ingredient.getUnitId());
-            unitRepository.findById(ingredient.getUnitId()).ifPresent(u -> response.setUnitName(u.getName()));
+        if (ingredient.getUnit() != null) {
+            response.setUnitId(ingredient.getUnit().getId());
+            response.setUnitName(ingredient.getUnit().getName());
         }
 
         double totalQuantity = ingredient.getInventoryItems()
@@ -251,10 +249,11 @@ public class IngredientServiceImpl implements IngredientService {
                     InventoryItemResponse ir = new InventoryItemResponse();
                     ir.setId(item.getId());
                     ir.setQuantity(item.getQuantity());
+                    ir.setWarehouseId(item.getWarehouse().getId());
                     ir.setIngredientName(ingredient.getName());
                     ir.setWarehouseName(item.getWarehouse().getName());
-                    if (item.getUnitId() != null) {
-                        unitRepository.findById(item.getUnitId()).ifPresent(u -> ir.setUnitName(u.getName()));
+                    if (item.getUnit() != null) {
+                        ir.setUnitName(item.getUnit().getName());
                     }
                     ir.setLastUpdated(item.getLastUpdated());
                     return ir;

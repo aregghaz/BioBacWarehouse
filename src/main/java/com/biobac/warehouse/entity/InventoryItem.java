@@ -4,8 +4,6 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
-
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -20,9 +18,6 @@ public class InventoryItem {
     private Product product;
 
     @ManyToOne
-    private IngredientGroup ingredientGroup;
-
-    @ManyToOne
     private Ingredient ingredient;
 
     @ManyToOne
@@ -30,7 +25,9 @@ public class InventoryItem {
 
     private Double quantity;
 
-    private Long unitId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "unit_id")
+    private Unit unit;
 
     private LocalDateTime lastUpdated;
 }

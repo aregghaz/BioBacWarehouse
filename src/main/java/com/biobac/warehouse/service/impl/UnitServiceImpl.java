@@ -10,7 +10,13 @@ import com.biobac.warehouse.repository.UnitTypeRepository;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.request.UnitCreateRequest;
 import com.biobac.warehouse.service.UnitService;
+import com.biobac.warehouse.utils.specifications.UnitSpecification;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -77,13 +83,13 @@ public class UnitServiceImpl implements UnitService {
     @Override
     @Transactional(readOnly = true)
     public Pair<List<UnitDto>, PaginationMetadata> pagination(Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
-        org.springframework.data.domain.Sort sort = sortDir.equalsIgnoreCase("asc") ?
-                org.springframework.data.domain.Sort.by(sortBy).ascending() :
-                org.springframework.data.domain.Sort.by(sortBy).descending();
+        Sort sort = sortDir.equalsIgnoreCase("asc") ?
+                Sort.by(sortBy).ascending() :
+                Sort.by(sortBy).descending();
 
-        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(page, size, sort);
-        org.springframework.data.jpa.domain.Specification<com.biobac.warehouse.entity.Unit> spec = com.biobac.warehouse.utils.specifications.UnitSpecification.buildSpecification(filters);
-        org.springframework.data.domain.Page<Unit> unitPage = unitRepository.findAll(spec, pageable);
+        Pageable pageable = PageRequest.of(page, size, sort);
+        Specification<Unit> spec = UnitSpecification.buildSpecification(filters);
+        Page<Unit> unitPage = unitRepository.findAll(spec, pageable);
 
         List<UnitDto> content = unitPage.getContent()
                 .stream()

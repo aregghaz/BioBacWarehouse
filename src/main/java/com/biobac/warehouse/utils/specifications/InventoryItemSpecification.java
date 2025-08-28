@@ -23,20 +23,20 @@ public class InventoryItemSpecification {
         return productField.getOrDefault(field, null);
     }
 
+    private static String isUnitField(String field) {
+        Map<String, String> unitField = Map.of(
+                "unitId", "id",
+                "unitName", "name"
+        );
+        return unitField.getOrDefault(field, null);
+    }
+
     private static String isIngredientField(String field) {
         Map<String, String> ingredientField = Map.of(
                 "ingredientId", "id",
                 "ingredientName", "name"
         );
         return ingredientField.getOrDefault(field, null);
-    }
-
-    private static String isIngredientGroupField(String field) {
-        Map<String, String> ingredientGroupField = Map.of(
-                "ingredientGroupId", "id",
-                "ingredientGroupName", "name"
-        );
-        return ingredientGroupField.getOrDefault(field, null);
     }
 
     private static String isWarehouseField(String field) {
@@ -53,8 +53,8 @@ public class InventoryItemSpecification {
             List<Predicate> predicates = new ArrayList<>();
             Join<InventoryItem, Product> productJoin = null;
             Join<InventoryItem, Ingredient> ingredientJoin = null;
-            Join<InventoryItem, IngredientGroup> ingredientGroupJoin = null;
             Join<InventoryItem, Warehouse> warehouseJoin = null;
+            Join<InventoryItem, Unit> unitJoin = null;
 
             if (filters != null) {
                 for (Map.Entry<String, FilterCriteria> entry : filters.entrySet()) {
@@ -73,16 +73,16 @@ public class InventoryItemSpecification {
                             ingredientJoin = root.join("ingredient", JoinType.LEFT);
                         }
                         path = ingredientJoin.get(isIngredientField(field));
-                    } else if (isIngredientGroupField(field) != null) {
-                        if (ingredientGroupJoin == null) {
-                            ingredientGroupJoin = root.join("ingredientGroup", JoinType.LEFT);
-                        }
-                        path = ingredientGroupJoin.get(isIngredientGroupField(field));
                     } else if (isWarehouseField(field) != null) {
                         if (warehouseJoin == null) {
                             warehouseJoin = root.join("warehouse", JoinType.LEFT);
                         }
                         path = warehouseJoin.get(isWarehouseField(field));
+                    } else if (isUnitField(field) != null) {
+                        if (unitJoin == null) {
+                            unitJoin = root.join("unit",JoinType.LEFT);
+                        }
+                        path = unitJoin.get(isUnitField(field));
                     } else {
                         path = root.get(field);
                     }

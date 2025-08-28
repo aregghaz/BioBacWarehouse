@@ -9,7 +9,6 @@ import com.biobac.warehouse.mapper.RecipeItemMapper;
 import com.biobac.warehouse.repository.IngredientRepository;
 import com.biobac.warehouse.repository.RecipeComponentRepository;
 import com.biobac.warehouse.repository.RecipeItemRepository;
-import com.biobac.warehouse.repository.UnitRepository;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.request.RecipeComponentRequest;
 import com.biobac.warehouse.request.RecipeItemCreateRequest;
@@ -40,7 +39,6 @@ public class RecipeItemServiceImpl implements RecipeItemService {
     private final IngredientRepository ingredientRepository;
     private final RecipeComponentRepository recipeComponentRepository;
     private final RecipeItemMapper mapper;
-    private final UnitRepository unitRepository;
 
     @Override
     @Transactional(readOnly = true)

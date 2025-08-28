@@ -1,6 +1,9 @@
 package com.biobac.warehouse.utils.specifications;
 
-import com.biobac.warehouse.entity.*;
+import com.biobac.warehouse.entity.Ingredient;
+import com.biobac.warehouse.entity.Product;
+import com.biobac.warehouse.entity.RecipeItem;
+import com.biobac.warehouse.entity.Unit;
 import com.biobac.warehouse.request.FilterCriteria;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -31,12 +34,21 @@ public class ProductSpecification {
         return recipeItemField.getOrDefault(field, null);
     }
 
+    private static String isUnitField(String field) {
+        Map<String, String> unitField = Map.of(
+                "unitId", "id",
+                "unitName", "name"
+        );
+        return unitField.getOrDefault(field, null);
+    }
+
     public static Specification<Product> buildSpecification(Map<String, FilterCriteria> filters) {
         return (root, query, cb) -> {
             query.distinct(true);
             List<Predicate> predicates = new ArrayList<>();
             Join<Product, RecipeItem> recipeItemJoin = null;
             Join<Product, Ingredient> ingredientJoin = null;
+            Join<Product, Unit> unitJoin = null;
 
             if (filters != null) {
                 for (Map.Entry<String, FilterCriteria> entry : filters.entrySet()) {
@@ -55,6 +67,11 @@ public class ProductSpecification {
                             recipeItemJoin = root.join("recipeItems", JoinType.LEFT);
                         }
                         path = recipeItemJoin.get(isRecipeItemField(field));
+                    } else if (isUnitField(field) != null) {
+                        if (unitJoin == null) {
+                            unitJoin = root.join("unit", JoinType.LEFT);
+                        }
+                        path = unitJoin.get(isUnitField(field));
                     } else {
                         path = root.get(field);
                     }

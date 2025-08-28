@@ -81,8 +81,8 @@ public class ProductServiceImpl implements ProductService {
         if (request.getUnitId() != null) {
             Unit unit = unitRepository.findById(request.getUnitId())
                     .orElseThrow(() -> new NotFoundException("Unit not found"));
-            product.setUnitId(unit.getId());
-            inventoryItem.setUnitId(unit.getId());
+            product.setUnit(unit);
+            inventoryItem.setUnit(unit);
         }
         product.getInventoryItems().add(inventoryItem);
         Product saved = productRepository.save(product);
@@ -130,10 +130,10 @@ public class ProductServiceImpl implements ProductService {
         if (request.getUnitId() != null) {
             Unit unit = unitRepository.findById(request.getUnitId())
                     .orElseThrow(() -> new NotFoundException("Unit not found"));
-            existing.setUnitId(unit.getId());
+            existing.setUnit(unit);
             if (items != null) {
                 for (InventoryItem item : items) {
-                    item.setUnitId(unit.getId());
+                    item.setUnit(unit);
                     item.setLastUpdated(now);
                 }
             }
@@ -214,9 +214,9 @@ public class ProductServiceImpl implements ProductService {
                 .mapToDouble(InventoryItem::getQuantity)
                 .sum();
 
-        if (product.getUnitId() != null) {
-            response.setUnitId(product.getUnitId());
-            unitRepository.findById(product.getUnitId()).ifPresent(u -> response.setUnitName(u.getName()));
+        if (product.getUnit() != null) {
+            response.setUnitId(product.getUnit().getId());
+            response.setUnitName(product.getUnit().getName());
         }
 
         List<InventoryItemResponse> inventoryResponses = product.getInventoryItems().stream()
@@ -226,8 +226,9 @@ public class ProductServiceImpl implements ProductService {
                     ir.setQuantity(item.getQuantity());
                     ir.setProductName(product.getName());
                     ir.setWarehouseName(item.getWarehouse().getName());
-                    if (item.getUnitId() != null) {
-                        unitRepository.findById(item.getUnitId()).ifPresent(u -> ir.setUnitName(u.getName()));
+                    ir.setWarehouseId(item.getWarehouse().getId());
+                    if (item.getUnit() != null) {
+                        ir.setUnitName(item.getUnit().getName());
                     }
                     ir.setLastUpdated(item.getLastUpdated());
                     return ir;

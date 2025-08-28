@@ -8,6 +8,7 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface InventoryItemMapper {
     @Mapping(target = "warehouseName", source = "warehouse.name")
+    @Mapping(target = "warehouseId", source = "warehouse.id")
     @Mapping(target = "productName", source = "product.name")
     @Mapping(target = "ingredientName", source = "ingredient.name")
     InventoryItemResponse toSingleResponse(InventoryItem item);

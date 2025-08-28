@@ -27,5 +27,7 @@ public class Product {
 
     private Long companyId;
 
-    private Long unitId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "unit_id")
+    private Unit unit;
 }

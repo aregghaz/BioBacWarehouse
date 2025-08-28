@@ -16,9 +16,6 @@ public class IngredientGroup {
 
     private String name;
     
-    @OneToMany(mappedBy = "group")
-    private List<Ingredient> ingredients;
-    
     @OneToMany(mappedBy = "ingredientGroup")
-    private List<InventoryItem> inventoryItems;
+    private List<Ingredient> ingredients;
 }

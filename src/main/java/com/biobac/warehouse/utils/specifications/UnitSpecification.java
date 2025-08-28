@@ -26,7 +26,6 @@ public class UnitSpecification {
 
     public static Specification<Unit> buildSpecification(Map<String, FilterCriteria> filters) {
         return (root, query, cb) -> {
-            query.distinct(true);
             List<Predicate> predicates = new ArrayList<>();
             Join<Unit, UnitType> unitUnitTypeJoin = null;
 
