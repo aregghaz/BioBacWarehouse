@@ -82,13 +82,11 @@ public class RecipeItemServiceImpl implements RecipeItemService {
     @Override
     @Transactional(readOnly = true)
     public List<RecipeItemResponse> getAll() {
-        List<RecipeItemResponse> list = recipeItemRepository.findAll()
+        return recipeItemRepository.findAll()
                 .stream()
                 .filter(r -> r.getIngredient() == null && r.getProduct() == null)
                 .map(mapper::toDto)
                 .collect(Collectors.toList());
-        list.forEach(this::enrichComponentUnits);
-        return list;
     }
 
     @Override
@@ -96,19 +94,9 @@ public class RecipeItemServiceImpl implements RecipeItemService {
     public RecipeItemResponse getRecipeItemById(Long id) {
         RecipeItem recipeItem = recipeItemRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Recipe item not found"));
-        RecipeItemResponse dto = mapper.toDto(recipeItem);
-        enrichComponentUnits(dto);
-        return dto;
+        return mapper.toDto(recipeItem);
     }
 
-    private void enrichComponentUnits(RecipeItemResponse dto) {
-        if (dto == null || dto.getComponents() == null) return;
-        dto.getComponents().forEach(c -> {
-            if (c.getUnitId() != null) {
-                unitRepository.findById(c.getUnitId()).ifPresent(u -> c.setUnitName(u.getName()));
-            }
-        });
-    }
 
     @Override
     @Transactional
@@ -117,7 +105,6 @@ public class RecipeItemServiceImpl implements RecipeItemService {
         recipeItem.setName(recipeItemCreateRequest.getName());
         recipeItem.setNotes(recipeItemCreateRequest.getNotes());
 
-        // Persist parent first to ensure FK integrity for child components
         RecipeItem savedParent = recipeItemRepository.save(recipeItem);
 
         List<RecipeComponent> components = new ArrayList<>();
@@ -129,21 +116,13 @@ public class RecipeItemServiceImpl implements RecipeItemService {
             component.setIngredient(ingredient);
             component.setRecipeItem(savedParent);
             component.setQuantity(compReq.getQuantity());
-            // Optional unit handling for recipe component
-//            if (compReq.getUnitId() != null) {
-//                com.biobac.warehouse.entity.Unit unit = unitRepository.findById(compReq.getUnitId())
-//                        .orElseThrow(() -> new NotFoundException("Unit not found"));
-//                component.setUnitId(unit.getId());
-//            }
             recipeComponentRepository.save(component);
             components.add(component);
         }
 
         savedParent.setComponents(components);
 
-        RecipeItemResponse dto = mapper.toDto(savedParent);
-        enrichComponentUnits(dto);
-        return dto;
+        return mapper.toDto(savedParent);
     }
 
     @Override
@@ -155,13 +134,11 @@ public class RecipeItemServiceImpl implements RecipeItemService {
         recipeItem.setName(recipeItemCreateRequest.getName());
         recipeItem.setNotes(recipeItemCreateRequest.getNotes());
 
-        // Delete existing components
         if (recipeItem.getComponents() != null && !recipeItem.getComponents().isEmpty()) {
             recipeComponentRepository.deleteAll(recipeItem.getComponents());
             recipeItem.getComponents().clear();
         }
 
-        // Build new components from request
         List<RecipeComponent> components = new ArrayList<>();
         for (RecipeComponentRequest compReq : recipeItemCreateRequest.getComponents()) {
             Ingredient ingredient = ingredientRepository.findById(compReq.getIngredientId())
@@ -171,21 +148,13 @@ public class RecipeItemServiceImpl implements RecipeItemService {
             component.setIngredient(ingredient);
             component.setRecipeItem(recipeItem);
             component.setQuantity(compReq.getQuantity());
-            // Optional unit handling for recipe component
-//            if (compReq.getUnitId() != null) {
-//                com.biobac.warehouse.entity.Unit unit = unitRepository.findById(compReq.getUnitId())
-//                        .orElseThrow(() -> new NotFoundException("Unit not found"));
-//                component.setUnitId(unit.getId());
-//            }
             recipeComponentRepository.save(component);
             components.add(component);
         }
         recipeItem.setComponents(components);
 
         RecipeItem saved = recipeItemRepository.save(recipeItem);
-        RecipeItemResponse dto = mapper.toDto(saved);
-        enrichComponentUnits(dto);
-        return dto;
+        return mapper.toDto(saved);
     }
 
     @Override

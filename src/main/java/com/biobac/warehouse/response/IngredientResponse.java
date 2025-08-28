@@ -1,6 +1,5 @@
 package com.biobac.warehouse.response;
 
-import com.biobac.warehouse.dto.IngredientComponentDto;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -13,9 +12,11 @@ public class IngredientResponse {
     private String name;
     private String description;
     private boolean active;
-    private Long groupId;
+    private Long ingredientGroupId;
+    private String ingredientGroupName;
+    private String recipeItemName;
     private Long unitId;
     private String unitName;
-
+    private Double totalQuantity;
     private List<InventoryItemResponse> inventoryItems;
 }

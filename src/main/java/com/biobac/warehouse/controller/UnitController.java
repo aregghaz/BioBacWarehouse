@@ -24,7 +24,7 @@ public class UnitController {
     public ApiResponse<UnitDto> create(@RequestBody UnitCreateRequest request) {
         UnitDto created = unitService.create(request);
         return ResponseUtil.success("Unit created successfully", created);
-        }
+    }
 
     @GetMapping("/{id}")
     public ApiResponse<UnitDto> getById(@PathVariable Long id) {
@@ -36,6 +36,12 @@ public class UnitController {
     public ApiResponse<List<UnitDto>> getAll() {
         List<UnitDto> list = unitService.getAll();
         return ResponseUtil.success("Units retrieved successfully", list);
+    }
+
+    @PutMapping("/{id}")
+    public ApiResponse<UnitDto> update(@PathVariable Long id, @RequestBody UnitCreateRequest request) {
+        UnitDto dto = unitService.update(id, request);
+        return ResponseUtil.success("Unit updated successfully", dto);
     }
 
     @PostMapping("/all")

@@ -10,6 +10,5 @@ public interface InventoryItemMapper {
     @Mapping(target = "warehouseName", source = "warehouse.name")
     @Mapping(target = "productName", source = "product.name")
     @Mapping(target = "ingredientName", source = "ingredient.name")
-    @Mapping(target = "ingredientGroupName", source = "ingredientGroup.name")
     InventoryItemResponse toSingleResponse(InventoryItem item);
 }

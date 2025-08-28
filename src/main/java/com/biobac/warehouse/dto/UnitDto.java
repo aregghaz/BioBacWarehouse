@@ -8,5 +8,5 @@ import lombok.Setter;
 public class UnitDto {
     private Long id;
     private String name;
-    private Long unitTypeId;
+    private String unitTypeName;
 }

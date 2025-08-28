@@ -73,6 +73,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ResponseUtil.error(ex.getMessage()));
     }
 
+    @ExceptionHandler(NotEnoughException.class)
+    public ResponseEntity<ApiResponse<Object>> handleNotEnoughException(NotEnoughException ex){
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ResponseUtil.error(ex.getMessage()));
+    }
+
     @ExceptionHandler(InvalidDataException.class)
     public ResponseEntity<ApiResponse<Object>> handleInvalidDataException(InvalidDataException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ResponseUtil.error(ex.getMessage()));

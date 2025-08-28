@@ -19,8 +19,5 @@ public class RecipeItemResponse {
         private Long ingredientId;
         private String ingredientName;
         private Double quantity;
-        private String notes;
-        private Long unitId;
-        private String unitName;
     }
 }

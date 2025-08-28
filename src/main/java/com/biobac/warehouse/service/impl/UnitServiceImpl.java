@@ -47,8 +47,15 @@ public class UnitServiceImpl implements UnitService {
 
     @Override
     @Transactional
-    public UnitDto update(Long id) {
-        throw new UnsupportedOperationException("Update not supported without request payload");
+    public UnitDto update(Long id, UnitCreateRequest request) {
+        Unit existingUnit = unitRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Unit not found"));
+        UnitType unitType = unitTypeRepository.findById(request.getUnitTypeId())
+                .orElseThrow(() -> new NotFoundException("Unit Type not found"));
+        existingUnit.setName(request.getName());
+        existingUnit.setUnitType(unitType);
+        Unit saved = unitRepository.save(existingUnit);
+        return toDto(saved);
     }
 
     @Override
@@ -103,7 +110,7 @@ public class UnitServiceImpl implements UnitService {
         dto.setId(unit.getId());
         dto.setName(unit.getName());
         if (unit.getUnitType() != null) {
-            dto.setUnitTypeId(unit.getUnitType().getId());
+            dto.setUnitTypeName(unit.getUnitType().getName());
         }
         return dto;
     }

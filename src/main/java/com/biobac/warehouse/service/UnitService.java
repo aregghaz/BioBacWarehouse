@@ -14,7 +14,7 @@ public interface UnitService {
 
     UnitDto create(UnitCreateRequest request);
 
-    UnitDto update(Long id);
+    UnitDto update(Long id, UnitCreateRequest request);
 
     void delete(Long id);
 

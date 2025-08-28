@@ -13,8 +13,6 @@ public class InventoryItemResponse {
     private String warehouseName;
     private String productName;
     private String ingredientName;
-    private String ingredientGroupName;
-    private Long unitId;
     private String unitName;
     private LocalDateTime lastUpdated;
 }

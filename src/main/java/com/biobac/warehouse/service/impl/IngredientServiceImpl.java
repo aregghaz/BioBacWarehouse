@@ -2,12 +2,15 @@ package com.biobac.warehouse.service.impl;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.entity.*;
+import com.biobac.warehouse.exception.InvalidDataException;
+import com.biobac.warehouse.exception.NotEnoughException;
 import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.repository.*;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.request.IngredientCreateRequest;
 import com.biobac.warehouse.response.IngredientResponse;
 import com.biobac.warehouse.response.InventoryItemResponse;
+import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.IngredientService;
 import com.biobac.warehouse.utils.specifications.IngredientSpecification;
 import lombok.RequiredArgsConstructor;
@@ -21,8 +24,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,6 +39,7 @@ public class IngredientServiceImpl implements IngredientService {
     private final WarehouseRepository warehouseRepository;
     private final IngredientGroupRepository ingredientGroupRepository;
     private final UnitRepository unitRepository;
+    private final IngredientHistoryService ingredientHistoryService;
 
     @Override
     @Transactional
@@ -54,6 +60,17 @@ public class IngredientServiceImpl implements IngredientService {
         if (request.getRecipeItemId() != null) {
             RecipeItem recipeItem = recipeItemRepository.findById(request.getRecipeItemId())
                     .orElseThrow(() -> new NotFoundException("Recipe not found"));
+
+            for (RecipeComponent component : recipeItem.getComponents()) {
+                double multiplier = request.getQuantity() != null ? request.getQuantity() : 1.0;
+                double componentBaseQty = component.getQuantity() != null ? component.getQuantity() : 0.0;
+                double requiredQuantity = componentBaseQty * multiplier;
+
+                Ingredient requiredIngredient = component.getIngredient();
+                consumeIngredientRecursive(requiredIngredient, requiredQuantity, new HashSet<>());
+            }
+
+            recipeItem.setIngredient(ingredient);
             ingredient.setRecipeItem(recipeItem);
         }
 
@@ -65,7 +82,6 @@ public class IngredientServiceImpl implements IngredientService {
                     .orElseThrow(() -> new NotFoundException("Warehouse not found"));
             inventoryItem.setWarehouse(warehouse);
         }
-        // Unit handling: if provided, validate and set unitId fields
         if (request.getUnitId() != null) {
             Unit unit = unitRepository.findById(request.getUnitId())
                     .orElseThrow(() -> new NotFoundException("Unit not found"));
@@ -76,12 +92,18 @@ public class IngredientServiceImpl implements IngredientService {
         Ingredient saved = ingredientRepository.save(ingredient);
         inventoryItemRepository.save(inventoryItem);
 
+        double addedQty = request.getQuantity() != null ? request.getQuantity() : 0.0;
+        if (addedQty > 0) {
+            ingredientHistoryService.recordQuantityChange(saved, 0.0, addedQty, "INCREASE", "Initial stock added during ingredient creation");
+        }
+
         return toResponse(saved);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public IngredientResponse getById(Long id) {
-        Ingredient ingredient =  ingredientRepository.findById(id)
+        Ingredient ingredient = ingredientRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Ingredient not found"));
         return toResponse(ingredient);
     }
@@ -176,36 +198,103 @@ public class IngredientServiceImpl implements IngredientService {
         response.setName(ingredient.getName());
         response.setDescription(ingredient.getDescription());
         response.setActive(ingredient.isActive());
+        response.setIngredientGroupId(ingredient.getGroup().getId());
+        response.setIngredientGroupName(ingredient.getGroup().getName());
 
-        if (ingredient.getGroup() != null) {
-            response.setGroupId(ingredient.getGroup().getId());
+        if(ingredient.getRecipeItem() != null) {
+            response.setRecipeItemName(ingredient.getRecipeItem().getName());
         }
-        // Set unit info for ingredient (preferred unit)
+
         if (ingredient.getUnitId() != null) {
             response.setUnitId(ingredient.getUnitId());
             unitRepository.findById(ingredient.getUnitId()).ifPresent(u -> response.setUnitName(u.getName()));
         }
+
+        double totalQuantity = ingredient.getInventoryItems()
+                .stream()
+                .mapToDouble(InventoryItem::getQuantity)
+                .sum();
 
         List<InventoryItemResponse> inventoryResponses = ingredient.getInventoryItems().stream()
                 .map(item -> {
                     InventoryItemResponse ir = new InventoryItemResponse();
                     ir.setId(item.getId());
                     ir.setQuantity(item.getQuantity());
-                    // Set unit info for inventory item
+                    ir.setIngredientName(ingredient.getName());
+                    ir.setWarehouseName(item.getWarehouse().getName());
                     if (item.getUnitId() != null) {
-                        ir.setUnitId(item.getUnitId());
                         unitRepository.findById(item.getUnitId()).ifPresent(u -> ir.setUnitName(u.getName()));
                     }
                     ir.setLastUpdated(item.getLastUpdated());
-//                    if (item.getWarehouse() != null) {
-//                        ir.setWarehouseId(item.getWarehouse().getId());
-//                    }
                     return ir;
                 })
                 .toList();
-
+        response.setTotalQuantity(totalQuantity);
         response.setInventoryItems(inventoryResponses);
 
         return response;
+    }
+
+    private void consumeIngredientRecursive(Ingredient ingredient, double requiredQty, Set<Long> visiting) {
+        if (requiredQty <= 0) return;
+        if (ingredient == null) {
+            throw new InvalidDataException("Ingredient is null for consumption");
+        }
+
+        Long ingredientId = ingredient.getId();
+        if (ingredientId != null) {
+            if (visiting.contains(ingredientId)) {
+                throw new InvalidDataException("Cyclic recipe detected for ingredient id=" + ingredientId);
+            }
+            visiting.add(ingredientId);
+        }
+        try {
+            // 1) Try consuming from existing inventory of this ingredient
+            List<InventoryItem> inventory = ingredient.getInventoryItems();
+            double available = inventory != null ? inventory.stream()
+                    .mapToDouble(i -> i.getQuantity() != null ? i.getQuantity() : 0.0)
+                    .sum() : 0.0;
+
+            double remaining = requiredQty;
+            if (available > 0) {
+                double toConsume = Math.min(available, remaining);
+                double left = toConsume;
+                if (inventory != null) {
+                    for (InventoryItem inv : inventory) {
+                        if (left <= 0) break;
+                        double invQty = inv.getQuantity() != null ? inv.getQuantity() : 0.0;
+                        double use = Math.min(invQty, left);
+                        if (use > 0) {
+                            inv.setQuantity(invQty - use);
+                            inv.setLastUpdated(LocalDateTime.now());
+                            left -= use;
+                        }
+                    }
+                    inventoryItemRepository.saveAll(inventory);
+                }
+                ingredientHistoryService.recordQuantityChange(ingredient, available, available - toConsume, "DECREASE", "Consumed for recipe requirements");
+                remaining -= toConsume;
+            }
+
+            if (remaining <= 0) return;
+
+            // 2) Not enough inventory; try to build from sub-components if recipe exists
+            RecipeItem subRecipe = ingredient.getRecipeItem();
+            if (subRecipe == null || subRecipe.getComponents() == null || subRecipe.getComponents().isEmpty()) {
+                throw new NotEnoughException("Not enough ingredient '" + ingredient.getName() + "' to cover required quantity: " + requiredQty);
+            }
+
+            // Assume subRecipe produces 1 unit of this ingredient per recipe; so scale component needs by 'remaining'
+            for (RecipeComponent subComp : subRecipe.getComponents()) {
+                Ingredient subIng = subComp.getIngredient();
+                double perUnit = subComp.getQuantity() != null ? subComp.getQuantity() : 0.0;
+                double subRequired = perUnit * remaining;
+                if (subRequired > 0) {
+                    consumeIngredientRecursive(subIng, subRequired, visiting);
+                }
+            }
+        } finally {
+            if (ingredientId != null) visiting.remove(ingredientId);
+        }
     }
 }
