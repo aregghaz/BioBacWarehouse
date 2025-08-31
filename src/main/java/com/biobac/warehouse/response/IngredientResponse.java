@@ -14,6 +14,7 @@ public class IngredientResponse {
     private boolean active;
     private Long ingredientGroupId;
     private String ingredientGroupName;
+    private Long recipeItemId;
     private String recipeItemName;
     private Long unitId;
     private String unitName;

@@ -207,6 +207,7 @@ public class ProductServiceImpl implements ProductService {
 
         if (product.getRecipeItem() != null) {
             response.setRecipeItemName(product.getRecipeItem().getName());
+            response.setRecipeItemId(product.getRecipeItem().getId());
         }
 
         double totalQuantity = product.getInventoryItems()

@@ -231,6 +231,7 @@ public class IngredientServiceImpl implements IngredientService {
         response.setIngredientGroupName(ingredient.getIngredientGroup().getName());
 
         if (ingredient.getRecipeItem() != null) {
+            response.setRecipeItemId(ingredient.getRecipeItem().getId());
             response.setRecipeItemName(ingredient.getRecipeItem().getName());
         }
 

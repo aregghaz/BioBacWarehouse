@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.Set;
+
 @Entity
 @Getter
 @Setter
@@ -14,7 +16,9 @@ public class Unit {
 
     private String name;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "unit_type_id")
-    private UnitType unitType;
+    @ManyToMany
+    @JoinTable(name = "unit_unit_type",
+            joinColumns = @JoinColumn(name = "unit_id"),
+            inverseJoinColumns = @JoinColumn(name = "unit_type_id"))
+    private Set<UnitType> unitTypes;
 }

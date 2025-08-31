@@ -21,8 +21,10 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -42,11 +44,13 @@ public class UnitServiceImpl implements UnitService {
     @Override
     @Transactional
     public UnitDto create(UnitCreateRequest request) {
-        UnitType unitType = unitTypeRepository.findById(request.getUnitTypeId())
-                .orElseThrow(() -> new NotFoundException("Unit Type not found"));
+        List<UnitType> unitTypes = unitTypeRepository.findAllById(request.getUnitTypeIds());
+        if (unitTypes.isEmpty()) {
+            throw new NotFoundException("Unit Type(s) not found");
+        }
         Unit unit = new Unit();
         unit.setName(request.getName());
-        unit.setUnitType(unitType);
+        unit.setUnitTypes(new HashSet<>(unitTypes));
         Unit saved = unitRepository.save(unit);
         return toDto(saved);
     }
@@ -56,10 +60,12 @@ public class UnitServiceImpl implements UnitService {
     public UnitDto update(Long id, UnitCreateRequest request) {
         Unit existingUnit = unitRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Unit not found"));
-        UnitType unitType = unitTypeRepository.findById(request.getUnitTypeId())
-                .orElseThrow(() -> new NotFoundException("Unit Type not found"));
+        List<UnitType> unitTypes = unitTypeRepository.findAllById(request.getUnitTypeIds());
+        if (unitTypes.isEmpty()) {
+            throw new NotFoundException("Unit Type(s) not found");
+        }
         existingUnit.setName(request.getName());
-        existingUnit.setUnitType(unitType);
+        existingUnit.setUnitTypes(new HashSet<>(unitTypes));
         Unit saved = unitRepository.save(existingUnit);
         return toDto(saved);
     }
@@ -115,9 +121,10 @@ public class UnitServiceImpl implements UnitService {
         UnitDto dto = new UnitDto();
         dto.setId(unit.getId());
         dto.setName(unit.getName());
-        if (unit.getUnitType() != null) {
-            dto.setUnitTypeId(unit.getUnitType().getId());
-            dto.setUnitTypeName(unit.getUnitType().getName());
+        Set<UnitType> types = unit.getUnitTypes();
+        if (types != null && !types.isEmpty()) {
+            dto.setUnitTypeIds(types.stream().map(UnitType::getId).toList());
+            dto.setUnitTypeNames(types.stream().map(UnitType::getName).toList());
         }
         return dto;
     }

@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.List;
+import java.util.Set;
 
 @Entity
 @Getter
@@ -16,6 +16,6 @@ public class UnitType {
 
     private String name;
 
-    @OneToMany(mappedBy = "unitType")
-    private List<Unit> units;
+    @ManyToMany(mappedBy = "unitTypes")
+    private Set<Unit> units;
 }

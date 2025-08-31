@@ -39,7 +39,7 @@ public class UnitSpecification {
 
                     if (isUnitTypeField(field) != null) {
                         if (unitUnitTypeJoin == null) {
-                            unitUnitTypeJoin = root.join("unitType", JoinType.LEFT);
+                            unitUnitTypeJoin = root.join("unitTypes", JoinType.LEFT);
                         }
                         path = unitUnitTypeJoin.get(isUnitTypeField(field));
                     } else {

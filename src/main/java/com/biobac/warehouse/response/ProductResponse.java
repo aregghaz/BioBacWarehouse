@@ -13,6 +13,7 @@ public class ProductResponse {
     private String description;
     private String sku;
     private Double totalQuantity;
+    private Long recipeItemId;
     private String recipeItemName;
     private Long unitId;
     private String unitName;
