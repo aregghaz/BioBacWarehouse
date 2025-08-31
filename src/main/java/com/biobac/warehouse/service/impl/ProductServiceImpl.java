@@ -9,8 +9,10 @@ import com.biobac.warehouse.repository.*;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.request.ProductCreateRequest;
 import com.biobac.warehouse.request.ProductUpdateRequest;
+import com.biobac.warehouse.request.UnitTypeConfigRequest;
 import com.biobac.warehouse.response.InventoryItemResponse;
 import com.biobac.warehouse.response.ProductResponse;
+import com.biobac.warehouse.response.UnitTypeConfigResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.ProductHistoryService;
 import com.biobac.warehouse.service.ProductService;
@@ -42,6 +44,7 @@ public class ProductServiceImpl implements ProductService {
     private final IngredientHistoryService ingredientHistoryService;
     private final ProductHistoryService productHistoryService;
     private final UnitRepository unitRepository;
+    private final UnitTypeRepository unitTypeRepository;
 
     @Override
     @Transactional
@@ -93,6 +96,28 @@ public class ProductServiceImpl implements ProductService {
             product.setUnit(unit);
             inventoryItem.setUnit(unit);
         }
+
+        if (request.getUnitTypeConfigs() != null) {
+            Set<UnitType> allowedTypes = product.getUnit() != null && product.getUnit().getUnitTypes() != null
+                    ? product.getUnit().getUnitTypes() : new HashSet<>();
+            product.getUnitTypeConfigs().clear();
+            for (UnitTypeConfigRequest cfgReq : request.getUnitTypeConfigs()) {
+                if (cfgReq.getUnitTypeId() == null) {
+                    throw new InvalidDataException("unitTypeId is required in unitTypeConfigs");
+                }
+                UnitType ut = unitTypeRepository.findById(cfgReq.getUnitTypeId())
+                        .orElseThrow(() -> new NotFoundException("UnitType not found"));
+                if (!allowedTypes.isEmpty() && !allowedTypes.contains(ut)) {
+                    throw new InvalidDataException("UnitType '" + ut.getName() + "' is not allowed for selected Unit");
+                }
+                ProductUnitType link = new ProductUnitType();
+                link.setProduct(product);
+                link.setUnitType(ut);
+                link.setSize(cfgReq.getSize());
+                product.getUnitTypeConfigs().add(link);
+            }
+        }
+
         product.getInventoryItems().add(inventoryItem);
         Product saved = productRepository.save(product);
         inventoryItemRepository.save(inventoryItem);
@@ -159,6 +184,27 @@ public class ProductServiceImpl implements ProductService {
                     .orElseThrow(() -> new NotFoundException("Recipe not found"));
             recipeItem.setProduct(existing);
             existing.setRecipeItem(recipeItem);
+        }
+
+        if (request.getUnitTypeConfigs() != null) {
+            Set<UnitType> allowedTypes = existing.getUnit() != null && existing.getUnit().getUnitTypes() != null
+                    ? existing.getUnit().getUnitTypes() : new HashSet<>();
+            existing.getUnitTypeConfigs().clear();
+            for (UnitTypeConfigRequest cfgReq : request.getUnitTypeConfigs()) {
+                if (cfgReq.getUnitTypeId() == null) {
+                    throw new InvalidDataException("unitTypeId is required in unitTypeConfigs");
+                }
+                UnitType ut = unitTypeRepository.findById(cfgReq.getUnitTypeId())
+                        .orElseThrow(() -> new NotFoundException("UnitType not found"));
+                if (!allowedTypes.isEmpty() && !allowedTypes.contains(ut)) {
+                    throw new InvalidDataException("UnitType '" + ut.getName() + "' is not allowed for selected Unit");
+                }
+                ProductUnitType link = new ProductUnitType();
+                link.setProduct(existing);
+                link.setUnitType(ut);
+                link.setSize(cfgReq.getSize());
+                existing.getUnitTypeConfigs().add(link);
+            }
         }
 
         Product saved = productRepository.save(existing);
@@ -251,6 +297,20 @@ public class ProductServiceImpl implements ProductService {
                 .toList();
         response.setTotalQuantity(totalQuantity);
         response.setInventoryItems(inventoryResponses);
+
+        if (product.getUnitTypeConfigs() != null) {
+            List<UnitTypeConfigResponse> cfgs = product.getUnitTypeConfigs().stream().map(cfg -> {
+                UnitTypeConfigResponse r = new UnitTypeConfigResponse();
+                r.setId(cfg.getId());
+                if (cfg.getUnitType() != null) {
+                    r.setUnitTypeId(cfg.getUnitType().getId());
+                    r.setUnitTypeName(cfg.getUnitType().getName());
+                }
+                r.setSize(cfg.getSize());
+                return r;
+            }).toList();
+            response.setUnitTypeConfigs(cfgs);
+        }
 
         return response;
     }

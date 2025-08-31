@@ -2,6 +2,7 @@ package com.biobac.warehouse.service.impl;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.dto.UnitDto;
+import com.biobac.warehouse.dto.UnitTypeDto;
 import com.biobac.warehouse.entity.Unit;
 import com.biobac.warehouse.entity.UnitType;
 import com.biobac.warehouse.exception.NotFoundException;
@@ -123,8 +124,12 @@ public class UnitServiceImpl implements UnitService {
         dto.setName(unit.getName());
         Set<UnitType> types = unit.getUnitTypes();
         if (types != null && !types.isEmpty()) {
-            dto.setUnitTypeIds(types.stream().map(UnitType::getId).toList());
-            dto.setUnitTypeNames(types.stream().map(UnitType::getName).toList());
+            dto.setUnitTypes(types.stream().map(ut -> {
+                UnitTypeDto utd = new UnitTypeDto();
+                utd.setId(ut.getId());
+                utd.setName(ut.getName());
+                return utd;
+            }).toList());
         }
         return dto;
     }

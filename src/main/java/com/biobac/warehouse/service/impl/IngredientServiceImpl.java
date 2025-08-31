@@ -9,8 +9,10 @@ import com.biobac.warehouse.repository.*;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.request.IngredientCreateRequest;
 import com.biobac.warehouse.request.IngredientUpdateRequest;
+import com.biobac.warehouse.request.UnitTypeConfigRequest;
 import com.biobac.warehouse.response.IngredientResponse;
 import com.biobac.warehouse.response.InventoryItemResponse;
+import com.biobac.warehouse.response.UnitTypeConfigResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.IngredientService;
 import com.biobac.warehouse.service.ProductHistoryService;
@@ -41,6 +43,7 @@ public class IngredientServiceImpl implements IngredientService {
     private final WarehouseRepository warehouseRepository;
     private final IngredientGroupRepository ingredientGroupRepository;
     private final UnitRepository unitRepository;
+    private final UnitTypeRepository unitTypeRepository;
     private final IngredientHistoryService ingredientHistoryService;
     private final ProductHistoryService productHistoryService;
 
@@ -99,6 +102,29 @@ public class IngredientServiceImpl implements IngredientService {
             ingredient.setUnit(unit);
             inventoryItem.setUnit(unit);
         }
+
+        // Handle unit type configurations on create
+        if (request.getUnitTypeConfigs() != null) {
+            Set<UnitType> allowedTypes = ingredient.getUnit() != null && ingredient.getUnit().getUnitTypes() != null
+                    ? ingredient.getUnit().getUnitTypes() : new HashSet<>();
+            ingredient.getUnitTypeConfigs().clear();
+            for (UnitTypeConfigRequest cfgReq : request.getUnitTypeConfigs()) {
+                if (cfgReq.getUnitTypeId() == null) {
+                    throw new InvalidDataException("unitTypeId is required in unitTypeConfigs");
+                }
+                UnitType ut = unitTypeRepository.findById(cfgReq.getUnitTypeId())
+                        .orElseThrow(() -> new NotFoundException("UnitType not found"));
+                if (!allowedTypes.isEmpty() && !allowedTypes.contains(ut)) {
+                    throw new InvalidDataException("UnitType '" + ut.getName() + "' is not allowed for selected Unit");
+                }
+                IngredientUnitType link = new IngredientUnitType();
+                link.setIngredient(ingredient);
+                link.setUnitType(ut);
+                link.setSize(cfgReq.getSize());
+                ingredient.getUnitTypeConfigs().add(link);
+            }
+        }
+
         ingredient.getInventoryItems().add(inventoryItem);
         Ingredient saved = ingredientRepository.save(ingredient);
         inventoryItemRepository.save(inventoryItem);
@@ -178,6 +204,28 @@ public class IngredientServiceImpl implements IngredientService {
                     .orElseThrow(() -> new NotFoundException("Recipe not found"));
             recipeItem.setIngredient(existing);
             existing.setRecipeItem(recipeItem);
+        }
+
+        // Handle unit type configurations on update
+        if (request.getUnitTypeConfigs() != null) {
+            Set<UnitType> allowedTypes = existing.getUnit() != null && existing.getUnit().getUnitTypes() != null
+                    ? existing.getUnit().getUnitTypes() : new HashSet<>();
+            existing.getUnitTypeConfigs().clear();
+            for (UnitTypeConfigRequest cfgReq : request.getUnitTypeConfigs()) {
+                if (cfgReq.getUnitTypeId() == null) {
+                    throw new InvalidDataException("unitTypeId is required in unitTypeConfigs");
+                }
+                UnitType ut = unitTypeRepository.findById(cfgReq.getUnitTypeId())
+                        .orElseThrow(() -> new NotFoundException("UnitType not found"));
+                if (!allowedTypes.isEmpty() && !allowedTypes.contains(ut)) {
+                    throw new InvalidDataException("UnitType '" + ut.getName() + "' is not allowed for selected Unit");
+                }
+                IngredientUnitType link = new IngredientUnitType();
+                link.setIngredient(existing);
+                link.setUnitType(ut);
+                link.setSize(cfgReq.getSize());
+                existing.getUnitTypeConfigs().add(link);
+            }
         }
 
         Ingredient saved = ingredientRepository.save(existing);
@@ -273,6 +321,20 @@ public class IngredientServiceImpl implements IngredientService {
                 .toList();
         response.setTotalQuantity(totalQuantity);
         response.setInventoryItems(inventoryResponses);
+
+        if (ingredient.getUnitTypeConfigs() != null) {
+            List<UnitTypeConfigResponse> cfgs = ingredient.getUnitTypeConfigs().stream().map(cfg -> {
+                UnitTypeConfigResponse r = new UnitTypeConfigResponse();
+                r.setId(cfg.getId());
+                if (cfg.getUnitType() != null) {
+                    r.setUnitTypeId(cfg.getUnitType().getId());
+                    r.setUnitTypeName(cfg.getUnitType().getName());
+                }
+                r.setSize(cfg.getSize());
+                return r;
+            }).toList();
+            response.setUnitTypeConfigs(cfgs);
+        }
 
         return response;
     }

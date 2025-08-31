@@ -10,6 +10,5 @@ import java.util.List;
 public class UnitDto {
     private Long id;
     private String name;
-    private List<Long> unitTypeIds;
-    private List<String> unitTypeNames;
+    private List<UnitTypeDto> unitTypes;
 }

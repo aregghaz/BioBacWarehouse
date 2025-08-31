@@ -39,7 +39,6 @@ public class InventoryItemServiceImpl implements InventoryItemService {
     private final InventoryItemRepository inventoryItemRepository;
     private final ProductRepository productRepository;
     private final IngredientRepository ingredientRepository;
-    private final IngredientGroupRepository ingredientGroupRepository;
     private final WarehouseRepository warehouseRepository;
     private final InventoryItemMapper inventoryItemMapper;
     private final UnitRepository unitRepository;
@@ -51,7 +50,6 @@ public class InventoryItemServiceImpl implements InventoryItemService {
     public InventoryItemResponse createForProduct(InventoryProductCreateRequest request) {
         InventoryItem inventoryItem = new InventoryItem();
 
-        // For product history
         Double totalBeforeProduct = null;
         Product productForHistory = null;
 
@@ -65,16 +63,13 @@ public class InventoryItemServiceImpl implements InventoryItemService {
             Product product = productRepository.findById(request.getProductId())
                     .orElseThrow(() -> new NotFoundException("product not found"));
 
-            // capture total before adding for history
             List<InventoryItem> existingInv = product.getInventoryItems();
             Double totalBeforeForHistory = existingInv != null ? existingInv.stream()
                     .mapToDouble(i -> i.getQuantity() != null ? i.getQuantity() : 0.0)
                     .sum() : 0.0;
-            // set for later history recording
             totalBeforeProduct = totalBeforeForHistory;
             productForHistory = product;
 
-            // If product has a recipe, validate and consume components for the requested quantity
             Double reqQty = request.getQuantity() != null ? request.getQuantity() : 1.0;
             RecipeItem recipeItem = product.getRecipeItem();
             if (recipeItem != null && recipeItem.getComponents() != null && !recipeItem.getComponents().isEmpty() && reqQty > 0) {
@@ -96,7 +91,6 @@ public class InventoryItemServiceImpl implements InventoryItemService {
             }
             inventoryItem.setProduct(product);
 
-            // Store totalBeforeForHistory on the inventoryItem transiently using a local variable (we'll use it after save)
             inventoryItem.setLastUpdated(inventoryItem.getLastUpdated()); // no-op to keep exact search context
         }
 

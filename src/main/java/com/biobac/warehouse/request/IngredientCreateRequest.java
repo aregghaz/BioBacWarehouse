@@ -3,6 +3,8 @@ package com.biobac.warehouse.request;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
+
 @Getter
 @Setter
 public class IngredientCreateRequest {
@@ -14,4 +16,5 @@ public class IngredientCreateRequest {
     private Double quantity;
     private Long warehouseId;
     private Long unitId;
+    private List<UnitTypeConfigRequest> unitTypeConfigs;
 }

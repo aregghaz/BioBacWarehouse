@@ -19,4 +19,5 @@ public class ProductResponse {
     private String unitName;
     private Long companyId;
     private List<InventoryItemResponse> inventoryItems;
+    private List<UnitTypeConfigResponse> unitTypeConfigs;
 }

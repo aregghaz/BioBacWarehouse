@@ -20,4 +20,5 @@ public class IngredientResponse {
     private String unitName;
     private Double totalQuantity;
     private List<InventoryItemResponse> inventoryItems;
+    private List<UnitTypeConfigResponse> unitTypeConfigs;
 }
