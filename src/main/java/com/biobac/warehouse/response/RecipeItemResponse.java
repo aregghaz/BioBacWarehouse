@@ -18,6 +18,8 @@ public class RecipeItemResponse {
     public static class RecipeComponentDto {
         private Long ingredientId;
         private String ingredientName;
+        private Long productId;
+        private String productName;
         private Double quantity;
     }
 }

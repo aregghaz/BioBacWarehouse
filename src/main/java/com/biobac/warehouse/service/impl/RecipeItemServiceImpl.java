@@ -2,11 +2,14 @@ package com.biobac.warehouse.service.impl;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.entity.Ingredient;
+import com.biobac.warehouse.entity.Product;
 import com.biobac.warehouse.entity.RecipeComponent;
 import com.biobac.warehouse.entity.RecipeItem;
+import com.biobac.warehouse.exception.InvalidDataException;
 import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.RecipeItemMapper;
 import com.biobac.warehouse.repository.IngredientRepository;
+import com.biobac.warehouse.repository.ProductRepository;
 import com.biobac.warehouse.repository.RecipeComponentRepository;
 import com.biobac.warehouse.repository.RecipeItemRepository;
 import com.biobac.warehouse.request.FilterCriteria;
@@ -37,6 +40,7 @@ public class RecipeItemServiceImpl implements RecipeItemService {
 
     private final RecipeItemRepository recipeItemRepository;
     private final IngredientRepository ingredientRepository;
+    private final ProductRepository productRepository;
     private final RecipeComponentRepository recipeComponentRepository;
     private final RecipeItemMapper mapper;
 
@@ -107,13 +111,27 @@ public class RecipeItemServiceImpl implements RecipeItemService {
 
         List<RecipeComponent> components = new ArrayList<>();
         for (RecipeComponentRequest compReq : recipeItemCreateRequest.getComponents()) {
-            Ingredient ingredient = ingredientRepository.findById(compReq.getIngredientId())
-                    .orElseThrow(() -> new NotFoundException("Invalid ingredient ID: " + compReq.getIngredientId()));
+            Long ingId = compReq.getIngredientId();
+            Long prodId = compReq.getProductId();
+
+            if ((ingId == null && prodId == null) || (ingId != null && prodId != null)) {
+                throw new InvalidDataException("Exactly one of ingredientId or productId must be provided for each recipe component");
+            }
 
             RecipeComponent component = new RecipeComponent();
-            component.setIngredient(ingredient);
             component.setRecipeItem(savedParent);
             component.setQuantity(compReq.getQuantity());
+
+            if (ingId != null) {
+                Ingredient ingredient = ingredientRepository.findById(ingId)
+                        .orElseThrow(() -> new NotFoundException("Invalid ingredient ID: " + ingId));
+                component.setIngredient(ingredient);
+            } else {
+                Product productComp = productRepository.findById(prodId)
+                        .orElseThrow(() -> new NotFoundException("Invalid product ID: " + prodId));
+                component.setProduct(productComp);
+            }
+
             recipeComponentRepository.save(component);
             components.add(component);
         }
@@ -139,13 +157,27 @@ public class RecipeItemServiceImpl implements RecipeItemService {
 
         List<RecipeComponent> components = new ArrayList<>();
         for (RecipeComponentRequest compReq : recipeItemCreateRequest.getComponents()) {
-            Ingredient ingredient = ingredientRepository.findById(compReq.getIngredientId())
-                    .orElseThrow(() -> new NotFoundException("Invalid ingredient ID: " + compReq.getIngredientId()));
+            Long ingId = compReq.getIngredientId();
+            Long prodId = compReq.getProductId();
+
+            if ((ingId == null && prodId == null) || (ingId != null && prodId != null)) {
+                throw new InvalidDataException("Exactly one of ingredientId or productId must be provided for each recipe component");
+            }
 
             RecipeComponent component = new RecipeComponent();
-            component.setIngredient(ingredient);
             component.setRecipeItem(recipeItem);
             component.setQuantity(compReq.getQuantity());
+
+            if (ingId != null) {
+                Ingredient ingredient = ingredientRepository.findById(ingId)
+                        .orElseThrow(() -> new NotFoundException("Invalid ingredient ID: " + ingId));
+                component.setIngredient(ingredient);
+            } else {
+                Product productComp = productRepository.findById(prodId)
+                        .orElseThrow(() -> new NotFoundException("Invalid product ID: " + prodId));
+                component.setProduct(productComp);
+            }
+
             recipeComponentRepository.save(component);
             components.add(component);
         }

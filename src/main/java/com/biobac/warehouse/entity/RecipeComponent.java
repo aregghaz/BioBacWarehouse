@@ -17,9 +17,14 @@ public class RecipeComponent {
     @JoinColumn(name = "recipe_item_id", nullable = false)
     private RecipeItem recipeItem;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "ingredient_id", nullable = false)
+    // One of ingredient or product must be set (enforced in service layer)
+    @ManyToOne(optional = true)
+    @JoinColumn(name = "ingredient_id", nullable = true)
     private Ingredient ingredient;
+
+    @ManyToOne(optional = true)
+    @JoinColumn(name = "product_id", nullable = true)
+    private Product product;
 
     @Column(nullable = false)
     private Double quantity;

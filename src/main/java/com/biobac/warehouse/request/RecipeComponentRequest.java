@@ -7,5 +7,6 @@ import lombok.Setter;
 @Setter
 public class RecipeComponentRequest {
     private Long ingredientId;
+    private Long productId;
     private Double quantity;
 }
