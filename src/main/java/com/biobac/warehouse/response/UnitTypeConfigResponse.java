@@ -3,6 +3,8 @@ package com.biobac.warehouse.response;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
+
 @Getter
 @Setter
 public class UnitTypeConfigResponse {
@@ -10,4 +12,6 @@ public class UnitTypeConfigResponse {
     private Long unitTypeId;
     private String unitTypeName;
     private Double size;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

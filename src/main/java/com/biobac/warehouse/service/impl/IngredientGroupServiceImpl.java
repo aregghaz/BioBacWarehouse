@@ -7,7 +7,7 @@ import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.IngredientGroupMapper;
 import com.biobac.warehouse.repository.IngredientGroupRepository;
 import com.biobac.warehouse.request.FilterCriteria;
-import com.biobac.warehouse.response.IngredientGroupTableResponse;
+import com.biobac.warehouse.response.IngredientGroupResponse;
 import com.biobac.warehouse.service.IngredientGroupService;
 import com.biobac.warehouse.utils.specifications.IngredientGroupSpecification;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +32,7 @@ public class IngredientGroupServiceImpl implements IngredientGroupService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<IngredientGroupDto> getPagination() {
+    public List<IngredientGroupResponse> getPagination() {
         return repository.findAll().stream()
                 .map(mapper::toDto)
                 .collect(Collectors.toList());
@@ -40,11 +40,11 @@ public class IngredientGroupServiceImpl implements IngredientGroupService {
 
     @Transactional(readOnly = true)
     @Override
-    public Pair<List<IngredientGroupTableResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters,
-                                                                                      Integer page,
-                                                                                      Integer size,
-                                                                                      String sortBy,
-                                                                                      String sortDir) {
+    public Pair<List<IngredientGroupResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters,
+                                                                                 Integer page,
+                                                                                 Integer size,
+                                                                                 String sortBy,
+                                                                                 String sortDir) {
         Sort sort = sortDir.equalsIgnoreCase("asc") ?
                 Sort.by(sortBy).ascending() :
                 Sort.by(sortBy).descending();
@@ -55,7 +55,7 @@ public class IngredientGroupServiceImpl implements IngredientGroupService {
 
         Page<IngredientGroup> ingredientGroupPage = repository.findAll(spec, pageable);
 
-        List<IngredientGroupTableResponse> content = ingredientGroupPage.getContent().stream()
+        List<IngredientGroupResponse> content = ingredientGroupPage.getContent().stream()
                 .map(mapper::toTableResponse)
                 .collect(Collectors.toList());
 
@@ -77,20 +77,20 @@ public class IngredientGroupServiceImpl implements IngredientGroupService {
 
     @Transactional(readOnly = true)
     @Override
-    public IngredientGroupDto getById(Long id) {
+    public IngredientGroupResponse getById(Long id) {
         return mapper.toDto(repository.findById(id).orElseThrow(() -> new NotFoundException("IngredientGroup not found with id: " + id)));
     }
 
     @Transactional
     @Override
-    public IngredientGroupDto create(IngredientGroupDto dto) {
+    public IngredientGroupResponse create(IngredientGroupDto dto) {
         IngredientGroup entity = mapper.toEntity(dto);
         return mapper.toDto(repository.save(entity));
     }
 
     @Transactional
     @Override
-    public IngredientGroupDto update(Long id, IngredientGroupDto dto) {
+    public IngredientGroupResponse update(Long id, IngredientGroupDto dto) {
         IngredientGroup existing = repository.findById(id).orElseThrow(() -> new NotFoundException("IngredientGroup not found with id: " + id));
         existing.setName(dto.getName());
         return mapper.toDto(repository.save(existing));

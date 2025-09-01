@@ -122,12 +122,16 @@ public class UnitServiceImpl implements UnitService {
         UnitDto dto = new UnitDto();
         dto.setId(unit.getId());
         dto.setName(unit.getName());
+        dto.setCreatedAt(unit.getCreatedAt());
+        dto.setUpdatedAt(unit.getUpdatedAt());
         Set<UnitType> types = unit.getUnitTypes();
         if (types != null && !types.isEmpty()) {
             dto.setUnitTypes(types.stream().map(ut -> {
                 UnitTypeDto utd = new UnitTypeDto();
                 utd.setId(ut.getId());
                 utd.setName(ut.getName());
+                utd.setCreatedAt(ut.getCreatedAt());
+                utd.setUpdatedAt(ut.getUpdatedAt());
                 return utd;
             }).toList());
         }

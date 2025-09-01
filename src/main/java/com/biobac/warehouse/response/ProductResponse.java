@@ -3,6 +3,7 @@ package com.biobac.warehouse.response;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -20,4 +21,6 @@ public class ProductResponse {
     private Long companyId;
     private List<InventoryItemResponse> inventoryItems;
     private List<UnitTypeConfigResponse> unitTypeConfigs;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

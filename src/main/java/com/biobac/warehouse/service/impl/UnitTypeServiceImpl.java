@@ -105,6 +105,8 @@ public class UnitTypeServiceImpl implements UnitTypeService {
         UnitTypeDto dto = new UnitTypeDto();
         dto.setId(unitType.getId());
         dto.setName(unitType.getName());
+        dto.setCreatedAt(unitType.getCreatedAt());
+        dto.setUpdatedAt(unitType.getUpdatedAt());
         return dto;
     }
 }

@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @Table(name = "product_history")
 @Getter
 @Setter
-public class ProductHistory {
+public class ProductHistory extends BaseAuditable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -29,10 +29,4 @@ public class ProductHistory {
 
     private String notes;
 
-    @PrePersist
-    protected void onCreate() {
-        if (timestamp == null) {
-            timestamp = LocalDateTime.now();
-        }
-    }
 }

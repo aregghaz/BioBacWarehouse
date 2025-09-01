@@ -288,6 +288,8 @@ public class IngredientServiceImpl implements IngredientService {
         response.setActive(ingredient.isActive());
         response.setIngredientGroupId(ingredient.getIngredientGroup().getId());
         response.setIngredientGroupName(ingredient.getIngredientGroup().getName());
+        response.setCreatedAt(ingredient.getCreatedAt());
+        response.setUpdatedAt(ingredient.getUpdatedAt());
 
         if (ingredient.getRecipeItem() != null) {
             response.setRecipeItemId(ingredient.getRecipeItem().getId());
@@ -316,6 +318,8 @@ public class IngredientServiceImpl implements IngredientService {
                         ir.setUnitName(item.getUnit().getName());
                     }
                     ir.setLastUpdated(item.getLastUpdated());
+                    ir.setCreatedAt(item.getCreatedAt());
+                    ir.setUpdatedAt(item.getUpdatedAt());
                     return ir;
                 })
                 .toList();
@@ -331,6 +335,9 @@ public class IngredientServiceImpl implements IngredientService {
                     r.setUnitTypeName(cfg.getUnitType().getName());
                 }
                 r.setSize(cfg.getSize());
+                // Auditing fields for unit type config
+                r.setCreatedAt(cfg.getCreatedAt());
+                r.setUpdatedAt(cfg.getUpdatedAt());
                 return r;
             }).toList();
             response.setUnitTypeConfigs(cfgs);

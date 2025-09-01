@@ -16,4 +16,6 @@ public class InventoryItemResponse {
     private String ingredientName;
     private String unitName;
     private LocalDateTime lastUpdated;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

@@ -8,7 +8,7 @@ import lombok.Setter;
 @Table(name = "recipe_components")
 @Getter
 @Setter
-public class RecipeComponent {
+public class RecipeComponent extends BaseAuditable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

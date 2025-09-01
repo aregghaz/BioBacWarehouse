@@ -264,6 +264,8 @@ public class ProductServiceImpl implements ProductService {
         response.setName(product.getName());
         response.setDescription(product.getDescription());
         response.setSku(product.getSku());
+        response.setCreatedAt(product.getCreatedAt());
+        response.setUpdatedAt(product.getUpdatedAt());
 
         if (product.getRecipeItem() != null) {
             response.setRecipeItemName(product.getRecipeItem().getName());
@@ -292,6 +294,9 @@ public class ProductServiceImpl implements ProductService {
                         ir.setUnitName(item.getUnit().getName());
                     }
                     ir.setLastUpdated(item.getLastUpdated());
+                    // Auditing fields for inventory item
+                    ir.setCreatedAt(item.getCreatedAt());
+                    ir.setUpdatedAt(item.getUpdatedAt());
                     return ir;
                 })
                 .toList();
@@ -307,6 +312,8 @@ public class ProductServiceImpl implements ProductService {
                     r.setUnitTypeName(cfg.getUnitType().getName());
                 }
                 r.setSize(cfg.getSize());
+                r.setCreatedAt(cfg.getCreatedAt());
+                r.setUpdatedAt(cfg.getUpdatedAt());
                 return r;
             }).toList();
             response.setUnitTypeConfigs(cfgs);

@@ -30,17 +30,23 @@ public interface RecipeItemMapper {
 
     @Mapping(target = "components", source = "components")
     @Mapping(target = "notes", source = "notes")
+    @Mapping(target = "createdAt", source = "createdAt")
+    @Mapping(target = "updatedAt", source = "updatedAt")
     RecipeItemResponse toDto(RecipeItem entity);
 
     @Mapping(target = "ingredientId", source = "ingredient.id")
     @Mapping(target = "ingredientName", source = "ingredient.name")
     @Mapping(target = "productId", source = "product.id")
     @Mapping(target = "productName", source = "product.name")
+    @Mapping(target = "createdAt", source = "createdAt")
+    @Mapping(target = "updatedAt", source = "updatedAt")
     RecipeItemResponse.RecipeComponentDto toDto(RecipeComponent entity);
 
     List<RecipeComponent> toEntityComponents(List<RecipeComponentRequest> requests, @Context RecipeItem recipeItem, @Context List<Ingredient> ingredients);
 
     List<RecipeItemResponse.RecipeComponentDto> toDtoComponents(List<RecipeComponent> components);
 
+    @Mapping(target = "createdAt", source = "createdAt")
+    @Mapping(target = "updatedAt", source = "updatedAt")
     RecipeItemTableResponse toTableResponse(RecipeItem recipeItem);
 }

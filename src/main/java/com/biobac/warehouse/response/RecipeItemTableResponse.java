@@ -3,6 +3,7 @@ package com.biobac.warehouse.response;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -12,4 +13,6 @@ public class RecipeItemTableResponse {
     private String name;
     private String notes;
     private List<RecipeItemResponse.RecipeComponentDto> components;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

@@ -3,7 +3,7 @@ package com.biobac.warehouse.service;
 import com.biobac.warehouse.dto.IngredientGroupDto;
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.request.FilterCriteria;
-import com.biobac.warehouse.response.IngredientGroupTableResponse;
+import com.biobac.warehouse.response.IngredientGroupResponse;
 import org.springframework.data.util.Pair;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,23 +13,23 @@ import java.util.Map;
 public interface IngredientGroupService {
 
     @Transactional(readOnly = true)
-    List<IngredientGroupDto> getPagination();
+    List<IngredientGroupResponse> getPagination();
 
     @Transactional(readOnly = true)
-    Pair<List<IngredientGroupTableResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters,
-                                                                               Integer page,
-                                                                               Integer size,
-                                                                               String sortBy,
-                                                                               String sortDir);
+    Pair<List<IngredientGroupResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters,
+                                                                          Integer page,
+                                                                          Integer size,
+                                                                          String sortBy,
+                                                                          String sortDir);
 
     @Transactional(readOnly = true)
-    IngredientGroupDto getById(Long id);
+    IngredientGroupResponse getById(Long id);
 
     @Transactional
-    IngredientGroupDto create(IngredientGroupDto dto);
+    IngredientGroupResponse create(IngredientGroupDto dto);
 
     @Transactional
-    IngredientGroupDto update(Long id, IngredientGroupDto dto);
+    IngredientGroupResponse update(Long id, IngredientGroupDto dto);
 
     @Transactional
     void delete(Long id);
