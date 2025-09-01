@@ -1,17 +1,13 @@
 package com.biobac.warehouse.repository;
 
-import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.entity.InventoryItem;
-import com.biobac.warehouse.entity.Product;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.jpa.repository.Modifying;
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
-import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.util.Optional;
 
 public interface InventoryItemRepository extends JpaRepository<InventoryItem, Long>, JpaSpecificationExecutor<InventoryItem> {
+    Optional<InventoryItem> findByWarehouseIdAndProductId(Long warehouse_id, Long product_id);
 
+    Optional<InventoryItem> findByWarehouseIdAndIngredientId(Long warehouse_id, Long ingredient_id);
 }
