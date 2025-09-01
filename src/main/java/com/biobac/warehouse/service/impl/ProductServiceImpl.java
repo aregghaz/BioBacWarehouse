@@ -41,6 +41,7 @@ public class ProductServiceImpl implements ProductService {
     private final WarehouseRepository warehouseRepository;
     private final InventoryItemRepository inventoryItemRepository;
     private final RecipeItemRepository recipeItemRepository;
+    private final RecipeComponentRepository recipeComponentRepository;
     private final IngredientHistoryService ingredientHistoryService;
     private final ProductHistoryService productHistoryService;
     private final UnitRepository unitRepository;
@@ -133,14 +134,15 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional(readOnly = true)
     public ProductResponse getById(Long id) {
-        Product product = productRepository.findById(id).orElseThrow(() -> new NotFoundException("Product not found"));
+        Product product = productRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new NotFoundException("Product not found"));
         return toResponse(product);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ProductResponse> getAll() {
-        return productRepository.findAll().stream().map(this::toResponse).collect(Collectors.toList());
+        return productRepository.findAllByDeletedFalse().stream().map(this::toResponse).collect(Collectors.toList());
     }
 
     @Override
@@ -252,10 +254,48 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public void delete(Long id) {
-        if (!productRepository.existsById(id)) {
-            throw new NotFoundException("Product not found");
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Product not found"));
+
+        // Calculate total quantity before deletion for history
+        double totalBefore = 0.0;
+        List<InventoryItem> beforeItems = product.getInventoryItems();
+        if (beforeItems != null) {
+            totalBefore = beforeItems.stream()
+                    .mapToDouble(i -> i.getQuantity() != null ? i.getQuantity() : 0.0)
+                    .sum();
         }
-        productRepository.deleteById(id);
+
+        // Remove relation with RecipeItem (owning side is RecipeItem)
+        RecipeItem recipeItem = product.getRecipeItem();
+        if (recipeItem != null) {
+            recipeItem.setProduct(null);
+            recipeItemRepository.save(recipeItem);
+            product.setRecipeItem(null);
+        }
+
+        // Null out recipe components that reference this product to avoid FK issues
+        List<RecipeComponent> productComponents = recipeComponentRepository.findByProductId(id);
+        if (productComponents != null && !productComponents.isEmpty()) {
+            for (RecipeComponent rc : productComponents) {
+                rc.setProduct(null);
+            }
+            recipeComponentRepository.saveAll(productComponents);
+        }
+
+        // Delete all inventory items associated with this product
+        List<InventoryItem> items = product.getInventoryItems();
+        if (items != null && !items.isEmpty()) {
+            inventoryItemRepository.deleteAll(items);
+            product.getInventoryItems().clear();
+        }
+
+        // Soft delete: mark as deleted, keep row for history
+        product.setDeleted(true);
+        productRepository.save(product);
+
+        // Record history entry to indicate deletion
+        productHistoryService.recordQuantityChange(product, totalBefore, 0.0, "DELETE", "Soft deleted");
     }
 
     private ProductResponse toResponse(Product product) {

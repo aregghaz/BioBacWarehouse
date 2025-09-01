@@ -140,7 +140,7 @@ public class IngredientServiceImpl implements IngredientService {
     @Override
     @Transactional(readOnly = true)
     public IngredientResponse getById(Long id) {
-        Ingredient ingredient = ingredientRepository.findById(id)
+        Ingredient ingredient = ingredientRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new NotFoundException("Ingredient not found"));
         return toResponse(ingredient);
     }
@@ -149,7 +149,7 @@ public class IngredientServiceImpl implements IngredientService {
     @Transactional(readOnly = true)
     public List<IngredientResponse> getAll() {
 
-        List<Ingredient> ingredients = ingredientRepository.findAll();
+        List<Ingredient> ingredients = ingredientRepository.findAllByDeletedFalse();
 
         return ingredients.stream()
                 .map(this::toResponse)
@@ -274,10 +274,49 @@ public class IngredientServiceImpl implements IngredientService {
     @Override
     @Transactional
     public void delete(Long id) {
-        if (!ingredientRepository.existsById(id)) {
-            throw new NotFoundException("Ingredient not found");
+        Ingredient ingredient = ingredientRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Ingredient not found"));
+
+        // Calculate total quantity before deletion for history
+        double totalBefore = 0.0;
+        List<InventoryItem> beforeItems = ingredient.getInventoryItems();
+        if (beforeItems != null) {
+            totalBefore = beforeItems.stream()
+                    .mapToDouble(i -> i.getQuantity() != null ? i.getQuantity() : 0.0)
+                    .sum();
         }
-        ingredientRepository.deleteById(id);
+
+        // Remove relation with RecipeItem (owning side is RecipeItem)
+        RecipeItem recipeItem = ingredient.getRecipeItem();
+        if (recipeItem != null) {
+            recipeItem.setIngredient(null);
+            recipeItemRepository.save(recipeItem);
+            ingredient.setRecipeItem(null);
+        }
+
+        // Null out recipe components that reference this ingredient to avoid FK issues
+        List<RecipeComponent> refComponents = ingredient.getRecipeComponents();
+        if (refComponents != null && !refComponents.isEmpty()) {
+            for (RecipeComponent rc : refComponents) {
+                rc.setIngredient(null);
+            }
+        }
+
+        // Delete all inventory items associated with this ingredient
+        List<InventoryItem> items = ingredient.getInventoryItems();
+        if (items != null && !items.isEmpty()) {
+            inventoryItemRepository.deleteAll(items);
+            ingredient.getInventoryItems().clear();
+        }
+
+        // Soft delete: mark as inactive and deleted, keep row for history
+        ingredient.setActive(false);
+        // Set a 'deleted' flag introduced on the entity
+        ingredient.setDeleted(true);
+        ingredientRepository.save(ingredient);
+
+        // Record history entry to indicate deletion
+        ingredientHistoryService.recordQuantityChange(ingredient, totalBefore, 0.0, "DELETE", "Soft deleted");
     }
 
     private IngredientResponse toResponse(Ingredient ingredient) {

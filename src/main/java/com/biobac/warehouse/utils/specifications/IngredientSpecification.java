@@ -95,6 +95,9 @@ public class IngredientSpecification {
                 }
             }
 
+            // Always exclude soft-deleted records
+            predicates.add(cb.isFalse(root.get("deleted")));
+
             return cb.and(predicates.toArray(new Predicate[0]));
         };
     }
