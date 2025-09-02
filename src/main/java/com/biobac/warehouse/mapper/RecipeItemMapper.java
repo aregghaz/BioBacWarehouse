@@ -28,6 +28,7 @@ public interface RecipeItemMapper {
 
     // ------------------ ENTITY → DTO ------------------ //
 
+    @Mapping(target = "name", source = "name")
     @Mapping(target = "components", source = "components")
     @Mapping(target = "notes", source = "notes")
     @Mapping(target = "createdAt", source = "createdAt")
