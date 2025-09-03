@@ -19,6 +19,8 @@ public class ProductResponse {
     private Long unitId;
     private String unitName;
     private Long companyId;
+    private Long productGroupId;
+    private String productGroupName;
     private List<InventoryItemResponse> inventoryItems;
     private List<UnitTypeConfigResponse> unitTypeConfigs;
     private LocalDateTime createdAt;

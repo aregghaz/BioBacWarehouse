@@ -14,5 +14,6 @@ public class ProductUpdateRequest {
     private Long recipeItemId;
     private Long unitId;
     private Long companyId;
+    private Long productGroupId;
     private List<UnitTypeConfigRequest> unitTypeConfigs;
 }

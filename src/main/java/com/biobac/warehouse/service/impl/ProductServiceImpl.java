@@ -46,6 +46,7 @@ public class ProductServiceImpl implements ProductService {
     private final ProductHistoryService productHistoryService;
     private final UnitRepository unitRepository;
     private final UnitTypeRepository unitTypeRepository;
+    private final ProductGroupRepository productGroupRepository;
     private final ProductMapper productMapper;
 
     private static final int DEFAULT_PAGE = 0;
@@ -113,6 +114,11 @@ public class ProductServiceImpl implements ProductService {
             Unit unit = unitRepository.findById(request.getUnitId())
                     .orElseThrow(() -> new NotFoundException("Unit not found"));
             product.setUnit(unit);
+        }
+        if (request.getProductGroupId() != null) {
+            ProductGroup productGroup = productGroupRepository.findById(request.getProductGroupId())
+                    .orElseThrow(() -> new NotFoundException("ProductGroup not found"));
+            product.setProductGroup(productGroup);
         }
 
         if (request.getUnitTypeConfigs() != null) {
@@ -189,6 +195,12 @@ public class ProductServiceImpl implements ProductService {
                     .orElseThrow(() -> new NotFoundException("Unit not found"));
             existing.setUnit(unit);
             inventoryNeedsUpdate = true;
+        }
+
+        if (request.getProductGroupId() != null) {
+            ProductGroup productGroup = productGroupRepository.findById(request.getProductGroupId())
+                    .orElseThrow(() -> new NotFoundException("ProductGroup not found"));
+            existing.setProductGroup(productGroup);
         }
 
         if (request.getRecipeItemId() != null) {

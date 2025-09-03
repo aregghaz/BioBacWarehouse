@@ -39,6 +39,11 @@ public class ProductMapper {
             response.setUnitName(product.getUnit().getName());
         }
 
+        if (product.getProductGroup() != null) {
+            response.setProductGroupId(product.getProductGroup().getId());
+            response.setProductGroupName(product.getProductGroup().getName());
+        }
+
         double totalQuantity = product.getInventoryItems()
                 .stream()
                 .mapToDouble(i -> i.getQuantity() != null ? i.getQuantity() : 0.0)
