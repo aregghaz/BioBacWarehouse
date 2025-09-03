@@ -13,6 +13,7 @@ import com.biobac.warehouse.request.UnitCreateRequest;
 import com.biobac.warehouse.service.UnitService;
 import com.biobac.warehouse.utils.specifications.UnitSpecification;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -28,12 +29,31 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UnitServiceImpl implements UnitService {
+    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_SIZE = 20;
+    private static final String DEFAULT_SORT_BY = "id";
+    private static final String DEFAULT_SORT_DIR = "desc";
+
     private final UnitRepository unitRepository;
     private final UnitTypeRepository unitTypeRepository;
     private final com.biobac.warehouse.mapper.UnitMapper unitMapper;
+
+    private Pageable buildPageable(Integer page, Integer size, String sortBy, String sortDir) {
+        int safePage = page == null || page < 0 ? DEFAULT_PAGE : page;
+        int safeSize = size == null || size <= 0 ? DEFAULT_SIZE : size;
+        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? DEFAULT_SORT_BY : sortBy;
+        String sd = (sortDir == null || sortDir.isBlank()) ? DEFAULT_SORT_DIR : sortDir;
+        Sort sort = sd.equalsIgnoreCase("asc") ? Sort.by(safeSortBy).ascending() : Sort.by(safeSortBy).descending();
+        if (safeSize > 1000) {
+            log.warn("Requested page size {} is too large, capping to 1000", safeSize);
+            safeSize = 1000;
+        }
+        return PageRequest.of(safePage, safeSize, sort);
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -91,11 +111,7 @@ public class UnitServiceImpl implements UnitService {
     @Override
     @Transactional(readOnly = true)
     public Pair<List<UnitDto>, PaginationMetadata> pagination(Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
-        Sort sort = sortDir.equalsIgnoreCase("asc") ?
-                Sort.by(sortBy).ascending() :
-                Sort.by(sortBy).descending();
-
-        Pageable pageable = PageRequest.of(page, size, sort);
+        Pageable pageable = buildPageable(page, size, sortBy, sortDir);
         Specification<Unit> spec = UnitSpecification.buildSpecification(filters);
         Page<Unit> unitPage = unitRepository.findAll(spec, pageable);
 
@@ -111,8 +127,8 @@ public class UnitServiceImpl implements UnitService {
                 unitPage.getTotalPages(),
                 unitPage.isLast(),
                 filters,
-                sortDir,
-                sortBy,
+                pageable.getSort().toString().contains("ASC") ? "asc" : "desc",
+                pageable.getSort().stream().findFirst().map(Sort.Order::getProperty).orElse(DEFAULT_SORT_BY),
                 "unitTable"
         );
 

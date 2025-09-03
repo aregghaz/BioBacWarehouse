@@ -17,6 +17,7 @@ import com.biobac.warehouse.service.IngredientService;
 import com.biobac.warehouse.service.ProductHistoryService;
 import com.biobac.warehouse.utils.specifications.IngredientSpecification;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -26,13 +27,13 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class IngredientServiceImpl implements IngredientService {
@@ -46,6 +47,24 @@ public class IngredientServiceImpl implements IngredientService {
     private final IngredientHistoryService ingredientHistoryService;
     private final ProductHistoryService productHistoryService;
     private final IngredientMapper ingredientMapper;
+
+    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_SIZE = 20;
+    private static final String DEFAULT_SORT_BY = "id";
+    private static final String DEFAULT_SORT_DIR = "desc";
+
+    private Pageable buildPageable(Integer page, Integer size, String sortBy, String sortDir) {
+        int safePage = page == null || page < 0 ? DEFAULT_PAGE : page;
+        int safeSize = size == null || size <= 0 ? DEFAULT_SIZE : size;
+        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? DEFAULT_SORT_BY : sortBy;
+        String sd = (sortDir == null || sortDir.isBlank()) ? DEFAULT_SORT_DIR : sortDir;
+        Sort sort = sd.equalsIgnoreCase("asc") ? Sort.by(safeSortBy).ascending() : Sort.by(safeSortBy).descending();
+        if (safeSize > 1000) {
+            log.warn("Requested page size {} is too large, capping to 1000", safeSize);
+            safeSize = 1000;
+        }
+        return PageRequest.of(safePage, safeSize, sort);
+    }
 
     @Override
     @Transactional
@@ -173,7 +192,6 @@ public class IngredientServiceImpl implements IngredientService {
 
         boolean inventoryNeedsUpdate = false;
         List<InventoryItem> items = existing.getInventoryItems();
-        LocalDateTime now = LocalDateTime.now();
 
         if (request.getIngredientGroupId() != null) {
             IngredientGroup ingredientGroup = ingredientGroupRepository.findById(request.getIngredientGroupId())
@@ -233,11 +251,7 @@ public class IngredientServiceImpl implements IngredientService {
                                                                             Integer size,
                                                                             String sortBy,
                                                                             String sortDir) {
-        Sort sort = sortDir.equalsIgnoreCase("asc") ?
-                Sort.by(sortBy).ascending() :
-                Sort.by(sortBy).descending();
-
-        Pageable pageable = PageRequest.of(page, size, sort);
+        Pageable pageable = buildPageable(page, size, sortBy, sortDir);
         Specification<Ingredient> spec = IngredientSpecification.buildSpecification(filters);
         Page<Ingredient> ingredientPage = ingredientRepository.findAll(spec, pageable);
 
@@ -253,8 +267,8 @@ public class IngredientServiceImpl implements IngredientService {
                 ingredientPage.getTotalPages(),
                 ingredientPage.isLast(),
                 filters,
-                sortDir,
-                sortBy,
+                pageable.getSort().toString().contains("ASC") ? "asc" : "desc",
+                pageable.getSort().stream().findFirst().map(Sort.Order::getProperty).orElse(DEFAULT_SORT_BY),
                 "ingredientTable"
         );
 
