@@ -5,14 +5,13 @@ import com.biobac.warehouse.entity.*;
 import com.biobac.warehouse.exception.InvalidDataException;
 import com.biobac.warehouse.exception.NotEnoughException;
 import com.biobac.warehouse.exception.NotFoundException;
+import com.biobac.warehouse.mapper.ProductMapper;
 import com.biobac.warehouse.repository.*;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.request.ProductCreateRequest;
 import com.biobac.warehouse.request.ProductUpdateRequest;
 import com.biobac.warehouse.request.UnitTypeConfigRequest;
-import com.biobac.warehouse.response.InventoryItemResponse;
 import com.biobac.warehouse.response.ProductResponse;
-import com.biobac.warehouse.response.UnitTypeConfigResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.ProductHistoryService;
 import com.biobac.warehouse.service.ProductService;
@@ -46,6 +45,7 @@ public class ProductServiceImpl implements ProductService {
     private final ProductHistoryService productHistoryService;
     private final UnitRepository unitRepository;
     private final UnitTypeRepository unitTypeRepository;
+    private final ProductMapper productMapper;
 
     @Override
     @Transactional
@@ -90,12 +90,10 @@ public class ProductServiceImpl implements ProductService {
         }
         inventoryItem.setQuantity(request.getQuantity());
         inventoryItem.setProduct(product);
-        inventoryItem.setLastUpdated(LocalDateTime.now());
         if (request.getUnitId() != null) {
             Unit unit = unitRepository.findById(request.getUnitId())
                     .orElseThrow(() -> new NotFoundException("Unit not found"));
             product.setUnit(unit);
-            inventoryItem.setUnit(unit);
         }
 
         if (request.getUnitTypeConfigs() != null) {
@@ -128,7 +126,7 @@ public class ProductServiceImpl implements ProductService {
             productHistoryService.recordQuantityChange(saved, 0.0, addedQty, "INCREASE", "Initial stock added during product creation");
         }
 
-        return toResponse(saved);
+        return productMapper.toResponse(saved);
     }
 
     @Override
@@ -136,13 +134,13 @@ public class ProductServiceImpl implements ProductService {
     public ProductResponse getById(Long id) {
         Product product = productRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new NotFoundException("Product not found"));
-        return toResponse(product);
+        return productMapper.toResponse(product);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<ProductResponse> getAll() {
-        return productRepository.findAllByDeletedFalse().stream().map(this::toResponse).collect(Collectors.toList());
+        return productRepository.findAllByDeletedFalse().stream().map(productMapper::toResponse).collect(Collectors.toList());
     }
 
     @Override
@@ -172,12 +170,6 @@ public class ProductServiceImpl implements ProductService {
             Unit unit = unitRepository.findById(request.getUnitId())
                     .orElseThrow(() -> new NotFoundException("Unit not found"));
             existing.setUnit(unit);
-            if (items != null) {
-                for (InventoryItem item : items) {
-                    item.setUnit(unit);
-                    item.setLastUpdated(now);
-                }
-            }
             inventoryNeedsUpdate = true;
         }
 
@@ -213,7 +205,7 @@ public class ProductServiceImpl implements ProductService {
         if (inventoryNeedsUpdate && items != null && !items.isEmpty()) {
             inventoryItemRepository.saveAll(items);
         }
-        return toResponse(saved);
+        return productMapper.toResponse(saved);
     }
 
     @Override
@@ -233,7 +225,7 @@ public class ProductServiceImpl implements ProductService {
 
         List<ProductResponse> content = productPage.getContent()
                 .stream()
-                .map(this::toResponse)
+                .map(productMapper::toResponse)
                 .collect(Collectors.toList());
 
         PaginationMetadata metadata = new PaginationMetadata(
@@ -298,69 +290,6 @@ public class ProductServiceImpl implements ProductService {
         productHistoryService.recordQuantityChange(product, totalBefore, 0.0, "DELETE", "Soft deleted");
     }
 
-    private ProductResponse toResponse(Product product) {
-        ProductResponse response = new ProductResponse();
-        response.setId(product.getId());
-        response.setName(product.getName());
-        response.setDescription(product.getDescription());
-        response.setSku(product.getSku());
-        response.setCreatedAt(product.getCreatedAt());
-        response.setUpdatedAt(product.getUpdatedAt());
-
-        if (product.getRecipeItem() != null) {
-            response.setRecipeItemName(product.getRecipeItem().getName());
-            response.setRecipeItemId(product.getRecipeItem().getId());
-        }
-
-        double totalQuantity = product.getInventoryItems()
-                .stream()
-                .mapToDouble(InventoryItem::getQuantity)
-                .sum();
-
-        if (product.getUnit() != null) {
-            response.setUnitId(product.getUnit().getId());
-            response.setUnitName(product.getUnit().getName());
-        }
-
-        List<InventoryItemResponse> inventoryResponses = product.getInventoryItems().stream()
-                .map(item -> {
-                    InventoryItemResponse ir = new InventoryItemResponse();
-                    ir.setId(item.getId());
-                    ir.setQuantity(item.getQuantity());
-                    ir.setProductName(product.getName());
-                    ir.setWarehouseName(item.getWarehouse().getName());
-                    ir.setWarehouseId(item.getWarehouse().getId());
-                    if (item.getUnit() != null) {
-                        ir.setUnitName(item.getUnit().getName());
-                    }
-                    ir.setLastUpdated(item.getLastUpdated());
-                    // Auditing fields for inventory item
-                    ir.setCreatedAt(item.getCreatedAt());
-                    ir.setUpdatedAt(item.getUpdatedAt());
-                    return ir;
-                })
-                .toList();
-        response.setTotalQuantity(totalQuantity);
-        response.setInventoryItems(inventoryResponses);
-
-        if (product.getUnitTypeConfigs() != null) {
-            List<UnitTypeConfigResponse> cfgs = product.getUnitTypeConfigs().stream().map(cfg -> {
-                UnitTypeConfigResponse r = new UnitTypeConfigResponse();
-                r.setId(cfg.getId());
-                if (cfg.getUnitType() != null) {
-                    r.setUnitTypeId(cfg.getUnitType().getId());
-                    r.setUnitTypeName(cfg.getUnitType().getName());
-                }
-                r.setSize(cfg.getSize());
-                r.setCreatedAt(cfg.getCreatedAt());
-                r.setUpdatedAt(cfg.getUpdatedAt());
-                return r;
-            }).toList();
-            response.setUnitTypeConfigs(cfgs);
-        }
-
-        return response;
-    }
 
     // Recursively consume required quantities of an ingredient either from inventory or, if insufficient, from sub-components via its recipe (ingredient/product)
     private void consumeIngredientRecursive(Ingredient ingredient, double requiredQty, Set<Long> visitingIngredientIds, Set<Long> visitingProductIds) {
@@ -394,7 +323,6 @@ public class ProductServiceImpl implements ProductService {
                         double use = Math.min(invQty, left);
                         if (use > 0) {
                             inv.setQuantity(invQty - use);
-                            inv.setLastUpdated(LocalDateTime.now());
                             left -= use;
                         }
                     }
@@ -433,7 +361,6 @@ public class ProductServiceImpl implements ProductService {
         }
     }
 
-    // Recursively consume required quantities of a product from its inventory or build via its recipe
     private void consumeProductRecursive(Product product, double requiredQty, Set<Long> visitingIngredientIds, Set<Long> visitingProductIds) {
         if (requiredQty <= 0) return;
         if (product == null) {
@@ -465,7 +392,6 @@ public class ProductServiceImpl implements ProductService {
                         double use = Math.min(invQty, left);
                         if (use > 0) {
                             inv.setQuantity(invQty - use);
-                            inv.setLastUpdated(LocalDateTime.now());
                             left -= use;
                         }
                     }

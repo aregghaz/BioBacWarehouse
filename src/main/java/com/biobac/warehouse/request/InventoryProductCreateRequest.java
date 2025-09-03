@@ -9,5 +9,4 @@ public class InventoryProductCreateRequest {
     private Long warehouseId;
     private Long productId;
     private Double quantity;
-    private Long unitId;
 }

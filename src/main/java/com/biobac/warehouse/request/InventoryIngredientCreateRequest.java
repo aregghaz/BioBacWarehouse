@@ -8,7 +8,6 @@ import lombok.Setter;
 public class InventoryIngredientCreateRequest {
     private Long warehouseId;
     private Long ingredientId;
-    private Long ingredientGroupId;
+    private Long companyId;
     private Double quantity;
-    private Long unitId;
 }

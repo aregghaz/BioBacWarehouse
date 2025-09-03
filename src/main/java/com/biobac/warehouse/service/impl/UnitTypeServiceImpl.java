@@ -25,6 +25,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class UnitTypeServiceImpl implements UnitTypeService {
     private final UnitTypeRepository unitTypeRepository;
+    private final com.biobac.warehouse.mapper.UnitTypeMapper unitTypeMapper;
 
     @Override
     @Transactional
@@ -32,7 +33,7 @@ public class UnitTypeServiceImpl implements UnitTypeService {
         UnitType unitType = new UnitType();
         unitType.setName(request.getName());
         UnitType saved = unitTypeRepository.save(unitType);
-        return toDto(saved);
+        return unitTypeMapper.toDto(saved);
     }
 
     @Override
@@ -40,7 +41,7 @@ public class UnitTypeServiceImpl implements UnitTypeService {
     public UnitTypeDto getById(Long id) {
         UnitType unitType = unitTypeRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Unit Type not found"));
-        return toDto(unitType);
+        return unitTypeMapper.toDto(unitType);
     }
 
     @Override
@@ -50,7 +51,7 @@ public class UnitTypeServiceImpl implements UnitTypeService {
                 .orElseThrow(() -> new NotFoundException("Unit Type not found"));
         existing.setName(request.getName());
         UnitType unitType = unitTypeRepository.save(existing);
-        return toDto(unitType);
+        return unitTypeMapper.toDto(unitType);
     }
 
     @Override
@@ -66,7 +67,7 @@ public class UnitTypeServiceImpl implements UnitTypeService {
     public List<UnitTypeDto> getAll() {
         return unitTypeRepository.findAll()
                 .stream()
-                .map(this::toDto)
+                .map(unitTypeMapper::toDto)
                 .collect(Collectors.toList());
     }
 
@@ -83,7 +84,7 @@ public class UnitTypeServiceImpl implements UnitTypeService {
 
         List<UnitTypeDto> content = unitTypePage.getContent()
                 .stream()
-                .map(this::toDto)
+                .map(unitTypeMapper::toDto)
                 .collect(java.util.stream.Collectors.toList());
 
         PaginationMetadata metadata = new PaginationMetadata(
@@ -101,12 +102,4 @@ public class UnitTypeServiceImpl implements UnitTypeService {
         return Pair.of(content, metadata);
     }
 
-    private UnitTypeDto toDto(UnitType unitType) {
-        UnitTypeDto dto = new UnitTypeDto();
-        dto.setId(unitType.getId());
-        dto.setName(unitType.getName());
-        dto.setCreatedAt(unitType.getCreatedAt());
-        dto.setUpdatedAt(unitType.getUpdatedAt());
-        return dto;
-    }
 }

@@ -17,7 +17,6 @@ public class RecipeComponent extends BaseAuditable {
     @JoinColumn(name = "recipe_item_id", nullable = false)
     private RecipeItem recipeItem;
 
-    // One of ingredient or product must be set (enforced in service layer)
     @ManyToOne(optional = true)
     @JoinColumn(name = "ingredient_id", nullable = true)
     private Ingredient ingredient;
@@ -28,6 +27,4 @@ public class RecipeComponent extends BaseAuditable {
 
     @Column(nullable = false)
     private Double quantity;
-
-    private Long unitId;
 }

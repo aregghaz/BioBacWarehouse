@@ -5,14 +5,13 @@ import com.biobac.warehouse.entity.*;
 import com.biobac.warehouse.exception.InvalidDataException;
 import com.biobac.warehouse.exception.NotEnoughException;
 import com.biobac.warehouse.exception.NotFoundException;
+import com.biobac.warehouse.mapper.IngredientMapper;
 import com.biobac.warehouse.repository.*;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.request.IngredientCreateRequest;
 import com.biobac.warehouse.request.IngredientUpdateRequest;
 import com.biobac.warehouse.request.UnitTypeConfigRequest;
 import com.biobac.warehouse.response.IngredientResponse;
-import com.biobac.warehouse.response.InventoryItemResponse;
-import com.biobac.warehouse.response.UnitTypeConfigResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.IngredientService;
 import com.biobac.warehouse.service.ProductHistoryService;
@@ -46,6 +45,7 @@ public class IngredientServiceImpl implements IngredientService {
     private final UnitTypeRepository unitTypeRepository;
     private final IngredientHistoryService ingredientHistoryService;
     private final ProductHistoryService productHistoryService;
+    private final IngredientMapper ingredientMapper;
 
     @Override
     @Transactional
@@ -60,6 +60,10 @@ public class IngredientServiceImpl implements IngredientService {
             IngredientGroup ingredientGroup = ingredientGroupRepository.findById(request.getGroupId())
                     .orElseThrow(() -> new NotFoundException("Ingredient group not found"));
             ingredient.setIngredientGroup(ingredientGroup);
+        }
+
+        if (request.getCompanyId() != null) {
+            inventoryItem.setCompanyId(request.getCompanyId());
         }
 
         if (request.getRecipeItemId() != null) {
@@ -90,7 +94,6 @@ public class IngredientServiceImpl implements IngredientService {
 
         inventoryItem.setQuantity(request.getQuantity());
         inventoryItem.setIngredient(ingredient);
-        inventoryItem.setLastUpdated(LocalDateTime.now());
         if (request.getWarehouseId() != null) {
             Warehouse warehouse = warehouseRepository.findById(request.getWarehouseId())
                     .orElseThrow(() -> new NotFoundException("Warehouse not found"));
@@ -100,10 +103,8 @@ public class IngredientServiceImpl implements IngredientService {
             Unit unit = unitRepository.findById(request.getUnitId())
                     .orElseThrow(() -> new NotFoundException("Unit not found"));
             ingredient.setUnit(unit);
-            inventoryItem.setUnit(unit);
         }
 
-        // Handle unit type configurations on create
         if (request.getUnitTypeConfigs() != null) {
             Set<UnitType> allowedTypes = ingredient.getUnit() != null && ingredient.getUnit().getUnitTypes() != null
                     ? ingredient.getUnit().getUnitTypes() : new HashSet<>();
@@ -134,7 +135,7 @@ public class IngredientServiceImpl implements IngredientService {
             ingredientHistoryService.recordQuantityChange(saved, 0.0, addedQty, "INCREASE", "Initial stock added during ingredient creation");
         }
 
-        return toResponse(saved);
+        return ingredientMapper.toResponse(saved);
     }
 
     @Override
@@ -142,7 +143,7 @@ public class IngredientServiceImpl implements IngredientService {
     public IngredientResponse getById(Long id) {
         Ingredient ingredient = ingredientRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new NotFoundException("Ingredient not found"));
-        return toResponse(ingredient);
+        return ingredientMapper.toResponse(ingredient);
     }
 
     @Override
@@ -152,7 +153,7 @@ public class IngredientServiceImpl implements IngredientService {
         List<Ingredient> ingredients = ingredientRepository.findAllByDeletedFalse();
 
         return ingredients.stream()
-                .map(this::toResponse)
+                .map(ingredientMapper::toResponse)
                 .toList();
     }
 
@@ -178,11 +179,6 @@ public class IngredientServiceImpl implements IngredientService {
             IngredientGroup ingredientGroup = ingredientGroupRepository.findById(request.getIngredientGroupId())
                     .orElseThrow(() -> new NotFoundException("Ingredient group not found"));
             existing.setIngredientGroup(ingredientGroup);
-            if (items != null) {
-                for (InventoryItem item : items) {
-                    item.setLastUpdated(now);
-                }
-            }
             inventoryNeedsUpdate = true;
         }
 
@@ -190,12 +186,6 @@ public class IngredientServiceImpl implements IngredientService {
             Unit unit = unitRepository.findById(request.getUnitId())
                     .orElseThrow(() -> new NotFoundException("Unit not found"));
             existing.setUnit(unit);
-            if (items != null) {
-                for (InventoryItem item : items) {
-                    item.setUnit(unit);
-                    item.setLastUpdated(now);
-                }
-            }
             inventoryNeedsUpdate = true;
         }
 
@@ -233,7 +223,7 @@ public class IngredientServiceImpl implements IngredientService {
             inventoryItemRepository.saveAll(items);
         }
 
-        return toResponse(saved);
+        return ingredientMapper.toResponse(saved);
     }
 
     @Override
@@ -253,7 +243,7 @@ public class IngredientServiceImpl implements IngredientService {
 
         List<IngredientResponse> content = ingredientPage.getContent()
                 .stream()
-                .map(this::toResponse)
+                .map(ingredientMapper::toResponse)
                 .collect(Collectors.toList());
 
         PaginationMetadata metadata = new PaginationMetadata(
@@ -277,7 +267,6 @@ public class IngredientServiceImpl implements IngredientService {
         Ingredient ingredient = ingredientRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Ingredient not found"));
 
-        // Calculate total quantity before deletion for history
         double totalBefore = 0.0;
         List<InventoryItem> beforeItems = ingredient.getInventoryItems();
         if (beforeItems != null) {
@@ -286,7 +275,6 @@ public class IngredientServiceImpl implements IngredientService {
                     .sum();
         }
 
-        // Remove relation with RecipeItem (owning side is RecipeItem)
         RecipeItem recipeItem = ingredient.getRecipeItem();
         if (recipeItem != null) {
             recipeItem.setIngredient(null);
@@ -294,7 +282,6 @@ public class IngredientServiceImpl implements IngredientService {
             ingredient.setRecipeItem(null);
         }
 
-        // Null out recipe components that reference this ingredient to avoid FK issues
         List<RecipeComponent> refComponents = ingredient.getRecipeComponents();
         if (refComponents != null && !refComponents.isEmpty()) {
             for (RecipeComponent rc : refComponents) {
@@ -302,88 +289,19 @@ public class IngredientServiceImpl implements IngredientService {
             }
         }
 
-        // Delete all inventory items associated with this ingredient
         List<InventoryItem> items = ingredient.getInventoryItems();
         if (items != null && !items.isEmpty()) {
             inventoryItemRepository.deleteAll(items);
             ingredient.getInventoryItems().clear();
         }
 
-        // Soft delete: mark as inactive and deleted, keep row for history
         ingredient.setActive(false);
-        // Set a 'deleted' flag introduced on the entity
         ingredient.setDeleted(true);
         ingredientRepository.save(ingredient);
 
-        // Record history entry to indicate deletion
         ingredientHistoryService.recordQuantityChange(ingredient, totalBefore, 0.0, "DELETE", "Soft deleted");
     }
 
-    private IngredientResponse toResponse(Ingredient ingredient) {
-        IngredientResponse response = new IngredientResponse();
-        response.setId(ingredient.getId());
-        response.setName(ingredient.getName());
-        response.setDescription(ingredient.getDescription());
-        response.setActive(ingredient.isActive());
-        response.setIngredientGroupId(ingredient.getIngredientGroup().getId());
-        response.setIngredientGroupName(ingredient.getIngredientGroup().getName());
-        response.setCreatedAt(ingredient.getCreatedAt());
-        response.setUpdatedAt(ingredient.getUpdatedAt());
-
-        if (ingredient.getRecipeItem() != null) {
-            response.setRecipeItemId(ingredient.getRecipeItem().getId());
-            response.setRecipeItemName(ingredient.getRecipeItem().getName());
-        }
-
-        if (ingredient.getUnit() != null) {
-            response.setUnitId(ingredient.getUnit().getId());
-            response.setUnitName(ingredient.getUnit().getName());
-        }
-
-        double totalQuantity = ingredient.getInventoryItems()
-                .stream()
-                .mapToDouble(InventoryItem::getQuantity)
-                .sum();
-
-        List<InventoryItemResponse> inventoryResponses = ingredient.getInventoryItems().stream()
-                .map(item -> {
-                    InventoryItemResponse ir = new InventoryItemResponse();
-                    ir.setId(item.getId());
-                    ir.setQuantity(item.getQuantity());
-                    ir.setWarehouseId(item.getWarehouse().getId());
-                    ir.setIngredientName(ingredient.getName());
-                    ir.setWarehouseName(item.getWarehouse().getName());
-                    if (item.getUnit() != null) {
-                        ir.setUnitName(item.getUnit().getName());
-                    }
-                    ir.setLastUpdated(item.getLastUpdated());
-                    ir.setCreatedAt(item.getCreatedAt());
-                    ir.setUpdatedAt(item.getUpdatedAt());
-                    return ir;
-                })
-                .toList();
-        response.setTotalQuantity(totalQuantity);
-        response.setInventoryItems(inventoryResponses);
-
-        if (ingredient.getUnitTypeConfigs() != null) {
-            List<UnitTypeConfigResponse> cfgs = ingredient.getUnitTypeConfigs().stream().map(cfg -> {
-                UnitTypeConfigResponse r = new UnitTypeConfigResponse();
-                r.setId(cfg.getId());
-                if (cfg.getUnitType() != null) {
-                    r.setUnitTypeId(cfg.getUnitType().getId());
-                    r.setUnitTypeName(cfg.getUnitType().getName());
-                }
-                r.setSize(cfg.getSize());
-                // Auditing fields for unit type config
-                r.setCreatedAt(cfg.getCreatedAt());
-                r.setUpdatedAt(cfg.getUpdatedAt());
-                return r;
-            }).toList();
-            response.setUnitTypeConfigs(cfgs);
-        }
-
-        return response;
-    }
 
     // Recursively consume required quantities of an ingredient from inventory or build via its recipe (supports ingredient and product components)
     private void consumeIngredientRecursive(Ingredient ingredient, double requiredQty, Set<Long> visitingIngredientIds, Set<Long> visitingProductIds) {
@@ -417,7 +335,6 @@ public class IngredientServiceImpl implements IngredientService {
                         double use = Math.min(invQty, left);
                         if (use > 0) {
                             inv.setQuantity(invQty - use);
-                            inv.setLastUpdated(LocalDateTime.now());
                             left -= use;
                         }
                     }
@@ -456,7 +373,6 @@ public class IngredientServiceImpl implements IngredientService {
         }
     }
 
-    // Recursively consume required quantities of a product from its inventory or build via its recipe
     private void consumeProductRecursive(Product product, double requiredQty, Set<Long> visitingIngredientIds, Set<Long> visitingProductIds) {
         if (requiredQty <= 0) return;
         if (product == null) {
@@ -471,7 +387,6 @@ public class IngredientServiceImpl implements IngredientService {
             visitingProductIds.add(productId);
         }
         try {
-            // Try consuming from existing inventory of this product
             List<InventoryItem> inventory = product.getInventoryItems();
             double available = inventory != null ? inventory.stream()
                     .mapToDouble(i -> i.getQuantity() != null ? i.getQuantity() : 0.0)
@@ -488,7 +403,6 @@ public class IngredientServiceImpl implements IngredientService {
                         double use = Math.min(invQty, left);
                         if (use > 0) {
                             inv.setQuantity(invQty - use);
-                            inv.setLastUpdated(LocalDateTime.now());
                             left -= use;
                         }
                     }

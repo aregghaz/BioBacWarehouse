@@ -23,7 +23,6 @@ public interface RecipeItemMapper {
 
     @Mapping(target = "ingredient", source = "ingredient")
     @Mapping(target = "recipeItem", ignore = true) // will set in service
-    @Mapping(target = "unitId", ignore = true) // handled/validated in service layer
     RecipeComponent toEntity(RecipeComponentRequest request, Ingredient ingredient);
 
     // ------------------ ENTITY → DTO ------------------ //

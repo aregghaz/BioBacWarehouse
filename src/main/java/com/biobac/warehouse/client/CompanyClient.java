@@ -10,4 +10,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 public interface CompanyClient {
     @GetMapping("/{id}")
     ApiResponse<CompanyResponse> getCompany(@PathVariable Long id);
+
+    @GetMapping("/name/{id}")
+    ApiResponse<String> getCompanyName(@PathVariable Long id);
 }

@@ -39,6 +39,5 @@ public class Ingredient extends BaseAuditable {
     @OneToMany(mappedBy = "ingredient", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<IngredientUnitType> unitTypeConfigs = new ArrayList<>();
 
-    // Soft-delete flag to preserve history relations
     private boolean deleted = false;
 }

@@ -11,5 +11,6 @@ public interface InventoryItemMapper {
     @Mapping(target = "warehouseId", source = "warehouse.id")
     @Mapping(target = "productName", source = "product.name")
     @Mapping(target = "ingredientName", source = "ingredient.name")
+    @Mapping(target = "companyName", ignore = true) // populated via CompanyClient in services/mappers
     InventoryItemResponse toSingleResponse(InventoryItem item);
 }

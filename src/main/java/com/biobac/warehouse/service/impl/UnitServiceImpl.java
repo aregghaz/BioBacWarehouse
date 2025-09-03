@@ -33,13 +33,14 @@ import java.util.stream.Collectors;
 public class UnitServiceImpl implements UnitService {
     private final UnitRepository unitRepository;
     private final UnitTypeRepository unitTypeRepository;
+    private final com.biobac.warehouse.mapper.UnitMapper unitMapper;
 
     @Override
     @Transactional(readOnly = true)
     public UnitDto getById(Long id) {
         Unit unit = unitRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Unit not found"));
-        return toDto(unit);
+        return unitMapper.toDto(unit);
     }
 
     @Override
@@ -53,7 +54,7 @@ public class UnitServiceImpl implements UnitService {
         unit.setName(request.getName());
         unit.setUnitTypes(new HashSet<>(unitTypes));
         Unit saved = unitRepository.save(unit);
-        return toDto(saved);
+        return unitMapper.toDto(saved);
     }
 
     @Override
@@ -68,7 +69,7 @@ public class UnitServiceImpl implements UnitService {
         existingUnit.setName(request.getName());
         existingUnit.setUnitTypes(new HashSet<>(unitTypes));
         Unit saved = unitRepository.save(existingUnit);
-        return toDto(saved);
+        return unitMapper.toDto(saved);
     }
 
     @Override
@@ -83,7 +84,7 @@ public class UnitServiceImpl implements UnitService {
     @Transactional(readOnly = true)
     public List<UnitDto> getAll() {
         return unitRepository.findAll().stream()
-                .map(this::toDto)
+                .map(unitMapper::toDto)
                 .collect(Collectors.toList());
     }
 
@@ -100,7 +101,7 @@ public class UnitServiceImpl implements UnitService {
 
         List<UnitDto> content = unitPage.getContent()
                 .stream()
-                .map(this::toDto)
+                .map(unitMapper::toDto)
                 .collect(java.util.stream.Collectors.toList());
 
         PaginationMetadata metadata = new PaginationMetadata(
@@ -118,23 +119,4 @@ public class UnitServiceImpl implements UnitService {
         return Pair.of(content, metadata);
     }
 
-    private UnitDto toDto(Unit unit) {
-        UnitDto dto = new UnitDto();
-        dto.setId(unit.getId());
-        dto.setName(unit.getName());
-        dto.setCreatedAt(unit.getCreatedAt());
-        dto.setUpdatedAt(unit.getUpdatedAt());
-        Set<UnitType> types = unit.getUnitTypes();
-        if (types != null && !types.isEmpty()) {
-            dto.setUnitTypes(types.stream().map(ut -> {
-                UnitTypeDto utd = new UnitTypeDto();
-                utd.setId(ut.getId());
-                utd.setName(ut.getName());
-                utd.setCreatedAt(ut.getCreatedAt());
-                utd.setUpdatedAt(ut.getUpdatedAt());
-                return utd;
-            }).toList());
-        }
-        return dto;
-    }
 }

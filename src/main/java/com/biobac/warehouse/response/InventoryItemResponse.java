@@ -14,8 +14,8 @@ public class InventoryItemResponse {
     private Long warehouseId;
     private String productName;
     private String ingredientName;
-    private String unitName;
-    private LocalDateTime lastUpdated;
+    private Long companyId;
+    private String companyName;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

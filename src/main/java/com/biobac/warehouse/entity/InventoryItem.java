@@ -4,8 +4,6 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
-
 @Entity
 @Getter
 @Setter
@@ -23,11 +21,9 @@ public class InventoryItem extends BaseAuditable {
     @ManyToOne
     private Warehouse warehouse;
 
+    private Long companyId;
+
+//    private Double price;
+
     private Double quantity;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "unit_id")
-    private Unit unit;
-
-    private LocalDateTime lastUpdated;
 }

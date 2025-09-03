@@ -34,6 +34,5 @@ public class Product extends BaseAuditable {
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<ProductUnitType> unitTypeConfigs = new ArrayList<>();
 
-    // Soft-delete flag to preserve history relations
     private boolean deleted = false;
 }

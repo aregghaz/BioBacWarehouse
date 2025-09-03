@@ -15,6 +15,7 @@ public class IngredientCreateRequest {
     private Long recipeItemId;
     private Double quantity;
     private Long warehouseId;
+    private Long companyId;
     private Long unitId;
     private List<UnitTypeConfigRequest> unitTypeConfigs;
 }
