@@ -15,4 +15,5 @@ public class IngredientUpdateRequest {
     private Long recipeItemId;
     private Long unitId;
     private List<UnitTypeConfigRequest> unitTypeConfigs;
+    private List<AttributeUpsertRequest> attributes;
 }

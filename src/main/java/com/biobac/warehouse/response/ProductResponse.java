@@ -23,6 +23,7 @@ public class ProductResponse {
     private String productGroupName;
     private List<InventoryItemResponse> inventoryItems;
     private List<UnitTypeConfigResponse> unitTypeConfigs;
+    private List<AttributeDefResponse> attributes;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

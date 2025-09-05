@@ -3,13 +3,14 @@ package com.biobac.warehouse.service.impl;
 
 
 import com.biobac.warehouse.dto.PaginationMetadata;
-import com.biobac.warehouse.dto.WarehouseDto;
 import com.biobac.warehouse.entity.Warehouse;
 import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.WarehouseMapper;
 import com.biobac.warehouse.repository.WarehouseRepository;
 import com.biobac.warehouse.request.FilterCriteria;
+import com.biobac.warehouse.request.WarehouseRequest;
 import com.biobac.warehouse.response.WarehouseResponse;
+import com.biobac.warehouse.service.AttributeService;
 import com.biobac.warehouse.service.WarehouseService;
 import com.biobac.warehouse.utils.specifications.WarehouseSpecification;
 import lombok.RequiredArgsConstructor;
@@ -38,6 +39,7 @@ public class WarehouseServiceImpl implements WarehouseService {
 
     private final WarehouseRepository warehouseRepository;
     private final WarehouseMapper mapper;
+    private final AttributeService attributeService;
 
     @Transactional(readOnly = true)
     @Override
@@ -89,23 +91,26 @@ public class WarehouseServiceImpl implements WarehouseService {
     @Transactional(readOnly = true)
     @Override
     public WarehouseResponse getById(Long id) {
-        return mapper.toResponse(warehouseRepository.findById(id).orElseThrow(() -> new NotFoundException("Warehouse not found with id: " + id)));
+        Warehouse entity = warehouseRepository.findById(id).orElseThrow(() -> new NotFoundException("Warehouse not found with id: " + id));
+        return mapper.toResponse(entity);
     }
 
     @Transactional
     @Override
-    public WarehouseResponse create(WarehouseDto dto) {
-        return mapper.toResponse(warehouseRepository.save(mapper.toEntity(dto)));
+    public WarehouseResponse create(WarehouseRequest request) {
+        Warehouse saved = warehouseRepository.save(mapper.toEntity(request));
+        return mapper.toResponse(saved);
     }
 
     @Transactional
     @Override
-    public WarehouseResponse update(Long id, WarehouseDto dto) {
+    public WarehouseResponse update(Long id, WarehouseRequest request) {
         Warehouse existing = warehouseRepository.findById(id).orElseThrow(() -> new NotFoundException("Warehouse not found with id: " + id));
-        existing.setName(dto.getName());
-        existing.setLocation(dto.getLocation());
-        existing.setType(dto.getType());
-        return mapper.toResponse(warehouseRepository.save(existing));
+        existing.setName(request.getName());
+        existing.setLocation(request.getLocation());
+        existing.setType(request.getType());
+        Warehouse saved = warehouseRepository.save(existing);
+        return mapper.toResponse(saved);
     }
 
     @Transactional

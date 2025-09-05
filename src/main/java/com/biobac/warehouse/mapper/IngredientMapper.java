@@ -7,6 +7,7 @@ import com.biobac.warehouse.response.ApiResponse;
 import com.biobac.warehouse.response.IngredientResponse;
 import com.biobac.warehouse.response.InventoryItemResponse;
 import com.biobac.warehouse.response.UnitTypeConfigResponse;
+import com.biobac.warehouse.service.AttributeService;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
@@ -18,6 +19,9 @@ public class IngredientMapper {
 
     @Autowired
     protected CompanyClient companyClient;
+
+    @Autowired
+    protected AttributeService attributeService;
 
     public IngredientResponse toResponse(Ingredient ingredient) {
         if (ingredient == null) return null;
@@ -32,6 +36,13 @@ public class IngredientMapper {
         }
         response.setCreatedAt(ingredient.getCreatedAt());
         response.setUpdatedAt(ingredient.getUpdatedAt());
+
+        try {
+            if (ingredient.getId() != null) {
+                response.setAttributes(attributeService.getValuesForIngredient(ingredient.getId()));
+            }
+        } catch (Exception ignored) {
+        }
 
         if (ingredient.getRecipeItem() != null) {
             response.setRecipeItemId(ingredient.getRecipeItem().getId());

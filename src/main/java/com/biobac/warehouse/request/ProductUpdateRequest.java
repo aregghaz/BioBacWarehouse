@@ -16,4 +16,6 @@ public class ProductUpdateRequest {
     private Long companyId;
     private Long productGroupId;
     private List<UnitTypeConfigRequest> unitTypeConfigs;
+    private List<Long> attributeGroupIds;
+    private List<AttributeUpsertRequest> attributes;
 }

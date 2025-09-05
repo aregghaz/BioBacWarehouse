@@ -1,7 +1,7 @@
 package com.biobac.warehouse.controller;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
-import com.biobac.warehouse.dto.WarehouseDto;
+import com.biobac.warehouse.request.WarehouseRequest;
 import com.biobac.warehouse.entity.Entities;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.ApiResponse;
@@ -51,15 +51,14 @@ public class WarehouseController extends BaseController {
     }
 
     @PostMapping
-    public ApiResponse<WarehouseResponse> create(@RequestBody WarehouseDto dto, HttpServletRequest request) {
-        dto.setId(null); // new entity
+    public ApiResponse<WarehouseResponse> create(@RequestBody WarehouseRequest dto, HttpServletRequest request) {
         WarehouseResponse createdWarehouse = warehouseService.create(dto);
         auditLogService.logCreate(Entities.WAREHOUSE.name(), createdWarehouse.getId(), dto, getUsername(request));
         return ResponseUtil.success("Warehouse created successfully", createdWarehouse);
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<WarehouseResponse> update(@PathVariable Long id, @RequestBody WarehouseDto dto, HttpServletRequest request) {
+    public ApiResponse<WarehouseResponse> update(@PathVariable Long id, @RequestBody WarehouseRequest dto, HttpServletRequest request) {
         WarehouseResponse existingWarehouse = warehouseService.getById(id);
         WarehouseResponse warehouseDto = warehouseService.update(id, dto);
         auditLogService.logUpdate(Entities.WAREHOUSE.name(), id, existingWarehouse, warehouseDto, getUsername(request));

@@ -7,6 +7,7 @@ import com.biobac.warehouse.response.ApiResponse;
 import com.biobac.warehouse.response.InventoryItemResponse;
 import com.biobac.warehouse.response.ProductResponse;
 import com.biobac.warehouse.response.UnitTypeConfigResponse;
+import com.biobac.warehouse.service.AttributeService;
 import org.springframework.beans.factory.annotation.Autowired;
 
 import java.util.List;
@@ -18,6 +19,9 @@ public class ProductMapper {
 
     @Autowired
     protected CompanyClient companyClient;
+
+    @Autowired
+    protected AttributeService attributeService;
 
     public ProductResponse toResponse(Product product) {
         if (product == null) return null;

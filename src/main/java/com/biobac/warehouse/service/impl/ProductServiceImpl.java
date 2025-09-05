@@ -12,6 +12,7 @@ import com.biobac.warehouse.request.ProductCreateRequest;
 import com.biobac.warehouse.request.ProductUpdateRequest;
 import com.biobac.warehouse.request.UnitTypeConfigRequest;
 import com.biobac.warehouse.response.ProductResponse;
+import com.biobac.warehouse.service.AttributeService;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.ProductHistoryService;
 import com.biobac.warehouse.service.ProductService;
@@ -48,6 +49,7 @@ public class ProductServiceImpl implements ProductService {
     private final UnitTypeRepository unitTypeRepository;
     private final ProductGroupRepository productGroupRepository;
     private final ProductMapper productMapper;
+    private final AttributeService attributeService;
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
@@ -235,6 +237,7 @@ public class ProductServiceImpl implements ProductService {
         if (inventoryNeedsUpdate && items != null && !items.isEmpty()) {
             inventoryItemRepository.saveAll(items);
         }
+
         return productMapper.toResponse(saved);
     }
 

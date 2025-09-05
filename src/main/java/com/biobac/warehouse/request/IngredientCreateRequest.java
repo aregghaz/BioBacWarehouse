@@ -18,4 +18,5 @@ public class IngredientCreateRequest {
     private Long companyId;
     private Long unitId;
     private List<UnitTypeConfigRequest> unitTypeConfigs;
+    private List<AttributeUpsertRequest> attributes;
 }

@@ -12,6 +12,7 @@ import com.biobac.warehouse.request.IngredientCreateRequest;
 import com.biobac.warehouse.request.IngredientUpdateRequest;
 import com.biobac.warehouse.request.UnitTypeConfigRequest;
 import com.biobac.warehouse.response.IngredientResponse;
+import com.biobac.warehouse.service.AttributeService;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.IngredientService;
 import com.biobac.warehouse.service.ProductHistoryService;
@@ -47,6 +48,7 @@ public class IngredientServiceImpl implements IngredientService {
     private final IngredientHistoryService ingredientHistoryService;
     private final ProductHistoryService productHistoryService;
     private final IngredientMapper ingredientMapper;
+    private final AttributeService attributeService;
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
@@ -152,6 +154,10 @@ public class IngredientServiceImpl implements IngredientService {
         double addedQty = request.getQuantity() != null ? request.getQuantity() : 0.0;
         if (addedQty > 0) {
             ingredientHistoryService.recordQuantityChange(saved, 0.0, addedQty, "INCREASE", "Initial stock added during ingredient creation");
+        }
+
+        if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
+            attributeService.createValuesForIngredient(saved, request.getAttributes());
         }
 
         return ingredientMapper.toResponse(saved);

@@ -5,6 +5,7 @@ package com.biobac.warehouse.service;
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.dto.WarehouseDto;
 import com.biobac.warehouse.request.FilterCriteria;
+import com.biobac.warehouse.request.WarehouseRequest;
 import com.biobac.warehouse.response.WarehouseResponse;
 import org.springframework.data.util.Pair;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,10 +26,10 @@ public interface WarehouseService {
     WarehouseResponse getById(Long id);
 
     @Transactional
-    WarehouseResponse create(WarehouseDto dto);
+    WarehouseResponse create(WarehouseRequest dto);
 
     @Transactional
-    WarehouseResponse update(Long id, WarehouseDto dto);
+    WarehouseResponse update(Long id, WarehouseRequest dto);
 
     @Transactional
     void delete(Long id);
