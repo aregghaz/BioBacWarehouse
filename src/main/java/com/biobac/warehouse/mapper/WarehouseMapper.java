@@ -53,6 +53,12 @@ public class WarehouseMapper {
         response.setType(warehouse.getType());
         response.setCreatedAt(warehouse.getCreatedAt());
         response.setUpdatedAt(warehouse.getUpdatedAt());
+        try {
+            if (warehouse.getId() != null) {
+                response.setAttributes(attributeService.getValuesForWarehouse(warehouse.getId()));
+            }
+        } catch (Exception ignored) {
+        }
         return response;
     }
 }

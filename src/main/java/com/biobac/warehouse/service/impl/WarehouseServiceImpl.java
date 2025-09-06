@@ -99,6 +99,9 @@ public class WarehouseServiceImpl implements WarehouseService {
     @Override
     public WarehouseResponse create(WarehouseRequest request) {
         Warehouse saved = warehouseRepository.save(mapper.toEntity(request));
+        if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
+            attributeService.createValuesForWarehouse(saved, request.getAttributes());
+        }
         return mapper.toResponse(saved);
     }
 
@@ -110,6 +113,9 @@ public class WarehouseServiceImpl implements WarehouseService {
         existing.setLocation(request.getLocation());
         existing.setType(request.getType());
         Warehouse saved = warehouseRepository.save(existing);
+        if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
+            attributeService.createValuesForWarehouse(saved, request.getAttributes());
+        }
         return mapper.toResponse(saved);
     }
 

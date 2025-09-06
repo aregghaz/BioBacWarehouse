@@ -75,6 +75,13 @@ public class ProductMapper {
             response.setUnitTypeConfigs(cfgs);
         }
 
+        try {
+            if (product.getId() != null) {
+                response.setAttributes(attributeService.getValuesForProduct(product.getId()));
+            }
+        } catch (Exception ignored) {
+        }
+
         return response;
     }
 

@@ -153,6 +153,10 @@ public class ProductServiceImpl implements ProductService {
             productHistoryService.recordQuantityChange(saved, 0.0, addedQty, "INCREASE", "Initial stock added during product creation");
         }
 
+        if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
+            attributeService.createValuesForProduct(saved, request.getAttributes());
+        }
+
         return productMapper.toResponse(saved);
     }
 
@@ -236,6 +240,10 @@ public class ProductServiceImpl implements ProductService {
         Product saved = productRepository.save(existing);
         if (inventoryNeedsUpdate && items != null && !items.isEmpty()) {
             inventoryItemRepository.saveAll(items);
+        }
+
+        if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
+            attributeService.createValuesForProduct(saved, request.getAttributes());
         }
 
         return productMapper.toResponse(saved);

@@ -1,5 +1,6 @@
 package com.biobac.warehouse.service.impl;
 
+import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.entity.AttributeDefinition;
 import com.biobac.warehouse.entity.AttributeGroup;
 import com.biobac.warehouse.exception.NotFoundException;
@@ -7,13 +8,21 @@ import com.biobac.warehouse.mapper.AttributeGroupMapper;
 import com.biobac.warehouse.repository.AttributeDefinitionRepository;
 import com.biobac.warehouse.repository.AttributeGroupRepository;
 import com.biobac.warehouse.request.AttributeGroupCreateRequest;
+import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.AttributeGroupResponse;
 import com.biobac.warehouse.service.AttributeGroupService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -25,11 +34,55 @@ public class AttributeGroupServiceImpl implements AttributeGroupService {
     private final AttributeDefinitionRepository attributeDefinitionRepository;
     private final AttributeGroupMapper mapper;
 
+    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_SIZE = 20;
+    private static final String DEFAULT_SORT_BY = "id";
+    private static final String DEFAULT_SORT_DIR = "desc";
+
+    private Pageable buildPageable(Integer page, Integer size, String sortBy, String sortDir) {
+        int safePage = page == null || page < 0 ? DEFAULT_PAGE : page;
+        int safeSize = size == null || size <= 0 ? DEFAULT_SIZE : size;
+        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? DEFAULT_SORT_BY : sortBy;
+        String sd = (sortDir == null || sortDir.isBlank()) ? DEFAULT_SORT_DIR : sortDir;
+        Sort sort = sd.equalsIgnoreCase("asc") ? Sort.by(safeSortBy).ascending() : Sort.by(safeSortBy).descending();
+        if (safeSize > 1000) {
+            safeSize = 1000;
+        }
+        return PageRequest.of(safePage, safeSize, sort);
+    }
+
     @Override
     public List<AttributeGroupResponse> getAll() {
         return attributeGroupRepository.findAll().stream()
                 .map(mapper::toDto)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public Pair<List<AttributeGroupResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters,
+                                                                                Integer page,
+                                                                                Integer size,
+                                                                                String sortBy,
+                                                                                String sortDir) {
+        Pageable pageable = buildPageable(page, size, sortBy, sortDir);
+        Page<AttributeGroup> groupPage = attributeGroupRepository.findAll(pageable);
+        List<AttributeGroupResponse> content = groupPage.getContent().stream()
+                .map(mapper::toDto)
+                .collect(Collectors.toList());
+
+        PaginationMetadata metadata = new PaginationMetadata(
+                groupPage.getNumber(),
+                groupPage.getSize(),
+                groupPage.getTotalElements(),
+                groupPage.getTotalPages(),
+                groupPage.isLast(),
+                filters,
+                pageable.getSort().toString().contains("ASC") ? "asc" : "desc",
+                pageable.getSort().stream().findFirst().map(Sort.Order::getProperty).orElse(DEFAULT_SORT_BY),
+                "attributeGroupTable"
+        );
+
+        return Pair.of(content, metadata);
     }
 
     @Override

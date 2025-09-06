@@ -1,24 +1,31 @@
 package com.biobac.warehouse.service.impl;
 
-import com.biobac.warehouse.entity.AttributeDataType;
-import com.biobac.warehouse.entity.AttributeDefinition;
-import com.biobac.warehouse.entity.AttributeGroup;
-import com.biobac.warehouse.entity.AttributeTargetType;
-import com.biobac.warehouse.entity.AttributeValue;
-import com.biobac.warehouse.entity.Ingredient;
+import com.biobac.warehouse.dto.PaginationMetadata;
+import com.biobac.warehouse.entity.*;
 import com.biobac.warehouse.exception.InvalidDataException;
 import com.biobac.warehouse.exception.NotFoundException;
-import com.biobac.warehouse.repository.*;
+import com.biobac.warehouse.mapper.AttributeDefinitionMapper;
+import com.biobac.warehouse.repository.AttributeDefinitionRepository;
+import com.biobac.warehouse.repository.AttributeGroupRepository;
+import com.biobac.warehouse.repository.AttributeValueRepository;
 import com.biobac.warehouse.request.AttributeDefRequest;
 import com.biobac.warehouse.request.AttributeUpsertRequest;
+import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.AttributeDefResponse;
 import com.biobac.warehouse.response.AttributeValueResponse;
 import com.biobac.warehouse.service.AttributeService;
+import com.biobac.warehouse.utils.AttributeValueUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -26,13 +33,25 @@ public class AttributeServiceImpl implements AttributeService {
 
     private final AttributeDefinitionRepository definitionRepository;
     private final AttributeValueRepository valueRepository;
-    private final ProductRepository productRepository;
-    private final ProductGroupRepository productGroupRepository;
-    private final IngredientRepository ingredientRepository;
-    private final IngredientGroupRepository ingredientGroupRepository;
-    private final WarehouseRepository warehouseRepository;
-    private final WarehouseGroupRepository warehouseGroupRepository;
     private final AttributeGroupRepository attributeGroupRepository;
+    private final AttributeDefinitionMapper attributeDefinitionMapper;
+
+    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_SIZE = 20;
+    private static final String DEFAULT_SORT_BY = "id";
+    private static final String DEFAULT_SORT_DIR = "desc";
+
+    private Pageable buildPageable(Integer page, Integer size, String sortBy, String sortDir) {
+        int safePage = page == null || page < 0 ? DEFAULT_PAGE : page;
+        int safeSize = size == null || size <= 0 ? DEFAULT_SIZE : size;
+        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? DEFAULT_SORT_BY : sortBy;
+        String sd = (sortDir == null || sortDir.isBlank()) ? DEFAULT_SORT_DIR : sortDir;
+        Sort sort = sd.equalsIgnoreCase("asc") ? org.springframework.data.domain.Sort.by(safeSortBy).ascending() : org.springframework.data.domain.Sort.by(safeSortBy).descending();
+        if (safeSize > 1000) {
+            safeSize = 1000;
+        }
+        return PageRequest.of(safePage, safeSize, sort);
+    }
 
     @Override
     @Transactional(readOnly = true)
@@ -94,17 +113,38 @@ public class AttributeServiceImpl implements AttributeService {
     @Override
     @Transactional(readOnly = true)
     public List<AttributeDefResponse> getDefinitionsByGroups(List<Long> attributeGroupIds) {
+        List<AttributeDefinition> defs;
         if (attributeGroupIds == null || attributeGroupIds.isEmpty()) {
-            return Collections.emptyList();
+            defs = definitionRepository.findByDeletedFalse();
+        } else {
+            defs = definitionRepository.findDistinctByGroups_IdInAndDeletedFalse(attributeGroupIds);
         }
+        return defs.stream().map(attributeDefinitionMapper::toDto).toList();
+    }
 
-        List<AttributeDefinition> defs = definitionRepository.findDistinctByGroups_IdInAndDeletedFalse(attributeGroupIds);
-        return defs.stream().map(def -> {
-            AttributeDefResponse r = new AttributeDefResponse();
-            r.setName(def.getName());
-            r.setDataType(def.getDataType());
-            return r;
-        }).toList();
+    @Override
+    public Pair<List<AttributeDefResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
+        Pageable pageable = buildPageable(page, size, sortBy, sortDir);
+
+        Page<AttributeDefinition> attributeDefinitionPage = definitionRepository.findAll(pageable);
+
+        List<AttributeDefResponse> content = attributeDefinitionPage.getContent().stream()
+                .map(attributeDefinitionMapper::toDto)
+                .collect(Collectors.toList());
+
+        PaginationMetadata metadata = new PaginationMetadata(
+                attributeDefinitionPage.getNumber(),
+                attributeDefinitionPage.getSize(),
+                attributeDefinitionPage.getTotalElements(),
+                attributeDefinitionPage.getTotalPages(),
+                attributeDefinitionPage.isLast(),
+                filters,
+                pageable.getSort().toString().contains("ASC") ? "asc" : "desc",
+                pageable.getSort().stream().findFirst().map(Sort.Order::getProperty).orElse(DEFAULT_SORT_BY),
+                "attributeDefinitionTable"
+        );
+
+        return Pair.of(content, metadata);
     }
 
     @Override
@@ -155,6 +195,7 @@ public class AttributeServiceImpl implements AttributeService {
         if (req.getDataType() == null) {
             throw new InvalidDataException("Attribute dataType is required");
         }
+        AttributeValueUtil.validateOrThrow(req.getDataType(), req.getValue());
     }
 
     private AttributeDefinition findOrCreateDefinition(String name, AttributeDataType type) {
@@ -174,7 +215,6 @@ public class AttributeServiceImpl implements AttributeService {
     }
 
     private void applyValue(AttributeValue v, AttributeUpsertRequest req) {
-        // Store all values as string for now; parsing/conversion can be added in the future
         v.setValue(req.getValue());
     }
 
@@ -183,16 +223,93 @@ public class AttributeServiceImpl implements AttributeService {
         r.setName(v.getDefinition().getName());
         r.setDataType(v.getDefinition().getDataType());
         r.setValue(v.getValue());
-        if (v.getProduct() != null) {
-            r.setSourceLevel("PRODUCT");
-            r.setSourceId(v.getProduct().getId());
-        } else if (v.getIngredient() != null) {
-            r.setSourceLevel("INGREDIENT");
-            r.setSourceId(v.getIngredient().getId());
-        } else if (v.getWarehouse() != null) {
-            r.setSourceLevel("WAREHOUSE");
-            r.setSourceId(v.getWarehouse().getId());
+        if (v.getDefinition().getDataType() != null && AttributeValueUtil.isValid(v.getDefinition().getDataType(), v.getValue())) {
+            r.setParsedValue(AttributeValueUtil.parse(v.getDefinition().getDataType(), v.getValue()));
+        } else {
+            r.setParsedValue(null);
         }
         return r;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AttributeDefResponse> getValuesForProduct(Long productId) {
+        if (productId == null) {
+            throw new InvalidDataException("productId is required");
+        }
+        List<AttributeValue> values = valueRepository.findByProduct_IdAndDeletedFalse(productId);
+        return values.stream().map(this::toResponse).toList();
+    }
+
+    @Override
+    @Transactional
+    public void createValuesForProduct(Product product, List<AttributeUpsertRequest> attributes) {
+        if (product == null || product.getId() == null) {
+            throw new InvalidDataException("Product must be persisted before assigning attributes");
+        }
+        if (attributes == null || attributes.isEmpty()) {
+            return;
+        }
+        List<AttributeValue> toSave = new ArrayList<>();
+        for (AttributeUpsertRequest req : attributes) {
+            validateReq(req);
+            AttributeDefinition def = findOrCreateDefinition(req.getName(), req.getDataType());
+            AttributeValue v = valueRepository
+                    .findByDefinition_IdAndProduct_Id(def.getId(), product.getId())
+                    .orElseGet(() -> {
+                        AttributeValue nv = new AttributeValue();
+                        nv.setDefinition(def);
+                        nv.setTargetType(AttributeTargetType.PRODUCT);
+                        nv.setProduct(product);
+                        return nv;
+                    });
+            applyValue(v, req);
+            v.setDeleted(false);
+            toSave.add(v);
+        }
+        if (!toSave.isEmpty()) {
+            valueRepository.saveAll(toSave);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AttributeDefResponse> getValuesForWarehouse(Long warehouseId) {
+        if (warehouseId == null) {
+            throw new InvalidDataException("warehouseId is required");
+        }
+        List<AttributeValue> values = valueRepository.findByWarehouse_IdAndDeletedFalse(warehouseId);
+        return values.stream().map(this::toResponse).toList();
+    }
+
+    @Override
+    @Transactional
+    public void createValuesForWarehouse(Warehouse warehouse, List<AttributeUpsertRequest> attributes) {
+        if (warehouse == null || warehouse.getId() == null) {
+            throw new InvalidDataException("Warehouse must be persisted before assigning attributes");
+        }
+        if (attributes == null || attributes.isEmpty()) {
+            return;
+        }
+        List<AttributeValue> toSave = new ArrayList<>();
+        for (AttributeUpsertRequest req : attributes) {
+            validateReq(req);
+            AttributeDefinition def = findOrCreateDefinition(req.getName(), req.getDataType());
+            AttributeValue v = valueRepository
+                    .findByDefinition_IdAndWarehouse_Id(def.getId(), warehouse.getId())
+                    .orElseGet(() -> {
+                        AttributeValue nv = new AttributeValue();
+                        nv.setDefinition(def);
+                        nv.setTargetType(AttributeTargetType.WAREHOUSE);
+                        nv.setWarehouse(warehouse);
+                        return nv;
+                    });
+            applyValue(v, req);
+            v.setDeleted(false);
+            toSave.add(v);
+        }
+        if (!toSave.isEmpty()) {
+            valueRepository.saveAll(toSave);
+        }
     }
 }
