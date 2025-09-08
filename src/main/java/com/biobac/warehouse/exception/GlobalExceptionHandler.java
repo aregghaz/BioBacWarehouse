@@ -68,13 +68,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ResponseUtil.error(ex.getMessage()));
     }
 
+    @ExceptionHandler(DeleteException.class)
+    public ResponseEntity<ApiResponse<Object>> handleDeleteException(DeleteException ex) {
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ResponseUtil.error(ex.getMessage()));
+    }
+
     @ExceptionHandler({HttpMessageNotReadableException.class, MissingServletRequestParameterException.class})
     public ResponseEntity<ApiResponse<Object>> handleBadRequest(Exception ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ResponseUtil.error(ex.getMessage()));
     }
 
     @ExceptionHandler(NotEnoughException.class)
-    public ResponseEntity<ApiResponse<Object>> handleNotEnoughException(NotEnoughException ex){
+    public ResponseEntity<ApiResponse<Object>> handleNotEnoughException(NotEnoughException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ResponseUtil.error(ex.getMessage()));
     }
 

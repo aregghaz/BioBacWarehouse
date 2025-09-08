@@ -13,4 +13,6 @@ public interface AttributeDefinitionRepository extends JpaRepository<AttributeDe
     List<AttributeDefinition> findDistinctByGroups_IdInAndDeletedFalse(Iterable<Long> groupIds);
 
     List<AttributeDefinition> findByDeletedFalse();
+
+    Optional<AttributeDefinition> findByIdAndDeletedFalse(Long id);
 }

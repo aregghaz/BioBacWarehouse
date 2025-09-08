@@ -30,6 +30,18 @@ public class AttributeController {
         return ResponseUtil.success("Attribute created successfully", created);
     }
 
+    @PutMapping("/definitions/update/{id}")
+    public ApiResponse<AttributeDefResponse> updateAttribute(@PathVariable Long id, @RequestBody AttributeDefRequest request) {
+        AttributeDefResponse updated = attributeService.updateAttributeDefinition(id, request);
+        return ResponseUtil.success("Attribute updated successfully", updated);
+    }
+
+    @DeleteMapping("/definitions/delete/{id}")
+    public ApiResponse<String> deleteAttribute(@PathVariable Long id) {
+        attributeService.deleteAttributeDefinition(id);
+        return ResponseUtil.success("Attribute deleted successfully");
+    }
+
     @GetMapping("/definitions/by-groups")
     public ApiResponse<List<AttributeDefResponse>> getDefinitionsByGroups(@RequestParam(value = "groupIds", required = false) List<Long> groupIds) {
         List<AttributeDefResponse> defs = attributeService.getDefinitionsByGroups(groupIds);

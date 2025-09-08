@@ -18,7 +18,6 @@ public class ProductResponse {
     private String recipeItemName;
     private Long unitId;
     private String unitName;
-    private Long companyId;
     private Long productGroupId;
     private String productGroupName;
     private List<InventoryItemResponse> inventoryItems;

@@ -17,23 +17,30 @@ import java.util.Set;
 
 public interface AttributeService {
     void createValuesForIngredient(Ingredient ingredient, List<AttributeUpsertRequest> attributes);
+
     List<AttributeDefResponse> getValuesForIngredient(Long ingredientId);
 
     void createValuesForProduct(Product product, List<AttributeUpsertRequest> attributes);
+
     List<AttributeDefResponse> getValuesForProduct(Long productId);
 
     void createValuesForWarehouse(Warehouse warehouse, List<AttributeUpsertRequest> attributes);
+
     List<AttributeDefResponse> getValuesForWarehouse(Long warehouseId);
 
     AttributeDefResponse createAttributeDefinition(AttributeDefRequest request);
 
+    AttributeDefResponse updateAttributeDefinition(Long id, AttributeDefRequest request);
+
+    void deleteAttributeDefinition(Long id);
+
     List<AttributeDefResponse> getDefinitionsByGroups(List<Long> attributeGroupIds);
 
     Pair<List<AttributeDefResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters,
-                                                                                Integer page,
-                                                                                Integer size,
-                                                                                String sortBy,
-                                                                                String sortDir);
+                                                                       Integer page,
+                                                                       Integer size,
+                                                                       String sortBy,
+                                                                       String sortDir);
 
     Set<AttributeDataType> getAttributeDataTypes();
 }

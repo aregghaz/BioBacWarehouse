@@ -60,6 +60,7 @@ public class AttributeServiceImpl implements AttributeService {
     }
 
     @Override
+    @Transactional
     public AttributeDefResponse createAttributeDefinition(AttributeDefRequest request) {
         if (request == null || request.getName() == null || request.getName().isBlank()) {
             throw new InvalidDataException("Attribute name is required");
@@ -104,10 +105,54 @@ public class AttributeServiceImpl implements AttributeService {
             }
             def = definitionRepository.save(def);
         }
-        AttributeDefResponse r = new AttributeDefResponse();
-        r.setName(def.getName());
-        r.setDataType(def.getDataType());
-        return r;
+        return attributeDefinitionMapper.toDto(def);
+    }
+
+    @Override
+    @Transactional
+    public AttributeDefResponse updateAttributeDefinition(Long id, AttributeDefRequest request) {
+        AttributeDefinition def = definitionRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new NotFoundException("Attribute definition not found"));
+        AttributeValue attributeValue = valueRepository.findByDefinition(def);
+        if (attributeValue == null) {
+            if (request.getDataType() != null) {
+                def.setDataType(request.getDataType());
+            }
+        } else {
+            throw new InvalidDataException("Can't delete, cause existing value on attribute");
+        }
+        if (request.getName() != null) {
+            def.setName(request.getName());
+        }
+
+        if (request.getAttributeGroupIds() != null) {
+            List<AttributeGroup> groups = Collections.emptyList();
+            if (!request.getAttributeGroupIds().isEmpty()) {
+                groups = attributeGroupRepository.findAllById(request.getAttributeGroupIds());
+                if (groups.size() != request.getAttributeGroupIds().size()) {
+                    throw new NotFoundException("One or more attribute groups not found");
+                }
+            }
+            def.getGroups().clear();
+            if (!groups.isEmpty()) {
+                def.getGroups().addAll(groups);
+            }
+        }
+
+        definitionRepository.save(def);
+        return attributeDefinitionMapper.toDto(def);
+    }
+
+    @Override
+    @Transactional
+    public void deleteAttributeDefinition(Long id) {
+        if (id == null) {
+            throw new InvalidDataException("Attribute definition id is required");
+        }
+        AttributeDefinition def = definitionRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Attribute definition not found"));
+        def.setDeleted(true);
+        definitionRepository.save(def);
     }
 
     @Override
@@ -123,6 +168,7 @@ public class AttributeServiceImpl implements AttributeService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Pair<List<AttributeDefResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
         Pageable pageable = buildPageable(page, size, sortBy, sortDir);
 
@@ -186,49 +232,6 @@ public class AttributeServiceImpl implements AttributeService {
         if (!toSave.isEmpty()) {
             valueRepository.saveAll(toSave);
         }
-    }
-
-    private void validateReq(AttributeUpsertRequest req) {
-        if (req == null || req.getName() == null || req.getName().isBlank()) {
-            throw new InvalidDataException("Attribute name is required");
-        }
-        if (req.getDataType() == null) {
-            throw new InvalidDataException("Attribute dataType is required");
-        }
-        AttributeValueUtil.validateOrThrow(req.getDataType(), req.getValue());
-    }
-
-    private AttributeDefinition findOrCreateDefinition(String name, AttributeDataType type) {
-        return definitionRepository.findByNameAndDeletedFalse(name)
-                .map(def -> {
-                    if (def.getDataType() != type) {
-                        throw new InvalidDataException("Attribute '" + name + "' already exists with different data type");
-                    }
-                    return def;
-                })
-                .orElseGet(() -> {
-                    AttributeDefinition def = new AttributeDefinition();
-                    def.setName(name);
-                    def.setDataType(type);
-                    return definitionRepository.save(def);
-                });
-    }
-
-    private void applyValue(AttributeValue v, AttributeUpsertRequest req) {
-        v.setValue(req.getValue());
-    }
-
-    private AttributeDefResponse toResponse(AttributeValue v) {
-        AttributeValueResponse r = new AttributeValueResponse();
-        r.setName(v.getDefinition().getName());
-        r.setDataType(v.getDefinition().getDataType());
-        r.setValue(v.getValue());
-        if (v.getDefinition().getDataType() != null && AttributeValueUtil.isValid(v.getDefinition().getDataType(), v.getValue())) {
-            r.setParsedValue(AttributeValueUtil.parse(v.getDefinition().getDataType(), v.getValue()));
-        } else {
-            r.setParsedValue(null);
-        }
-        return r;
     }
 
     @Override
@@ -311,5 +314,58 @@ public class AttributeServiceImpl implements AttributeService {
         if (!toSave.isEmpty()) {
             valueRepository.saveAll(toSave);
         }
+    }
+
+    private void validateReq(AttributeUpsertRequest req) {
+        if (req == null || req.getName() == null || req.getName().isBlank()) {
+            throw new InvalidDataException("Attribute name is required");
+        }
+        if (req.getDataType() == null) {
+            throw new InvalidDataException("Attribute dataType is required");
+        }
+        AttributeValueUtil.validateOrThrow(req.getDataType(), req.getValue());
+    }
+
+    private AttributeDefinition findOrCreateDefinition(String name, AttributeDataType type) {
+        return definitionRepository.findByNameAndDeletedFalse(name)
+                .map(def -> {
+                    if (def.getDataType() != type) {
+                        throw new InvalidDataException("Attribute '" + name + "' already exists with different data type");
+                    }
+                    return def;
+                })
+                .orElseGet(() -> {
+                    AttributeDefinition def = new AttributeDefinition();
+                    def.setName(name);
+                    def.setDataType(type);
+                    return definitionRepository.save(def);
+                });
+    }
+
+    private void applyValue(AttributeValue v, AttributeUpsertRequest req) {
+        v.setValue(req.getValue());
+    }
+
+    private AttributeDefResponse toResponse(AttributeValue v) {
+        AttributeValueResponse r = new AttributeValueResponse();
+        r.setId(v.getDefinition().getId());
+        r.setCreatedAt(v.getDefinition().getCreatedAt());
+        r.setUpdatedAt(v.getDefinition().getUpdatedAt());
+        r.setName(v.getDefinition().getName());
+        r.setDataType(v.getDefinition().getDataType());
+        r.setValue(v.getValue());
+        if (v.getDefinition().getDataType() != null && AttributeValueUtil.isValid(v.getDefinition().getDataType(), v.getValue())) {
+            r.setParsedValue(AttributeValueUtil.parse(v.getDefinition().getDataType(), v.getValue()));
+        } else {
+            r.setParsedValue(null);
+        }
+        List<Long> ids = new ArrayList<>();
+        if (!v.getDefinition().getGroups().isEmpty()) {
+            for (AttributeGroup attributeGroup : v.getDefinition().getGroups()) {
+                ids.add(attributeGroup.getId());
+            }
+        }
+        r.setAttributeGroupIds(ids);
+        return r;
     }
 }

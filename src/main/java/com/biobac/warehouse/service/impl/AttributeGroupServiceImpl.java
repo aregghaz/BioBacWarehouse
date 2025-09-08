@@ -18,7 +18,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.List;
@@ -96,17 +95,15 @@ public class AttributeGroupServiceImpl implements AttributeGroupService {
     public AttributeGroupResponse create(AttributeGroupCreateRequest group) {
         AttributeGroup entity = mapper.toEntity(group);
 
-        // Persist the group first to obtain an ID
         AttributeGroup savedGroup = attributeGroupRepository.save(entity);
 
-        // If attributes provided, update the owning side (AttributeDefinition.groups)
         if (group.getAttributeIds() != null && !group.getAttributeIds().isEmpty()) {
             Set<AttributeDefinition> attributeDefinitions = new HashSet<>(attributeDefinitionRepository.findAllById(group.getAttributeIds()));
             for (AttributeDefinition def : attributeDefinitions) {
                 def.getGroups().add(savedGroup);
             }
             attributeDefinitionRepository.saveAll(attributeDefinitions);
-            // Also reflect on the inverse side for completeness
+
             savedGroup.setDefinitions(attributeDefinitions);
             savedGroup = attributeGroupRepository.save(savedGroup);
         }
@@ -118,11 +115,9 @@ public class AttributeGroupServiceImpl implements AttributeGroupService {
         AttributeGroup existing = attributeGroupRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("AttributeGroup not found with id: " + id));
 
-        // Update basic fields
         mapper.update(existing, group);
         AttributeGroup savedGroup = attributeGroupRepository.save(existing);
 
-        // If attributeIds provided, sync relations on owning side (AttributeDefinition)
         if (group.getAttributeIds() != null) {
             Set<AttributeDefinition> newDefs = new HashSet<>();
             if (!group.getAttributeIds().isEmpty()) {
@@ -130,21 +125,18 @@ public class AttributeGroupServiceImpl implements AttributeGroupService {
             }
             Set<AttributeDefinition> currentDefs = new HashSet<>(savedGroup.getDefinitions());
 
-            // Definitions to remove
             Set<AttributeDefinition> toRemove = new HashSet<>(currentDefs);
             toRemove.removeAll(newDefs);
             for (AttributeDefinition def : toRemove) {
                 def.getGroups().remove(savedGroup);
             }
 
-            // Definitions to add
             Set<AttributeDefinition> toAdd = new HashSet<>(newDefs);
             toAdd.removeAll(currentDefs);
             for (AttributeDefinition def : toAdd) {
                 def.getGroups().add(savedGroup);
             }
 
-            // Persist owning-side changes
             Set<AttributeDefinition> changed = new HashSet<>();
             changed.addAll(toRemove);
             changed.addAll(toAdd);
@@ -152,7 +144,6 @@ public class AttributeGroupServiceImpl implements AttributeGroupService {
                 attributeDefinitionRepository.saveAll(changed);
             }
 
-            // Reflect on inverse side and save group
             savedGroup.setDefinitions(newDefs);
             savedGroup = attributeGroupRepository.save(savedGroup);
         }
@@ -162,9 +153,15 @@ public class AttributeGroupServiceImpl implements AttributeGroupService {
 
     @Override
     public void delete(Long id) {
-        if (!attributeGroupRepository.existsById(id)) {
-            throw new NotFoundException("AttributeGroup not found with id: " + id);
+        AttributeGroup group = attributeGroupRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Attribute Group not found with id: " + id));
+
+        for (AttributeDefinition def : group.getDefinitions()) {
+            def.getGroups().remove(group);
         }
-        attributeGroupRepository.deleteById(id);
+
+        group.getDefinitions().clear();
+
+        attributeGroupRepository.delete(group);
     }
 }

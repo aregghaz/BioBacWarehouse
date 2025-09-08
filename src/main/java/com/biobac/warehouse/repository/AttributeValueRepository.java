@@ -1,5 +1,6 @@
 package com.biobac.warehouse.repository;
 
+import com.biobac.warehouse.entity.AttributeDefinition;
 import com.biobac.warehouse.entity.AttributeValue;
 import org.springframework.data.jpa.repository.JpaRepository;
 
@@ -15,4 +16,6 @@ public interface AttributeValueRepository extends JpaRepository<AttributeValue, 
 
     Optional<AttributeValue> findByDefinition_IdAndWarehouse_Id(Long definitionId, Long warehouseId);
     List<AttributeValue> findByWarehouse_IdAndDeletedFalse(Long warehouseId);
+
+    AttributeValue findByDefinition(AttributeDefinition definition);
 }

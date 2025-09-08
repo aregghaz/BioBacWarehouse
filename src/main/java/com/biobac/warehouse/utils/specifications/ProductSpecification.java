@@ -18,13 +18,6 @@ import java.util.Map;
 import static com.biobac.warehouse.utils.SpecificationUtil.*;
 
 public class ProductSpecification {
-    private static String isIngredientField(String field) {
-        Map<String, String> ingredientField = Map.of(
-                "ingredientId", "id",
-                "ingredientName", "name"
-        );
-        return ingredientField.getOrDefault(field, null);
-    }
 
     private static String isRecipeItemField(String field) {
         Map<String, String> recipeItemField = Map.of(
@@ -57,14 +50,9 @@ public class ProductSpecification {
                     Path<?> path;
                     Predicate predicate = null;
 
-                    if (isIngredientField(field) != null) {
-                        if (ingredientJoin == null) {
-                            ingredientJoin = root.join("ingredients", JoinType.LEFT);
-                        }
-                        path = ingredientJoin.get(isIngredientField(field));
-                    } else if (isRecipeItemField(field) != null) {
+                    if (isRecipeItemField(field) != null) {
                         if (recipeItemJoin == null) {
-                            recipeItemJoin = root.join("recipeItems", JoinType.LEFT);
+                            recipeItemJoin = root.join("recipeItem", JoinType.LEFT);
                         }
                         path = recipeItemJoin.get(isRecipeItemField(field));
                     } else if (isUnitField(field) != null) {

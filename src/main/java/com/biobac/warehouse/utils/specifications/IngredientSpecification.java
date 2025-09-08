@@ -57,10 +57,9 @@ public class IngredientSpecification {
                     FilterCriteria criteria = entry.getValue();
                     Path<?> path;
 
-
                     if (isRecipeItemField(field) != null) {
                         if (recipeItemJoin == null) {
-                            recipeItemJoin = root.join("recipeItems", JoinType.LEFT);
+                            recipeItemJoin = root.join("recipeItem", JoinType.LEFT);
                         }
                         path = recipeItemJoin.get(isRecipeItemField(field));
                     } else if (isUnitField(field) != null) {

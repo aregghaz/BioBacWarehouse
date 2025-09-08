@@ -14,5 +14,5 @@ public class AttributeGroupResponse {
     private String description;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
-    private List<AttributeDefResponse> attributeDefinitions;
+    private List<AttributeDefResponse> attributes;
 }

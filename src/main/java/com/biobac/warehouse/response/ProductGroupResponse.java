@@ -11,7 +11,6 @@ import java.util.List;
 public class ProductGroupResponse {
     private Long id;
     private String name;
-    private List<AttributeDefResponse> attributes;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }
