@@ -16,6 +16,8 @@ import java.util.Map;
 import java.util.Set;
 
 public interface AttributeService {
+    AttributeDefResponse getById(Long id);
+
     void createValuesForIngredient(Ingredient ingredient, List<AttributeUpsertRequest> attributes);
 
     List<AttributeDefResponse> getValuesForIngredient(Long ingredientId);

@@ -174,7 +174,7 @@ public class AttributeServiceImpl implements AttributeService {
 
         Page<AttributeDefinition> attributeDefinitionPage = definitionRepository.findAll(pageable);
 
-        List<AttributeDefResponse> content = attributeDefinitionPage.getContent().stream()
+        List<AttributeDefResponse> content = attributeDefinitionPage.getContent().stream().filter(a -> !a.isDeleted())
                 .map(attributeDefinitionMapper::toDto)
                 .collect(Collectors.toList());
 
@@ -201,6 +201,14 @@ public class AttributeServiceImpl implements AttributeService {
         }
         List<AttributeValue> values = valueRepository.findByIngredient_IdAndDeletedFalse(ingredientId);
         return values.stream().map(this::toResponse).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AttributeDefResponse getById(Long id) {
+        AttributeDefinition attributeDefinition = definitionRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new NotFoundException("Attribute not found"));
+        return attributeDefinitionMapper.toDto(attributeDefinition);
     }
 
     @Override

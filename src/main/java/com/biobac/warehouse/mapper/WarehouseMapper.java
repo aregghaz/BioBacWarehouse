@@ -21,7 +21,6 @@ public class WarehouseMapper {
         dto.setName(warehouse.getName());
         dto.setLocation(warehouse.getLocation());
         dto.setType(warehouse.getType());
-        // attributeGroupIds and attributes are request-side helpers; we don't infer them from entity here
         return dto;
     }
 
@@ -51,6 +50,8 @@ public class WarehouseMapper {
         response.setName(warehouse.getName());
         response.setLocation(warehouse.getLocation());
         response.setType(warehouse.getType());
+        response.setWarehouseGroupId(warehouse.getWarehouseGroup().getId());
+        response.setWarehouseGroupName(warehouse.getWarehouseGroup().getName());
         response.setCreatedAt(warehouse.getCreatedAt());
         response.setUpdatedAt(warehouse.getUpdatedAt());
         try {

@@ -36,6 +36,12 @@ public class AttributeController {
         return ResponseUtil.success("Attribute updated successfully", updated);
     }
 
+    @GetMapping("/definitions/{id}")
+    public ApiResponse<AttributeDefResponse> getById(@PathVariable Long id) {
+        AttributeDefResponse attributeDefResponse = attributeService.getById(id);
+        return ResponseUtil.success("Attribute retrieved successfully", attributeDefResponse);
+    }
+
     @DeleteMapping("/definitions/delete/{id}")
     public ApiResponse<String> deleteAttribute(@PathVariable Long id) {
         attributeService.deleteAttributeDefinition(id);
