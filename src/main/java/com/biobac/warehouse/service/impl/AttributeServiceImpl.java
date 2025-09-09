@@ -324,6 +324,33 @@ public class AttributeServiceImpl implements AttributeService {
         }
     }
 
+    @Override
+    @Transactional
+    public void deleteValuesForIngredient(Long ingredientId) {
+        if (ingredientId == null) {
+            throw new InvalidDataException("ingredientId is required");
+        }
+        valueRepository.deleteByIngredient_Id(ingredientId);
+    }
+
+    @Override
+    @Transactional
+    public void deleteValuesForProduct(Long productId) {
+        if (productId == null) {
+            throw new InvalidDataException("productId is required");
+        }
+        valueRepository.deleteByProduct_Id(productId);
+    }
+
+    @Override
+    @Transactional
+    public void deleteValuesForWarehouse(Long warehouseId) {
+        if (warehouseId == null) {
+            throw new InvalidDataException("warehouseId is required");
+        }
+        valueRepository.deleteByWarehouse_Id(warehouseId);
+    }
+
     private void validateReq(AttributeUpsertRequest req) {
         if (req == null || req.getName() == null || req.getName().isBlank()) {
             throw new InvalidDataException("Attribute name is required");
@@ -357,8 +384,8 @@ public class AttributeServiceImpl implements AttributeService {
     private AttributeDefResponse toResponse(AttributeValue v) {
         AttributeValueResponse r = new AttributeValueResponse();
         r.setId(v.getDefinition().getId());
-        r.setCreatedAt(v.getDefinition().getCreatedAt());
-        r.setUpdatedAt(v.getDefinition().getUpdatedAt());
+        r.setCreatedAt(v.getCreatedAt());
+        r.setUpdatedAt(v.getUpdatedAt());
         r.setName(v.getDefinition().getName());
         r.setDataType(v.getDefinition().getDataType());
         r.setValue(v.getValue());

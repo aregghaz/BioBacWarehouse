@@ -2,6 +2,7 @@ package com.biobac.warehouse.service.impl;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.dto.WarehouseGroupDto;
+import com.biobac.warehouse.entity.Warehouse;
 import com.biobac.warehouse.entity.WarehouseGroup;
 import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.WarehouseGroupMapper;
@@ -119,9 +120,11 @@ public class WarehouseGroupServiceImpl implements WarehouseGroupService {
 
     @Override
     public void delete(Long id) {
-        if (!repository.existsById(id)) {
-            throw new NotFoundException("WarehouseGroup not found with id: " + id);
+        WarehouseGroup warehouseGroup = repository.findById(id)
+                .orElseThrow(() -> new NotFoundException("WarehouseGroup not found with id: " + id));
+        for (Warehouse warehouse : warehouseGroup.getWarehouses()){
+            warehouse.setWarehouseGroup(null);
         }
-        repository.deleteById(id);
+        repository.delete(warehouseGroup);
     }
 }

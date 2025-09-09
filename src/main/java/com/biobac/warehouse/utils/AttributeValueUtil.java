@@ -90,10 +90,10 @@ public final class AttributeValueUtil {
                 return isTime(value);
             case DATE_TIME:
                 return isDateTime(value);
-            case MULTISELECT:
-                // Any list of comma-separated tokens is acceptable; blank tokens are ignored
-                return true;
-            case SELECT:
+//            case MULTISELECT:
+//                // Any list of comma-separated tokens is acceptable; blank tokens are ignored
+//                return true;
+//            case SELECT:
             case INPUT:
             case TEXTAREA:
                 // free text; always valid (blank considered valid)
@@ -127,11 +127,10 @@ public final class AttributeValueUtil {
                     throw new InvalidDataException("Invalid DATE_TIME format (expected " + DateUtil.DATE_TIME_FORMAT + "): '" + value + "'");
                 }
                 break;
-            case MULTISELECT:
-            case SELECT:
+//            case MULTISELECT:
+//            case SELECT:
             case INPUT:
             case TEXTAREA:
-                // No strict validation
                 break;
             default:
                 break;
@@ -149,9 +148,9 @@ public final class AttributeValueUtil {
                 return LocalTime.parse(value.trim(), TIME_FORMATTER);
             case DATE_TIME:
                 return LocalDateTime.parse(value.trim(), DATE_TIME_FORMATTER);
-            case MULTISELECT:
-                return parseMultiSelect(value);
-            case SELECT:
+//            case MULTISELECT:
+//                return parseMultiSelect(value);
+//            case SELECT:
             case INPUT:
             case TEXTAREA:
             default:

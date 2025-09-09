@@ -2,13 +2,13 @@ package com.biobac.warehouse.service.impl;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.dto.ProductGroupDto;
+import com.biobac.warehouse.entity.Product;
 import com.biobac.warehouse.entity.ProductGroup;
 import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.ProductGroupMapper;
 import com.biobac.warehouse.repository.ProductGroupRepository;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.ProductGroupResponse;
-import com.biobac.warehouse.service.AttributeService;
 import com.biobac.warehouse.service.ProductGroupService;
 import com.biobac.warehouse.utils.specifications.ProductGroupSpecification;
 import lombok.RequiredArgsConstructor;
@@ -32,7 +32,6 @@ import java.util.stream.Collectors;
 public class ProductGroupServiceImpl implements ProductGroupService {
     private final ProductGroupRepository repository;
     private final ProductGroupMapper mapper;
-    private final AttributeService attributeService;
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
@@ -119,9 +118,11 @@ public class ProductGroupServiceImpl implements ProductGroupService {
     @Transactional
     @Override
     public void delete(Long id) {
-        if (!repository.existsById(id)) {
-            throw new NotFoundException("ProductGroup not found with id: " + id);
+        ProductGroup productGroup = repository.findById(id)
+                .orElseThrow(() -> new NotFoundException("ProductGroup not found with id: " + id));
+        for (Product product : productGroup.getProducts()){
+            product.setProductGroup(null);
         }
-        repository.deleteById(id);
+        repository.delete(productGroup);
     }
 }

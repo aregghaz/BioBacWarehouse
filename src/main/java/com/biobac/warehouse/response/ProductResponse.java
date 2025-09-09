@@ -19,6 +19,7 @@ public class ProductResponse {
     private Long unitId;
     private String unitName;
     private Long productGroupId;
+    private List<Long> attributeGroupIds;
     private String productGroupName;
     private List<InventoryItemResponse> inventoryItems;
     private List<UnitTypeConfigResponse> unitTypeConfigs;

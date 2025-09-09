@@ -14,6 +14,7 @@ public class WarehouseResponse {
     private String location;
     private String warehouseGroupName;
     private Long warehouseGroupId;
+    private List<Long> attributeGroupIds;
     private String type;
     private List<AttributeDefResponse> attributes;
     private LocalDateTime createdAt;

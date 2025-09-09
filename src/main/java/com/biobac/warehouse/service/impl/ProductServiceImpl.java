@@ -156,6 +156,9 @@ public class ProductServiceImpl implements ProductService {
         if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
             attributeService.createValuesForProduct(saved, request.getAttributes());
         }
+        if (request.getAttributeGroupIds() != null && !request.getAttributeGroupIds().isEmpty()) {
+            saved.setAttributeGroupIds(request.getAttributeGroupIds());
+        }
 
         return productMapper.toResponse(saved);
     }
@@ -236,6 +239,9 @@ public class ProductServiceImpl implements ProductService {
                 existing.getUnitTypeConfigs().add(link);
             }
         }
+        if (request.getAttributeGroupIds() != null) {
+            existing.setAttributeGroupIds(request.getAttributeGroupIds());
+        }
 
         Product saved = productRepository.save(existing);
         if (inventoryNeedsUpdate && items != null && !items.isEmpty()) {
@@ -286,7 +292,8 @@ public class ProductServiceImpl implements ProductService {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Product not found"));
 
-        // Calculate total quantity before deletion for history
+        attributeService.deleteValuesForProduct(id);
+
         double totalBefore = 0.0;
         List<InventoryItem> beforeItems = product.getInventoryItems();
         if (beforeItems != null) {
@@ -295,7 +302,6 @@ public class ProductServiceImpl implements ProductService {
                     .sum();
         }
 
-        // Remove relation with RecipeItem (owning side is RecipeItem)
         RecipeItem recipeItem = product.getRecipeItem();
         if (recipeItem != null) {
             recipeItem.setProduct(null);
@@ -303,7 +309,6 @@ public class ProductServiceImpl implements ProductService {
             product.setRecipeItem(null);
         }
 
-        // Null out recipe components that reference this product to avoid FK issues
         List<RecipeComponent> productComponents = recipeComponentRepository.findByProductId(id);
         if (productComponents != null && !productComponents.isEmpty()) {
             for (RecipeComponent rc : productComponents) {
@@ -312,23 +317,19 @@ public class ProductServiceImpl implements ProductService {
             recipeComponentRepository.saveAll(productComponents);
         }
 
-        // Delete all inventory items associated with this product
         List<InventoryItem> items = product.getInventoryItems();
         if (items != null && !items.isEmpty()) {
             inventoryItemRepository.deleteAll(items);
             product.getInventoryItems().clear();
         }
 
-        // Soft delete: mark as deleted, keep row for history
         product.setDeleted(true);
         productRepository.save(product);
 
-        // Record history entry to indicate deletion
         productHistoryService.recordQuantityChange(product, totalBefore, 0.0, "DELETE", "Soft deleted");
     }
 
 
-    // Recursively consume required quantities of an ingredient either from inventory or, if insufficient, from sub-components via its recipe (ingredient/product)
     private void consumeIngredientRecursive(Ingredient ingredient, double requiredQty, Set<Long> visitingIngredientIds, Set<Long> visitingProductIds) {
         if (requiredQty <= 0) return;
         if (ingredient == null) {
@@ -343,7 +344,6 @@ public class ProductServiceImpl implements ProductService {
             visitingIngredientIds.add(ingredientId);
         }
         try {
-            // Try consuming from existing inventory of this ingredient
             List<InventoryItem> inventory = ingredient.getInventoryItems();
             double available = inventory != null ? inventory.stream()
                     .mapToDouble(i -> i.getQuantity() != null ? i.getQuantity() : 0.0)
@@ -371,13 +371,11 @@ public class ProductServiceImpl implements ProductService {
 
             if (remaining <= 0) return;
 
-            // Not enough inventory; try to build from sub-components if ingredient has a recipe
             RecipeItem subRecipe = ingredient.getRecipeItem();
             if (subRecipe == null || subRecipe.getComponents() == null || subRecipe.getComponents().isEmpty()) {
                 throw new NotEnoughException("Not enough ingredient '" + ingredient.getName() + "' to cover required quantity: " + requiredQty);
             }
 
-            // Assume subRecipe produces 1 unit per cycle; scale components by 'remaining'
             for (RecipeComponent subComp : subRecipe.getComponents()) {
                 double perUnit = subComp.getQuantity() != null ? subComp.getQuantity() : 0.0;
                 double subRequired = perUnit * remaining;
@@ -412,7 +410,6 @@ public class ProductServiceImpl implements ProductService {
             visitingProductIds.add(productId);
         }
         try {
-            // Try consuming from existing inventory of this product
             List<InventoryItem> inventory = product.getInventoryItems();
             double available = inventory != null ? inventory.stream()
                     .mapToDouble(i -> i.getQuantity() != null ? i.getQuantity() : 0.0)
@@ -440,7 +437,6 @@ public class ProductServiceImpl implements ProductService {
 
             if (remaining <= 0) return;
 
-            // Not enough inventory; try to build from sub-components if product has a recipe
             RecipeItem subRecipe = product.getRecipeItem();
             if (subRecipe == null || subRecipe.getComponents() == null || subRecipe.getComponents().isEmpty()) {
                 throw new NotEnoughException("Not enough product '" + product.getName() + "' to cover required quantity: " + requiredQty);

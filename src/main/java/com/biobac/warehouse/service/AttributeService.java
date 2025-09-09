@@ -30,6 +30,12 @@ public interface AttributeService {
 
     List<AttributeDefResponse> getValuesForWarehouse(Long warehouseId);
 
+    void deleteValuesForIngredient(Long ingredientId);
+
+    void deleteValuesForProduct(Long productId);
+
+    void deleteValuesForWarehouse(Long warehouseId);
+
     AttributeDefResponse createAttributeDefinition(AttributeDefRequest request);
 
     AttributeDefResponse updateAttributeDefinition(Long id, AttributeDefRequest request);

@@ -2,6 +2,7 @@ package com.biobac.warehouse.service.impl;
 
 import com.biobac.warehouse.dto.IngredientGroupDto;
 import com.biobac.warehouse.dto.PaginationMetadata;
+import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.entity.IngredientGroup;
 import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.IngredientGroupMapper;
@@ -115,9 +116,12 @@ public class IngredientGroupServiceImpl implements IngredientGroupService {
     @Transactional
     @Override
     public void delete(Long id) {
-        if (!repository.existsById(id)) {
-            throw new NotFoundException("IngredientGroup not found with id: " + id);
+        IngredientGroup ingredientGroup = repository.findById(id)
+                .orElseThrow(() -> new NotFoundException("IngredientGroup not found with id: " + id));
+        for (Ingredient ingredient : ingredientGroup.getIngredients()) {
+            ingredient.setIngredientGroup(null);
         }
-        repository.deleteById(id);
+
+        repository.delete(ingredientGroup);
     }
 }

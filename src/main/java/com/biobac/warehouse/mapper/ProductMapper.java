@@ -30,6 +30,7 @@ public class ProductMapper {
         response.setName(product.getName());
         response.setDescription(product.getDescription());
         response.setSku(product.getSku());
+        response.setAttributeGroupIds(product.getAttributeGroupIds());
         response.setCreatedAt(product.getCreatedAt());
         response.setUpdatedAt(product.getUpdatedAt());
 

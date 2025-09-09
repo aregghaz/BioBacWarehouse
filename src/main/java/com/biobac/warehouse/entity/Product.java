@@ -22,6 +22,8 @@ public class Product extends BaseAuditable {
     @OneToOne(mappedBy = "product")
     private RecipeItem recipeItem;
 
+    private List<Long> attributeGroupIds;
+
     @OneToMany(mappedBy = "product")
     private List<InventoryItem> inventoryItems = new ArrayList<>();
 

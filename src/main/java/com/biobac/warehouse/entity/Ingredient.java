@@ -26,6 +26,8 @@ public class Ingredient extends BaseAuditable {
     @OneToOne(mappedBy = "ingredient")
     private RecipeItem recipeItem;
 
+    private List<Long> attributeGroupIds;
+
     @OneToMany(mappedBy = "ingredient")
     private List<RecipeComponent> recipeComponents = new ArrayList<>();
 

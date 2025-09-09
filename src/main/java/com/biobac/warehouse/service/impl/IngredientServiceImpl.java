@@ -160,6 +160,10 @@ public class IngredientServiceImpl implements IngredientService {
             attributeService.createValuesForIngredient(saved, request.getAttributes());
         }
 
+        if (request.getAttributeGroupIds() != null && !request.getAttributeGroupIds().isEmpty()) {
+            saved.setAttributeGroupIds(request.getAttributeGroupIds());
+        }
+
         return ingredientMapper.toResponse(saved);
     }
 
@@ -196,6 +200,7 @@ public class IngredientServiceImpl implements IngredientService {
         }
         existing.setActive(request.isActive());
 
+
         boolean inventoryNeedsUpdate = false;
         List<InventoryItem> items = existing.getInventoryItems();
 
@@ -220,7 +225,6 @@ public class IngredientServiceImpl implements IngredientService {
             existing.setRecipeItem(recipeItem);
         }
 
-        // Handle unit type configurations on update
         if (request.getUnitTypeConfigs() != null) {
             Set<UnitType> allowedTypes = existing.getUnit() != null && existing.getUnit().getUnitTypes() != null
                     ? existing.getUnit().getUnitTypes() : new HashSet<>();
@@ -242,7 +246,16 @@ public class IngredientServiceImpl implements IngredientService {
             }
         }
 
+        if (request.getAttributeGroupIds() != null) {
+            existing.setAttributeGroupIds(request.getAttributeGroupIds());
+        }
+
         Ingredient saved = ingredientRepository.save(existing);
+
+        if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
+            attributeService.createValuesForIngredient(saved, request.getAttributes());
+        }
+
         if (inventoryNeedsUpdate && items != null && !items.isEmpty()) {
             inventoryItemRepository.saveAll(items);
         }
@@ -286,6 +299,8 @@ public class IngredientServiceImpl implements IngredientService {
     public void delete(Long id) {
         Ingredient ingredient = ingredientRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Ingredient not found"));
+
+        attributeService.deleteValuesForIngredient(id);
 
         double totalBefore = 0.0;
         List<InventoryItem> beforeItems = ingredient.getInventoryItems();
@@ -366,13 +381,11 @@ public class IngredientServiceImpl implements IngredientService {
 
             if (remaining <= 0) return;
 
-            // 2) Not enough inventory; try to build from sub-components if recipe exists
             RecipeItem subRecipe = ingredient.getRecipeItem();
             if (subRecipe == null || subRecipe.getComponents() == null || subRecipe.getComponents().isEmpty()) {
                 throw new NotEnoughException("Not enough ingredient '" + ingredient.getName() + "' to cover required quantity: " + requiredQty);
             }
 
-            // Assume subRecipe produces 1 unit of this ingredient per recipe; so scale component needs by 'remaining'
             for (RecipeComponent subComp : subRecipe.getComponents()) {
                 double perUnit = subComp.getQuantity() != null ? subComp.getQuantity() : 0.0;
                 double subRequired = perUnit * remaining;

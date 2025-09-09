@@ -13,6 +13,7 @@ public class IngredientUpdateRequest {
     private boolean active;
     private Long ingredientGroupId;
     private Long recipeItemId;
+    private List<Long> attributeGroupIds;
     private Long unitId;
     private List<UnitTypeConfigRequest> unitTypeConfigs;
     private List<AttributeUpsertRequest> attributes;

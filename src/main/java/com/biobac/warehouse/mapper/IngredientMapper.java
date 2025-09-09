@@ -9,10 +9,9 @@ import com.biobac.warehouse.response.InventoryItemResponse;
 import com.biobac.warehouse.response.UnitTypeConfigResponse;
 import com.biobac.warehouse.service.AttributeService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
-
-import org.springframework.stereotype.Component;
 
 @Component
 public class IngredientMapper {
@@ -30,6 +29,7 @@ public class IngredientMapper {
         response.setName(ingredient.getName());
         response.setDescription(ingredient.getDescription());
         response.setActive(ingredient.isActive());
+        response.setAttributeGroupIds(ingredient.getAttributeGroupIds());
         if (ingredient.getIngredientGroup() != null) {
             response.setIngredientGroupId(ingredient.getIngredientGroup().getId());
             response.setIngredientGroupName(ingredient.getIngredientGroup().getName());
@@ -105,7 +105,6 @@ public class IngredientMapper {
                     ir.setCompanyName(resp.getData());
                 }
             } catch (Exception ignored) {
-                // If company service is unavailable, leave companyName null
             }
         }
         ir.setCreatedAt(item.getCreatedAt());

@@ -18,6 +18,7 @@ public class ProductCreateRequest {
     private Long warehouseId;
     private Long companyId;
     private Long unitId;
+    private List<Long> attributeGroupIds;
     private Long productGroupId;
     private List<UnitTypeConfigRequest> unitTypeConfigs;
     private List<AttributeUpsertRequest> attributes;

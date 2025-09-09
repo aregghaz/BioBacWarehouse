@@ -17,5 +17,10 @@ public interface AttributeValueRepository extends JpaRepository<AttributeValue, 
     Optional<AttributeValue> findByDefinition_IdAndWarehouse_Id(Long definitionId, Long warehouseId);
     List<AttributeValue> findByWarehouse_IdAndDeletedFalse(Long warehouseId);
 
+    // Physical delete helpers (delete all attribute values for target irrespective of deleted flag)
+    void deleteByIngredient_Id(Long ingredientId);
+    void deleteByProduct_Id(Long productId);
+    void deleteByWarehouse_Id(Long warehouseId);
+
     AttributeValue findByDefinition(AttributeDefinition definition);
 }

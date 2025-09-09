@@ -48,10 +48,13 @@ public class WarehouseMapper {
         WarehouseResponse response = new WarehouseResponse();
         response.setId(warehouse.getId());
         response.setName(warehouse.getName());
+        response.setAttributeGroupIds(warehouse.getAttributeGroupIds());
         response.setLocation(warehouse.getLocation());
         response.setType(warehouse.getType());
-        response.setWarehouseGroupId(warehouse.getWarehouseGroup().getId());
-        response.setWarehouseGroupName(warehouse.getWarehouseGroup().getName());
+        if (warehouse.getWarehouseGroup() != null) {
+            response.setWarehouseGroupId(warehouse.getWarehouseGroup().getId());
+            response.setWarehouseGroupName(warehouse.getWarehouseGroup().getName());
+        }
         response.setCreatedAt(warehouse.getCreatedAt());
         response.setUpdatedAt(warehouse.getUpdatedAt());
         try {
