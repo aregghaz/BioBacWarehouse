@@ -2,6 +2,7 @@ package com.biobac.warehouse.exception;
 
 import com.biobac.warehouse.response.ApiResponse;
 import com.biobac.warehouse.utils.ResponseUtil;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -70,7 +71,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DeleteException.class)
     public ResponseEntity<ApiResponse<Object>> handleDeleteException(DeleteException ex) {
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(ResponseUtil.error(ex.getMessage()));
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ResponseUtil.error(ex.getMessage()));
     }
 
     @ExceptionHandler({HttpMessageNotReadableException.class, MissingServletRequestParameterException.class})
@@ -95,7 +96,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleGeneric(Exception ex) {
+        String message = ex.getMessage() != null && !ex.getMessage().isBlank() ? ex.getMessage() : "Internal server error";
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ResponseUtil.error("Internal server error"));
+                .body(ResponseUtil.error(message));
     }
 }

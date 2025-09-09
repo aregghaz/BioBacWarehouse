@@ -5,6 +5,7 @@ package com.biobac.warehouse.service.impl;
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.entity.Warehouse;
 import com.biobac.warehouse.entity.WarehouseGroup;
+import com.biobac.warehouse.exception.DeleteException;
 import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.WarehouseMapper;
 import com.biobac.warehouse.repository.WarehouseGroupRepository;
@@ -142,8 +143,16 @@ public class WarehouseServiceImpl implements WarehouseService {
         if (!warehouseRepository.existsById(id)) {
             throw new NotFoundException("Warehouse not found with id: " + id);
         }
-        attributeService.deleteValuesForWarehouse(id);
-        warehouseRepository.deleteById(id);
+        try {
+            attributeService.deleteValuesForWarehouse(id);
+            warehouseRepository.deleteById(id);
+            warehouseRepository.flush();
+        } catch (Exception exception) {
+            if (isConstraintViolation(exception)) {
+                throw new DeleteException("Warehouse cannot be deleted because it contains inventory items.");
+            }
+            throw exception;
+        }
     }
 
     @Transactional(readOnly = true)
@@ -153,5 +162,23 @@ public class WarehouseServiceImpl implements WarehouseService {
                 .stream()
                 .map(mapper::toResponse)
                 .collect(Collectors.toList());
+    }
+
+    private boolean isConstraintViolation(Throwable ex) {
+        Throwable cause = ex;
+        while (cause != null) {
+            if (cause instanceof org.springframework.dao.DataIntegrityViolationException) {
+                return true;
+            }
+            if (cause instanceof org.hibernate.exception.ConstraintViolationException) {
+                return true;
+            }
+            String msg = cause.getMessage();
+            if (msg != null && msg.toLowerCase().contains("constraint")) {
+                return true;
+            }
+            cause = cause.getCause();
+        }
+        return false;
     }
 }
