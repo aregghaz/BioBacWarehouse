@@ -1,7 +1,9 @@
 package com.biobac.warehouse.mapper;
 
 import com.biobac.warehouse.entity.AttributeDefinition;
+import com.biobac.warehouse.entity.OptionValue;
 import com.biobac.warehouse.response.AttributeDefResponse;
+import com.biobac.warehouse.response.OptionValueResponse;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
 
@@ -13,6 +15,8 @@ public interface AttributeDefinitionMapper {
 
     @Mapping(target = "attributeGroupIds", expression = "java(mapGroupIds(entity))")
     AttributeDefResponse toDto(AttributeDefinition entity);
+
+    OptionValueResponse toDto(OptionValue option);
 
     default List<Long> mapGroupIds(AttributeDefinition entity) {
         if (entity == null || entity.getGroups() == null || entity.getGroups().isEmpty()) {

@@ -11,6 +11,7 @@ import com.biobac.warehouse.repository.AttributeValueRepository;
 import com.biobac.warehouse.request.AttributeDefRequest;
 import com.biobac.warehouse.request.AttributeUpsertRequest;
 import com.biobac.warehouse.request.FilterCriteria;
+import com.biobac.warehouse.request.OptionValueRequest;
 import com.biobac.warehouse.response.AttributeDefResponse;
 import com.biobac.warehouse.response.AttributeValueResponse;
 import com.biobac.warehouse.service.AttributeService;
@@ -96,12 +97,25 @@ public class AttributeServiceImpl implements AttributeService {
                     def = definitionRepository.save(def);
                 }
             }
+            // Update options if provided and type supports it
+            if (def.getDataType() == AttributeDataType.SELECT || def.getDataType() == AttributeDataType.MULTISELECT) {
+                if (request.getOptions() != null) {
+                    applyOptions(def, request.getOptions());
+                    def = definitionRepository.save(def);
+                }
+            }
         } else {
             def = new AttributeDefinition();
             def.setName(request.getName());
             def.setDataType(request.getDataType());
             if (!groups.isEmpty()) {
                 def.getGroups().addAll(groups);
+            }
+            if (def.getDataType() == AttributeDataType.SELECT || def.getDataType() == AttributeDataType.MULTISELECT) {
+                if (request.getOptions() == null || request.getOptions().isEmpty()) {
+                    throw new InvalidDataException("Options are required for SELECT/MULTISELECT attribute definitions");
+                }
+                applyOptions(def, request.getOptions());
             }
             def = definitionRepository.save(def);
         }
@@ -136,6 +150,19 @@ public class AttributeServiceImpl implements AttributeService {
             def.getGroups().clear();
             if (!groups.isEmpty()) {
                 def.getGroups().addAll(groups);
+            }
+        }
+
+        if (def.getDataType() == AttributeDataType.SELECT || def.getDataType() == AttributeDataType.MULTISELECT) {
+            if (request.getOptions() != null) {
+                if (request.getOptions().isEmpty()) {
+                    throw new InvalidDataException("Options are required for SELECT/MULTISELECT attribute definitions");
+                }
+                applyOptions(def, request.getOptions());
+            }
+        } else {
+            if (request.getOptions() != null) {
+                def.getOptions().clear();
             }
         }
 
@@ -379,6 +406,28 @@ public class AttributeServiceImpl implements AttributeService {
 
     private void applyValue(AttributeValue v, AttributeUpsertRequest req) {
         v.setValue(req.getValue());
+    }
+
+    private void applyOptions(AttributeDefinition def, List<OptionValueRequest> options) {
+        if (def == null) return;
+        def.getOptions().clear();
+        if (options == null) return;
+        for (OptionValueRequest o : options) {
+            if (o == null) continue;
+            String label = o.getLabel() == null ? null : o.getLabel().trim();
+            String value = o.getValue() == null ? null : o.getValue().trim();
+            if (label == null || label.isEmpty()) {
+                throw new InvalidDataException("Option label is required");
+            }
+            if (value == null || value.isEmpty()) {
+                value = label;
+            }
+            OptionValue ov = new OptionValue();
+            ov.setLabel(label);
+            ov.setValue(value);
+            ov.setAttributeDefinition(def);
+            def.getOptions().add(ov);
+        }
     }
 
     private AttributeDefResponse toResponse(AttributeValue v) {

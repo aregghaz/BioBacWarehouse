@@ -28,6 +28,9 @@ public class AttributeDefinition extends BaseAuditable {
             inverseJoinColumns = @JoinColumn(name = "attribute_group_id"))
     private Set<AttributeGroup> groups = new HashSet<>();
 
+    @OneToMany(mappedBy = "attributeDefinition", cascade = CascadeType.ALL, orphanRemoval = true)
+    private Set<OptionValue> options = new HashSet<>();
+
     @Column(name = "deleted")
     private boolean deleted = false;
 }

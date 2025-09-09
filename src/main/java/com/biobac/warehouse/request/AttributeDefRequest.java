@@ -12,4 +12,5 @@ public class AttributeDefRequest {
     private List<Long> attributeGroupIds;
     private String name;
     private AttributeDataType dataType;
+    private List<OptionValueRequest> options;
 }

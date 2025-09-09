@@ -4,9 +4,6 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.HashSet;
-import java.util.Set;
-
 @Entity
 @Getter
 @Setter
@@ -43,16 +40,6 @@ public class AttributeValue extends BaseAuditable {
 
     @Column(name = "value", length = 2048)
     private String value;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "option_value_id")
-    private OptionValue optionValue;
-
-    @ManyToMany
-    @JoinTable(name = "attribute_value_option_values",
-            joinColumns = @JoinColumn(name = "attribute_value_id"),
-            inverseJoinColumns = @JoinColumn(name = "option_value_id"))
-    private Set<OptionValue> optionValues = new HashSet<>();
 
     @Column(name = "deleted")
     private boolean deleted = false;

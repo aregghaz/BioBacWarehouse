@@ -1,8 +1,8 @@
 package com.biobac.warehouse.entity;
 
 public enum AttributeDataType {
-//    SELECT,
-//    MULTISELECT,
+    SELECT,
+    MULTISELECT,
     INPUT,
     TEXTAREA,
     NUMBER,

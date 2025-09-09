@@ -13,13 +13,12 @@ public class OptionValue {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "definition_id")
-    private AttributeDefinition definition;
-
     @Column(name = "label", nullable = false)
     private String label;
 
-    @Column(name = "deleted")
-    private boolean deleted = false;
+    private String value;
+
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "attribute_definition_id", nullable = false)
+    private AttributeDefinition attributeDefinition;
 }
