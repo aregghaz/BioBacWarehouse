@@ -27,4 +27,6 @@ public interface AttributeValueRepository extends JpaRepository<AttributeValue, 
     void deleteByWarehouse_Id(Long warehouseId);
 
     AttributeValue findByDefinition(AttributeDefinition definition);
+
+    List<AttributeValue> findAllByDefinition(AttributeDefinition definition);
 }

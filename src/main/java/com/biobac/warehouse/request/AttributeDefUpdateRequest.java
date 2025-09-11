@@ -6,12 +6,11 @@ import lombok.Setter;
 
 import java.util.List;
 
-
 @Getter
 @Setter
-public class AttributeUpsertRequest {
+public class AttributeDefUpdateRequest {
+    private List<Long> attributeGroupIds;
     private String name;
     private AttributeDataType dataType;
-    private String value;
-    private List<Long> values;
+    private List<OptionValueUpdateRequest> options;
 }

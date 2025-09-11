@@ -7,6 +7,6 @@ import java.util.List;
 
 @Getter
 @Setter
-public class AttributeValueResponse extends AttributeDefResponse {
-    private Object value;
+public class AttributeOptionDefResponse extends AttributeDefResponse{
+    List<OptionValueResponse> options;
 }

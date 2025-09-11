@@ -66,14 +66,14 @@ public final class AttributeValueUtil {
         }
     }
 
-    public static List<String> parseMultiSelect(String value) {
+    public static List<Long> parseMultiSelect(String value) {
         if (isBlank(value)) return Collections.emptyList();
         String[] parts = value.split(",");
-        List<String> res = new ArrayList<>();
+        List<Long> res = new ArrayList<>();
         for (String p : parts) {
             String t = p.trim();
             if (!t.isEmpty()) {
-                res.add(t);
+                res.add(Long.valueOf(t));
             }
         }
         return res;
@@ -90,13 +90,12 @@ public final class AttributeValueUtil {
                 return isTime(value);
             case DATE_TIME:
                 return isDateTime(value);
-//            case MULTISELECT:
-//                // Any list of comma-separated tokens is acceptable; blank tokens are ignored
-//                return true;
-//            case SELECT:
+            case MULTISELECT:
+                return true;
+            case SELECT:
+                return isNumber(value);
             case INPUT:
             case TEXTAREA:
-                // free text; always valid (blank considered valid)
                 return true;
             default:
                 return true;
@@ -127,8 +126,8 @@ public final class AttributeValueUtil {
                     throw new InvalidDataException("Invalid DATE_TIME format (expected " + DateUtil.DATE_TIME_FORMAT + "): '" + value + "'");
                 }
                 break;
-//            case MULTISELECT:
-//            case SELECT:
+            case MULTISELECT:
+            case SELECT:
             case INPUT:
             case TEXTAREA:
                 break;
@@ -148,9 +147,10 @@ public final class AttributeValueUtil {
                 return LocalTime.parse(value.trim(), TIME_FORMATTER);
             case DATE_TIME:
                 return LocalDateTime.parse(value.trim(), DATE_TIME_FORMATTER);
-//            case MULTISELECT:
-//                return parseMultiSelect(value);
-//            case SELECT:
+            case MULTISELECT:
+                return parseMultiSelect(value);
+            case SELECT:
+                return Long.valueOf(value.trim());
             case INPUT:
             case TEXTAREA:
             default:

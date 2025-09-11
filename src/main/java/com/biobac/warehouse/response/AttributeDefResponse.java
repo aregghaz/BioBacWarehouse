@@ -14,7 +14,6 @@ public class AttributeDefResponse {
     private String name;
     private AttributeDataType dataType;
     private List<Long> attributeGroupIds;
-    private List<OptionValueResponse> options;
     private LocalDateTime updatedAt;
     private LocalDateTime createdAt;
 }

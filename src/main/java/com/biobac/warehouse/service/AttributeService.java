@@ -6,6 +6,7 @@ import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.entity.Product;
 import com.biobac.warehouse.entity.Warehouse;
 import com.biobac.warehouse.request.AttributeDefRequest;
+import com.biobac.warehouse.request.AttributeDefUpdateRequest;
 import com.biobac.warehouse.request.AttributeUpsertRequest;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.AttributeDefResponse;
@@ -38,7 +39,7 @@ public interface AttributeService {
 
     AttributeDefResponse createAttributeDefinition(AttributeDefRequest request);
 
-    AttributeDefResponse updateAttributeDefinition(Long id, AttributeDefRequest request);
+    AttributeDefResponse updateAttributeDefinition(Long id, AttributeDefUpdateRequest request);
 
     void deleteAttributeDefinition(Long id);
 

@@ -8,12 +8,9 @@ import com.biobac.warehouse.mapper.AttributeDefinitionMapper;
 import com.biobac.warehouse.repository.AttributeDefinitionRepository;
 import com.biobac.warehouse.repository.AttributeGroupRepository;
 import com.biobac.warehouse.repository.AttributeValueRepository;
-import com.biobac.warehouse.request.AttributeDefRequest;
-import com.biobac.warehouse.request.AttributeUpsertRequest;
-import com.biobac.warehouse.request.FilterCriteria;
-import com.biobac.warehouse.request.OptionValueRequest;
-import com.biobac.warehouse.response.AttributeDefResponse;
-import com.biobac.warehouse.response.AttributeValueResponse;
+import com.biobac.warehouse.repository.OptionValueRepository;
+import com.biobac.warehouse.request.*;
+import com.biobac.warehouse.response.*;
 import com.biobac.warehouse.service.AttributeService;
 import com.biobac.warehouse.utils.AttributeValueUtil;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +33,7 @@ public class AttributeServiceImpl implements AttributeService {
     private final AttributeValueRepository valueRepository;
     private final AttributeGroupRepository attributeGroupRepository;
     private final AttributeDefinitionMapper attributeDefinitionMapper;
+    private final OptionValueRepository optionValueRepository;
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
@@ -97,7 +95,6 @@ public class AttributeServiceImpl implements AttributeService {
                     def = definitionRepository.save(def);
                 }
             }
-            // Update options if provided and type supports it
             if (def.getDataType() == AttributeDataType.SELECT || def.getDataType() == AttributeDataType.MULTISELECT) {
                 if (request.getOptions() != null) {
                     applyOptions(def, request.getOptions());
@@ -115,26 +112,32 @@ public class AttributeServiceImpl implements AttributeService {
                 if (request.getOptions() == null || request.getOptions().isEmpty()) {
                     throw new InvalidDataException("Options are required for SELECT/MULTISELECT attribute definitions");
                 }
+                def = definitionRepository.save(def);
                 applyOptions(def, request.getOptions());
             }
             def = definitionRepository.save(def);
         }
-        return attributeDefinitionMapper.toDto(def);
+        return toDefinitionResponse(def);
     }
 
     @Override
     @Transactional
-    public AttributeDefResponse updateAttributeDefinition(Long id, AttributeDefRequest request) {
+    public AttributeDefResponse updateAttributeDefinition(Long id, AttributeDefUpdateRequest request) {
         AttributeDefinition def = definitionRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new NotFoundException("Attribute definition not found"));
-        AttributeValue attributeValue = valueRepository.findByDefinition(def);
-        if (attributeValue == null) {
-            if (request.getDataType() != null) {
-                def.setDataType(request.getDataType());
+
+        // Load all existing values for this definition to know whether updates are allowed and which options are in use
+        List<AttributeValue> existingValues = valueRepository.findAllByDefinition(def);
+        boolean hasAnyValues = existingValues != null && !existingValues.isEmpty();
+
+        // Disallow changing data type if any values exist
+        if (request.getDataType() != null && request.getDataType() != def.getDataType()) {
+            if (hasAnyValues) {
+                throw new InvalidDataException("Can't change data type: existing values present for this attribute");
             }
-        } else {
-            throw new InvalidDataException("Can't delete, cause existing value on attribute");
+            def.setDataType(request.getDataType());
         }
+
         if (request.getName() != null) {
             def.setName(request.getName());
         }
@@ -153,21 +156,127 @@ public class AttributeServiceImpl implements AttributeService {
             }
         }
 
-        if (def.getDataType() == AttributeDataType.SELECT || def.getDataType() == AttributeDataType.MULTISELECT) {
-            if (request.getOptions() != null) {
-                if (request.getOptions().isEmpty()) {
-                    throw new InvalidDataException("Options are required for SELECT/MULTISELECT attribute definitions");
+        if ((def.getDataType() == AttributeDataType.SELECT || def.getDataType() == AttributeDataType.MULTISELECT)
+                && request.getOptions() != null) {
+
+            // Build set of option IDs currently used in values
+            Set<Long> usedOptionIds = new HashSet<>();
+            if (existingValues != null) {
+                for (AttributeValue v : existingValues) {
+                    String raw = v.getValue();
+                    if (raw == null || raw.isBlank()) continue;
+                    try {
+                        if (def.getDataType() == AttributeDataType.SELECT) {
+                            usedOptionIds.add(Long.valueOf(raw.trim()));
+                        } else {
+                            usedOptionIds.addAll(AttributeValueUtil.parseMultiSelect(raw));
+                        }
+                    } catch (Exception ignored) {
+                    }
                 }
-                applyOptions(def, request.getOptions());
             }
-        } else {
-            if (request.getOptions() != null) {
-                def.getOptions().clear();
+
+            // Index existing options by id
+            Map<Long, OptionValue> existingById = new HashMap<>();
+            if (def.getOptions() != null) {
+                for (OptionValue ov : def.getOptions()) {
+                    if (ov != null && ov.getId() != null) {
+                        existingById.put(ov.getId(), ov);
+                    }
+                }
             }
+
+            List<OptionValueUpdateRequest> additions = new ArrayList<>();
+            Map<Long, OptionValueUpdateRequest> updates = new HashMap<>();
+            for (OptionValueUpdateRequest reqOpt : request.getOptions()) {
+                if (reqOpt.getId() == null) {
+                    additions.add(reqOpt);
+                } else {
+                    updates.put(reqOpt.getId(), reqOpt);
+                }
+            }
+
+            // Determine removals: existing options not present in updates
+            List<OptionValue> toRemove = new ArrayList<>();
+            for (Map.Entry<Long, OptionValue> e : existingById.entrySet()) {
+                Long optId = e.getKey();
+                if (!updates.containsKey(optId)) {
+                    // Removal requested for this option
+                    if (usedOptionIds.contains(optId)) {
+                        throw new InvalidDataException("Cannot remove option in use: id=" + optId);
+                    }
+                    toRemove.add(e.getValue());
+                }
+            }
+
+            // Apply updates; if option is used and there is a change, throw
+            for (Map.Entry<Long, OptionValueUpdateRequest> e : updates.entrySet()) {
+                Long optId = e.getKey();
+                OptionValue existing = existingById.get(optId);
+                if (existing == null) {
+                    throw new NotFoundException("Option not found for update: id=" + optId);
+                }
+                String newLabel = e.getValue().getLabel();
+                String newValue = e.getValue().getValue();
+
+                boolean labelChanged = newLabel != null && !newLabel.equals(existing.getLabel());
+                boolean valueChanged = newValue != null && !newValue.equals(existing.getValue());
+                if ((labelChanged || valueChanged) && usedOptionIds.contains(optId)) {
+                    throw new InvalidDataException("Cannot update option in use: id=" + optId);
+                }
+
+                if (labelChanged) {
+                    if (newLabel.isBlank()) {
+                        throw new InvalidDataException("Option label is required");
+                    }
+                    existing.setLabel(newLabel);
+                }
+                if (newValue != null) {
+                    if (newValue.isBlank()) {
+                        // default to label if empty value provided
+                        existing.setValue(existing.getLabel());
+                    } else {
+                        existing.setValue(newValue);
+                    }
+                } else if (labelChanged) {
+                    // if value not provided during label change, mirror label
+                    existing.setValue(existing.getLabel());
+                }
+                optionValueRepository.save(existing);
+            }
+
+            // Apply removals
+            if (!toRemove.isEmpty()) {
+                for (OptionValue ov : toRemove) {
+                    def.getOptions().remove(ov);
+                }
+                optionValueRepository.deleteAll(toRemove);
+            }
+
+            // Apply additions
+            for (OptionValueUpdateRequest addReq : additions) {
+                String label = addReq.getLabel();
+                String val = addReq.getValue();
+                if (label == null || label.isBlank()) {
+                    throw new InvalidDataException("Option label is required");
+                }
+                if (val == null || val.isBlank()) {
+                    val = label;
+                }
+                OptionValue ov = new OptionValue();
+                ov.setLabel(label);
+                ov.setValue(val);
+                ov.setAttributeDefinition(def);
+                optionValueRepository.save(ov);
+                def.getOptions().add(ov);
+            }
+        } else if (request.getOptions() != null && !request.getOptions().isEmpty()) {
+            // For non-select types ignore options updates but prevent accidental clear attempts
+            throw new InvalidDataException("Options can be updated only for SELECT/MULTISELECT attributes");
         }
 
         definitionRepository.save(def);
-        return attributeDefinitionMapper.toDto(def);
+        return toDefinitionResponse(def);
     }
 
     @Override
@@ -178,6 +287,10 @@ public class AttributeServiceImpl implements AttributeService {
         }
         AttributeDefinition def = definitionRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Attribute definition not found"));
+        if (def.getDataType() == AttributeDataType.SELECT || def.getDataType() == AttributeDataType.MULTISELECT) {
+            List<OptionValue> values = optionValueRepository.findAllByAttributeDefinition(def);
+            optionValueRepository.deleteAll(values);
+        }
         def.setDeleted(true);
         definitionRepository.save(def);
     }
@@ -191,7 +304,25 @@ public class AttributeServiceImpl implements AttributeService {
         } else {
             defs = definitionRepository.findDistinctByGroups_IdInAndDeletedFalse(attributeGroupIds);
         }
-        return defs.stream().map(attributeDefinitionMapper::toDto).toList();
+        return defs.stream().map(def -> {
+            AttributeDataType type = def.getDataType();
+            if (type == AttributeDataType.SELECT || type == AttributeDataType.MULTISELECT) {
+                AttributeOptionDefResponse resp = new AttributeOptionDefResponse();
+                resp.setId(def.getId());
+                resp.setName(def.getName());
+                resp.setDataType(type);
+                resp.setAttributeGroupIds(attributeDefinitionMapper.mapGroupIds(def));
+                resp.setCreatedAt(def.getCreatedAt());
+                resp.setUpdatedAt(def.getUpdatedAt());
+                List<OptionValueResponse> options = def.getOptions() == null ? List.of() : def.getOptions().stream()
+                        .filter(Objects::nonNull)
+                        .map(attributeDefinitionMapper::toDto)
+                        .toList();
+                resp.setOptions(options);
+                return resp;
+            }
+            return attributeDefinitionMapper.toDto(def);
+        }).toList();
     }
 
     @Override
@@ -202,7 +333,7 @@ public class AttributeServiceImpl implements AttributeService {
         Page<AttributeDefinition> attributeDefinitionPage = definitionRepository.findAll(pageable);
 
         List<AttributeDefResponse> content = attributeDefinitionPage.getContent().stream().filter(a -> !a.isDeleted())
-                .map(attributeDefinitionMapper::toDto)
+                .map(this::toDefinitionResponse)
                 .collect(Collectors.toList());
 
         PaginationMetadata metadata = new PaginationMetadata(
@@ -235,7 +366,7 @@ public class AttributeServiceImpl implements AttributeService {
     public AttributeDefResponse getById(Long id) {
         AttributeDefinition attributeDefinition = definitionRepository.findByIdAndDeletedFalse(id)
                 .orElseThrow(() -> new NotFoundException("Attribute not found"));
-        return attributeDefinitionMapper.toDto(attributeDefinition);
+        return toDefinitionResponse(attributeDefinition);
     }
 
     @Override
@@ -385,6 +516,18 @@ public class AttributeServiceImpl implements AttributeService {
         if (req.getDataType() == null) {
             throw new InvalidDataException("Attribute dataType is required");
         }
+        if (req.getDataType() == AttributeDataType.SELECT) {
+            if (req.getValues() == null || req.getValues().size() != 1) {
+                throw new InvalidDataException("SELECT attribute requires exactly one option id in 'values'");
+            }
+            return;
+        }
+        if (req.getDataType() == AttributeDataType.MULTISELECT) {
+            if (req.getValues() == null || req.getValues().isEmpty()) {
+                throw new InvalidDataException("MULTISELECT attribute requires at least one option id in 'values'");
+            }
+            return;
+        }
         AttributeValueUtil.validateOrThrow(req.getDataType(), req.getValue());
     }
 
@@ -405,17 +548,51 @@ public class AttributeServiceImpl implements AttributeService {
     }
 
     private void applyValue(AttributeValue v, AttributeUpsertRequest req) {
+        AttributeDefinition def = v.getDefinition();
+        if (def == null || def.getDataType() == null) {
+            v.setValue(req.getValue());
+            return;
+        }
+        AttributeDataType type = def.getDataType();
+        if (type == AttributeDataType.SELECT || type == AttributeDataType.MULTISELECT) {
+            List<Long> ids = req.getValues();
+            req.setValue(null);
+            if (ids == null) {
+                throw new InvalidDataException("Option ids are required in 'values' for SELECT/MULTISELECT");
+            }
+            if (type == AttributeDataType.SELECT && ids.size() != 1) {
+                throw new InvalidDataException("SELECT attribute requires exactly one option id in 'values'");
+            }
+            if (type == AttributeDataType.MULTISELECT && ids.isEmpty()) {
+                throw new InvalidDataException("MULTISELECT attribute requires at least one option id in 'values'");
+            }
+
+            List<OptionValue> options = optionValueRepository.findAllById(ids);
+            if (options.size() != ids.size()) {
+                throw new NotFoundException("One or more option ids were not found");
+            }
+            Long defId = def.getId();
+            for (OptionValue ov : options) {
+                if (ov.getAttributeDefinition() == null || ov.getAttributeDefinition().getId() == null || !ov.getAttributeDefinition().getId().equals(defId)) {
+                    throw new InvalidDataException("Provided option id does not belong to the attribute definition: " + ov.getId());
+                }
+            }
+            String stored = type == AttributeDataType.SELECT
+                    ? String.valueOf(ids.get(0))
+                    : ids.stream().map(String::valueOf).collect(Collectors.joining(","));
+            v.setValue(stored);
+            return;
+        }
         v.setValue(req.getValue());
     }
 
     private void applyOptions(AttributeDefinition def, List<OptionValueRequest> options) {
         if (def == null) return;
-        def.getOptions().clear();
         if (options == null) return;
+        def.getOptions().clear();
         for (OptionValueRequest o : options) {
-            if (o == null) continue;
-            String label = o.getLabel() == null ? null : o.getLabel().trim();
-            String value = o.getValue() == null ? null : o.getValue().trim();
+            String label = o.getLabel();
+            String value = o.getValue();
             if (label == null || label.isEmpty()) {
                 throw new InvalidDataException("Option label is required");
             }
@@ -427,29 +604,89 @@ public class AttributeServiceImpl implements AttributeService {
             ov.setValue(value);
             ov.setAttributeDefinition(def);
             def.getOptions().add(ov);
+            optionValueRepository.save(ov);
         }
     }
 
-    private AttributeDefResponse toResponse(AttributeValue v) {
-        AttributeValueResponse r = new AttributeValueResponse();
-        r.setId(v.getDefinition().getId());
-        r.setCreatedAt(v.getCreatedAt());
-        r.setUpdatedAt(v.getUpdatedAt());
-        r.setName(v.getDefinition().getName());
-        r.setDataType(v.getDefinition().getDataType());
-        r.setValue(v.getValue());
-        if (v.getDefinition().getDataType() != null && AttributeValueUtil.isValid(v.getDefinition().getDataType(), v.getValue())) {
-            r.setParsedValue(AttributeValueUtil.parse(v.getDefinition().getDataType(), v.getValue()));
-        } else {
-            r.setParsedValue(null);
+    private AttributeDefResponse toDefinitionResponse(AttributeDefinition def) {
+        if (def == null) return null;
+        AttributeDataType type = def.getDataType();
+        if (type == AttributeDataType.SELECT || type == AttributeDataType.MULTISELECT) {
+            AttributeOptionDefResponse resp = new AttributeOptionDefResponse();
+            resp.setId(def.getId());
+            resp.setName(def.getName());
+            resp.setDataType(type);
+            resp.setAttributeGroupIds(attributeDefinitionMapper.mapGroupIds(def));
+            resp.setCreatedAt(def.getCreatedAt());
+            resp.setUpdatedAt(def.getUpdatedAt());
+            List<OptionValueResponse> options = def.getOptions() == null ? List.of() : def.getOptions().stream()
+                    .filter(Objects::nonNull)
+                    .map(attributeDefinitionMapper::toDto)
+                    .toList();
+            resp.setOptions(options);
+            return resp;
         }
-        List<Long> ids = new ArrayList<>();
+        return attributeDefinitionMapper.toDto(def);
+    }
+
+    private AttributeDefResponse toResponse(AttributeValue v) {
+        AttributeDataType type = v.getDefinition().getDataType();
+
+        List<Long> groupIds = new ArrayList<>();
         if (!v.getDefinition().getGroups().isEmpty()) {
             for (AttributeGroup attributeGroup : v.getDefinition().getGroups()) {
-                ids.add(attributeGroup.getId());
+                groupIds.add(attributeGroup.getId());
             }
         }
-        r.setAttributeGroupIds(ids);
-        return r;
+
+        if (type == AttributeDataType.SELECT || type == AttributeDataType.MULTISELECT) {
+            List<Long> optionIds = new ArrayList<>();
+            String raw = v.getValue();
+            if (raw != null && !raw.isBlank()) {
+                try {
+                    if (type == AttributeDataType.SELECT) {
+                        optionIds.add(Long.valueOf(raw.trim()));
+                    } else {
+                        optionIds.addAll(AttributeValueUtil.parseMultiSelect(raw));
+                    }
+                } catch (Exception ignored) {
+                }
+            }
+            List<OptionValueResponse> optionResponses = Collections.emptyList();
+            if (!optionIds.isEmpty()) {
+                List<OptionValue> options = optionValueRepository.findAllById(optionIds);
+                optionResponses = options.stream().map(o -> {
+                    OptionValueResponse or = new OptionValueResponse();
+                    or.setId(o.getId());
+                    or.setLabel(o.getLabel());
+                    or.setValue(o.getValue());
+                    return or;
+                }).toList();
+            }
+
+            AttributeOptionValueResponse resp = new AttributeOptionValueResponse();
+            resp.setId(v.getDefinition().getId());
+            resp.setCreatedAt(v.getCreatedAt());
+            resp.setUpdatedAt(v.getUpdatedAt());
+            resp.setName(v.getDefinition().getName());
+            resp.setDataType(type);
+            resp.setAttributeGroupIds(groupIds);
+            resp.setValue(optionResponses);
+            return resp;
+        } else {
+            AttributeValueResponse resp = new AttributeValueResponse();
+            resp.setId(v.getDefinition().getId());
+            resp.setCreatedAt(v.getCreatedAt());
+            resp.setUpdatedAt(v.getUpdatedAt());
+            resp.setName(v.getDefinition().getName());
+            resp.setDataType(type);
+            if (type != null && AttributeValueUtil.isValid(type, v.getValue())) {
+                resp.setValue(AttributeValueUtil.parse(type, v.getValue()));
+            } else {
+                resp.setValue(null);
+            }
+            resp.setAttributeGroupIds(groupIds);
+            return resp;
+        }
     }
 }

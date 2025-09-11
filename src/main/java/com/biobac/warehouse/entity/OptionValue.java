@@ -16,6 +16,7 @@ public class OptionValue {
     @Column(name = "label", nullable = false)
     private String label;
 
+    @Column(name = "value", nullable = false)
     private String value;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)

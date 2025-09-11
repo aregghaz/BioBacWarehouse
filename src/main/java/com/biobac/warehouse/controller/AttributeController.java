@@ -3,6 +3,7 @@ package com.biobac.warehouse.controller;
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.entity.AttributeDataType;
 import com.biobac.warehouse.request.AttributeDefRequest;
+import com.biobac.warehouse.request.AttributeDefUpdateRequest;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.ApiResponse;
 import com.biobac.warehouse.response.AttributeDefResponse;
@@ -31,7 +32,7 @@ public class AttributeController {
     }
 
     @PutMapping("/definitions/update/{id}")
-    public ApiResponse<AttributeDefResponse> updateAttribute(@PathVariable Long id, @RequestBody AttributeDefRequest request) {
+    public ApiResponse<AttributeDefResponse> updateAttribute(@PathVariable Long id, @RequestBody AttributeDefUpdateRequest request) {
         AttributeDefResponse updated = attributeService.updateAttributeDefinition(id, request);
         return ResponseUtil.success("Attribute updated successfully", updated);
     }
