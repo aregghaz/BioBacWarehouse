@@ -5,6 +5,7 @@ import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.entity.Product;
 import com.biobac.warehouse.entity.RecipeComponent;
 import com.biobac.warehouse.entity.RecipeItem;
+import com.biobac.warehouse.exception.DeleteException;
 import com.biobac.warehouse.exception.InvalidDataException;
 import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.RecipeItemMapper;
@@ -208,6 +209,10 @@ public class RecipeItemServiceImpl implements RecipeItemService {
     public void deleteRecipeItem(Long id) {
         RecipeItem recipeItem = recipeItemRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Recipe item not found"));
+
+        if (recipeItem.getIngredient() != null || recipeItem.getProduct() != null) {
+            throw new DeleteException("Recipe item used for product or ingredient");
+        }
 
         if (recipeItem.getComponents() != null && !recipeItem.getComponents().isEmpty()) {
             recipeComponentRepository.deleteAll(recipeItem.getComponents());
