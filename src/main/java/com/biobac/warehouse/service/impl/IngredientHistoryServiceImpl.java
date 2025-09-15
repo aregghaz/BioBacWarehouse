@@ -38,7 +38,6 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
                                                      Double quantityAfter, String action, String notes) {
         IngredientHistory history = new IngredientHistory();
         history.setIngredient(ingredient);
-        history.setTimestamp(LocalDateTime.now());
         history.setAction(action);
         history.setQuantityBefore(quantityBefore);
         history.setQuantityAfter(quantityAfter);

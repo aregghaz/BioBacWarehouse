@@ -15,9 +15,10 @@ public class IngredientHistoryDto {
     private Long id;
     private Long ingredientId;
     private String ingredientName;
-    private LocalDateTime timestamp;
     private String action;
     private Double quantityBefore;
     private Double quantityAfter;
     private String notes;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

@@ -3,6 +3,7 @@ package com.biobac.warehouse.response;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -14,6 +15,8 @@ public class InventoryItemResponse {
     private Long warehouseId;
     private String productName;
     private String ingredientName;
+    private LocalDate receiptDay;
+    private LocalDate expirationDay;
     private Long companyId;
     private String companyName;
     private LocalDateTime createdAt;

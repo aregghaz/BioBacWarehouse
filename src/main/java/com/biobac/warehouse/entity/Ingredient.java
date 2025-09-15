@@ -41,5 +41,7 @@ public class Ingredient extends BaseAuditable {
     @OneToMany(mappedBy = "ingredient", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<IngredientUnitType> unitTypeConfigs = new ArrayList<>();
 
+    private Integer expiration;
+
     private boolean deleted = false;
 }

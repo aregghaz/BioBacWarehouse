@@ -4,9 +4,13 @@ import com.biobac.warehouse.dto.WarehouseDto;
 import com.biobac.warehouse.entity.Warehouse;
 import com.biobac.warehouse.request.WarehouseRequest;
 import com.biobac.warehouse.response.WarehouseResponse;
+import com.biobac.warehouse.response.WarehouseTypeResponse;
 import com.biobac.warehouse.service.AttributeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import com.biobac.warehouse.mapper.WarehouseTypeMapper;
+
+import java.util.List;
 
 @Component
 public class WarehouseMapper {
@@ -14,13 +18,15 @@ public class WarehouseMapper {
     @Autowired
     private AttributeService attributeService;
 
+    @Autowired
+    private WarehouseTypeMapper warehouseTypeMapper;
+
     public WarehouseDto toDto(Warehouse warehouse) {
         if (warehouse == null) return null;
         WarehouseDto dto = new WarehouseDto();
         dto.setId(warehouse.getId());
         dto.setName(warehouse.getName());
         dto.setLocation(warehouse.getLocation());
-        dto.setType(warehouse.getType());
         return dto;
     }
 
@@ -30,7 +36,6 @@ public class WarehouseMapper {
         warehouse.setId(dto.getId());
         warehouse.setName(dto.getName());
         warehouse.setLocation(dto.getLocation());
-        warehouse.setType(dto.getType());
         return warehouse;
     }
 
@@ -39,7 +44,6 @@ public class WarehouseMapper {
         Warehouse warehouse = new Warehouse();
         warehouse.setName(request.getName());
         warehouse.setLocation(request.getLocation());
-        warehouse.setType(request.getType());
         return warehouse;
     }
 
@@ -50,7 +54,6 @@ public class WarehouseMapper {
         response.setName(warehouse.getName());
         response.setAttributeGroupIds(warehouse.getAttributeGroupIds());
         response.setLocation(warehouse.getLocation());
-        response.setType(warehouse.getType());
         if (warehouse.getWarehouseGroup() != null) {
             response.setWarehouseGroupId(warehouse.getWarehouseGroup().getId());
             response.setWarehouseGroupName(warehouse.getWarehouseGroup().getName());
@@ -60,6 +63,15 @@ public class WarehouseMapper {
         try {
             if (warehouse.getId() != null) {
                 response.setAttributes(attributeService.getValuesForWarehouse(warehouse.getId()));
+            }
+        } catch (Exception ignored) {
+        }
+        try {
+            if (warehouse.getTypes() != null) {
+                List<WarehouseTypeResponse> types = warehouse.getTypes().stream()
+                        .map(warehouseTypeMapper::toResponse)
+                        .toList();
+                response.setTypes(types);
             }
         } catch (Exception ignored) {
         }

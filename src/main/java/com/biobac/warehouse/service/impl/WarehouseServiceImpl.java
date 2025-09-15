@@ -5,11 +5,13 @@ package com.biobac.warehouse.service.impl;
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.entity.Warehouse;
 import com.biobac.warehouse.entity.WarehouseGroup;
+import com.biobac.warehouse.entity.WarehouseType;
 import com.biobac.warehouse.exception.DeleteException;
 import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.WarehouseMapper;
 import com.biobac.warehouse.repository.WarehouseGroupRepository;
 import com.biobac.warehouse.repository.WarehouseRepository;
+import com.biobac.warehouse.repository.WarehouseTypeRepository;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.request.WarehouseRequest;
 import com.biobac.warehouse.response.WarehouseResponse;
@@ -44,6 +46,7 @@ public class WarehouseServiceImpl implements WarehouseService {
     private final WarehouseMapper mapper;
     private final AttributeService attributeService;
     private final WarehouseGroupRepository warehouseGroupRepository;
+    private final WarehouseTypeRepository warehouseTypeRepository;
 
     @Transactional(readOnly = true)
     @Override
@@ -102,13 +105,18 @@ public class WarehouseServiceImpl implements WarehouseService {
     @Transactional
     @Override
     public WarehouseResponse create(WarehouseRequest request) {
-        Warehouse saved = warehouseRepository.save(mapper.toEntity(request));
+        Warehouse warehouse = mapper.toEntity(request);
+        if (request.getTypeIds() != null && !request.getTypeIds().isEmpty()) {
+            List<WarehouseType> types = warehouseTypeRepository.findAllById(request.getTypeIds());
+            warehouse.setTypes(types);
+        }
         WarehouseGroup warehouseGroup = warehouseGroupRepository.findById(request.getWarehouseGroupId())
                 .orElseThrow(() -> new NotFoundException("Warehouse group not found"));
-        saved.setWarehouseGroup(warehouseGroup);
+        warehouse.setWarehouseGroup(warehouseGroup);
         if (request.getAttributeGroupIds() != null && !request.getAttributeGroupIds().isEmpty()) {
-            saved.setAttributeGroupIds(request.getAttributeGroupIds());
+            warehouse.setAttributeGroupIds(request.getAttributeGroupIds());
         }
+        Warehouse saved = warehouseRepository.save(warehouse);
         if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
             attributeService.createValuesForWarehouse(saved, request.getAttributes());
         }
@@ -121,7 +129,6 @@ public class WarehouseServiceImpl implements WarehouseService {
         Warehouse existing = warehouseRepository.findById(id).orElseThrow(() -> new NotFoundException("Warehouse not found with id: " + id));
         existing.setName(request.getName());
         existing.setLocation(request.getLocation());
-        existing.setType(request.getType());
         if (request.getWarehouseGroupId() != null) {
             WarehouseGroup warehouseGroup = warehouseGroupRepository.findById(request.getWarehouseGroupId())
                     .orElseThrow(() -> new NotFoundException("Warehouse group not found"));
@@ -129,6 +136,10 @@ public class WarehouseServiceImpl implements WarehouseService {
         }
         if (request.getAttributeGroupIds() != null) {
             existing.setAttributeGroupIds(request.getAttributeGroupIds());
+        }
+        if (request.getTypeIds() != null) {
+            List<WarehouseType> types = warehouseTypeRepository.findAllById(request.getTypeIds());
+            existing.setTypes(types);
         }
         Warehouse saved = warehouseRepository.save(existing);
         if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {

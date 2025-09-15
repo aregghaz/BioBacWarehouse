@@ -17,6 +17,7 @@ public class IngredientResponse {
     private String ingredientGroupName;
     private Long recipeItemId;
     private String recipeItemName;
+    private Integer expiration;
     private List<Long> attributeGroupIds;
     private Long unitId;
     private String unitName;

@@ -19,8 +19,6 @@ public class IngredientHistory extends BaseAuditable {
     @JoinColumn(name = "ingredient_id", nullable = false)
     private Ingredient ingredient;
     
-    private LocalDateTime timestamp;
-    
     private String action;
     
     private Double quantityBefore;

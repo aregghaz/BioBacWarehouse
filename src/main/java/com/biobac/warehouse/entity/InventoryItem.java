@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.time.LocalDate;
+
 @Entity
 @Getter
 @Setter
@@ -22,6 +24,10 @@ public class InventoryItem extends BaseAuditable {
     private Warehouse warehouse;
 
     private Long companyId;
+
+    private LocalDate receiptDay;
+
+    private LocalDate expirationDay;
 
 //    private Double price;
 

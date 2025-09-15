@@ -17,11 +17,18 @@ public class Warehouse extends BaseAuditable {
 
     private String name;
     private String location;
-    private String type;
 
     private List<Long> attributeGroupIds;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "warehouse_group_id")
     private WarehouseGroup warehouseGroup;
+
+    @ManyToMany
+    @JoinTable(
+            name = "warehouse_types_mapping",
+            joinColumns = @JoinColumn(name = "warehouse_id"),
+            inverseJoinColumns = @JoinColumn(name = "type_id")
+    )
+    private List<WarehouseType> types;
 }

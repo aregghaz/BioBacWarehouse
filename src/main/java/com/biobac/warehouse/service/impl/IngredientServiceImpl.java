@@ -41,7 +41,6 @@ public class IngredientServiceImpl implements IngredientService {
     private final IngredientRepository ingredientRepository;
     private final InventoryItemRepository inventoryItemRepository;
     private final RecipeItemRepository recipeItemRepository;
-    private final WarehouseRepository warehouseRepository;
     private final IngredientGroupRepository ingredientGroupRepository;
     private final UnitRepository unitRepository;
     private final UnitTypeRepository unitTypeRepository;
@@ -75,51 +74,24 @@ public class IngredientServiceImpl implements IngredientService {
         ingredient.setName(request.getName());
         ingredient.setActive(request.isActive());
         ingredient.setDescription(request.getDescription());
-        InventoryItem inventoryItem = new InventoryItem();
-
-        if (request.getGroupId() != null) {
-            IngredientGroup ingredientGroup = ingredientGroupRepository.findById(request.getGroupId())
-                    .orElseThrow(() -> new NotFoundException("Ingredient group not found"));
-            ingredient.setIngredientGroup(ingredientGroup);
+        if(request.getExpiration() != null){
+            ingredient.setExpiration(request.getExpiration());
         }
 
-        if (request.getCompanyId() != null) {
-            inventoryItem.setCompanyId(request.getCompanyId());
+        if (request.getIngredientGroupId() != null) {
+            IngredientGroup ingredientGroup = ingredientGroupRepository.findById(request.getIngredientGroupId())
+                    .orElseThrow(() -> new NotFoundException("Ingredient group not found"));
+            ingredient.setIngredientGroup(ingredientGroup);
         }
 
         if (request.getRecipeItemId() != null) {
             RecipeItem recipeItem = recipeItemRepository.findById(request.getRecipeItemId())
                     .orElseThrow(() -> new NotFoundException("Recipe not found"));
 
-            for (RecipeComponent component : recipeItem.getComponents()) {
-                double multiplier = request.getQuantity() != null ? request.getQuantity() : 1.0;
-                double componentBaseQty = component.getQuantity() != null ? component.getQuantity() : 0.0;
-                double requiredQuantity = componentBaseQty * multiplier;
-
-                Ingredient compIng = component.getIngredient();
-                Product compProd = component.getProduct();
-                if (requiredQuantity > 0) {
-                    if (compIng != null && compProd == null) {
-                        consumeIngredientRecursive(compIng, requiredQuantity, new HashSet<>(), new HashSet<>());
-                    } else if (compProd != null && compIng == null) {
-                        consumeProductRecursive(compProd, requiredQuantity, new HashSet<>(), new HashSet<>());
-                    } else {
-                        throw new InvalidDataException("Recipe component must be either ingredient or product");
-                    }
-                }
-            }
-
             recipeItem.setIngredient(ingredient);
             ingredient.setRecipeItem(recipeItem);
         }
 
-        inventoryItem.setQuantity(request.getQuantity());
-        inventoryItem.setIngredient(ingredient);
-        if (request.getWarehouseId() != null) {
-            Warehouse warehouse = warehouseRepository.findById(request.getWarehouseId())
-                    .orElseThrow(() -> new NotFoundException("Warehouse not found"));
-            inventoryItem.setWarehouse(warehouse);
-        }
         if (request.getUnitId() != null) {
             Unit unit = unitRepository.findById(request.getUnitId())
                     .orElseThrow(() -> new NotFoundException("Unit not found"));
@@ -147,14 +119,10 @@ public class IngredientServiceImpl implements IngredientService {
             }
         }
 
-        ingredient.getInventoryItems().add(inventoryItem);
         Ingredient saved = ingredientRepository.save(ingredient);
-        inventoryItemRepository.save(inventoryItem);
 
-        double addedQty = request.getQuantity() != null ? request.getQuantity() : 0.0;
-        if (addedQty > 0) {
-            ingredientHistoryService.recordQuantityChange(saved, 0.0, addedQty, "INCREASE", "Initial stock added during ingredient creation");
-        }
+        ingredientHistoryService.recordQuantityChange(saved, 0.0, 0.0, "INCREASE", "Initial stock added during ingredient creation");
+
 
         if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
             attributeService.createValuesForIngredient(saved, request.getAttributes());
@@ -200,22 +168,16 @@ public class IngredientServiceImpl implements IngredientService {
         }
         existing.setActive(request.isActive());
 
-
-        boolean inventoryNeedsUpdate = false;
-        List<InventoryItem> items = existing.getInventoryItems();
-
         if (request.getIngredientGroupId() != null) {
             IngredientGroup ingredientGroup = ingredientGroupRepository.findById(request.getIngredientGroupId())
                     .orElseThrow(() -> new NotFoundException("Ingredient group not found"));
             existing.setIngredientGroup(ingredientGroup);
-            inventoryNeedsUpdate = true;
         }
 
         if (request.getUnitId() != null) {
             Unit unit = unitRepository.findById(request.getUnitId())
                     .orElseThrow(() -> new NotFoundException("Unit not found"));
             existing.setUnit(unit);
-            inventoryNeedsUpdate = true;
         }
 
         if (request.getRecipeItemId() != null) {
@@ -254,10 +216,6 @@ public class IngredientServiceImpl implements IngredientService {
 
         if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
             attributeService.createValuesForIngredient(saved, request.getAttributes());
-        }
-
-        if (inventoryNeedsUpdate && items != null && !items.isEmpty()) {
-            inventoryItemRepository.saveAll(items);
         }
 
         return ingredientMapper.toResponse(saved);
