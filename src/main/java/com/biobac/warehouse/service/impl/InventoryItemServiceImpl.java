@@ -181,6 +181,7 @@ public class InventoryItemServiceImpl implements InventoryItemService {
 
         inventoryItem.setIngredient(ingredient);
 
+        inventoryItem.setCompanyId(request.getCompanyId());
 
         inventoryItem.setQuantity(totalCount);
 

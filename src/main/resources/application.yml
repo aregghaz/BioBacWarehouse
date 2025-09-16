@@ -18,3 +18,4 @@ jwt:
   expiration-ms: 86400000
 services:
   company-url: http://kinomino.ru:8060/api/company
+  attribute-url: http://localhost:8050/api
