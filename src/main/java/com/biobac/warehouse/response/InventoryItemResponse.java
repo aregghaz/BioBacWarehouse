@@ -15,8 +15,9 @@ public class InventoryItemResponse {
     private Long warehouseId;
     private String productName;
     private String ingredientName;
-    private LocalDate receiptDay;
-    private LocalDate expirationDay;
+    private LocalDate importDate;
+    private LocalDate expirationDate;
+    private LocalDate manufacturingDate;
     private Long companyId;
     private String companyName;
     private LocalDateTime createdAt;

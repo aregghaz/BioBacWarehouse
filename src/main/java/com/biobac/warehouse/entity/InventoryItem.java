@@ -25,9 +25,11 @@ public class InventoryItem extends BaseAuditable {
 
     private Long companyId;
 
-    private LocalDate receiptDay;
+    private LocalDate importDate;
 
-    private LocalDate expirationDay;
+    private LocalDate expirationDate;
+
+    private LocalDate manufacturingDate;
 
 //    private Double price;
 

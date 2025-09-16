@@ -12,6 +12,7 @@ public class InventoryIngredientCreateRequest {
     private Long warehouseId;
     private Long ingredientId;
     private Long companyId;
-    private LocalDate receiptDay;;
+    private LocalDate importDate;
+    private LocalDate manufacturingDate;
     private List<InventoryUnitTypeRequest> unitTypes;
 }

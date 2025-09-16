@@ -130,9 +130,9 @@ public class InventoryItemServiceImpl implements InventoryItemService {
             inventoryItem.setWarehouse(warehouse);
         }
 
-        inventoryItem.setReceiptDay(request.getReceiptDay());
+        inventoryItem.setImportDate(request.getImportDate());
         if (ingredient.getExpiration() != null) {
-            inventoryItem.setExpirationDay(request.getReceiptDay().plusDays(ingredient.getExpiration()));
+            inventoryItem.setExpirationDate(request.getManufacturingDate().plusDays(ingredient.getExpiration()));
         }
 
         double totalCount = 0.0;
