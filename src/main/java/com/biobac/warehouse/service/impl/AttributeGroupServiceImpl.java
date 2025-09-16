@@ -11,11 +11,13 @@ import com.biobac.warehouse.request.AttributeGroupCreateRequest;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.AttributeGroupResponse;
 import com.biobac.warehouse.service.AttributeGroupService;
+import com.biobac.warehouse.utils.specifications.AttributeGroupSpecification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 
@@ -64,7 +66,8 @@ public class AttributeGroupServiceImpl implements AttributeGroupService {
                                                                                 String sortBy,
                                                                                 String sortDir) {
         Pageable pageable = buildPageable(page, size, sortBy, sortDir);
-        Page<AttributeGroup> groupPage = attributeGroupRepository.findAll(pageable);
+        Specification<AttributeGroup> spec = AttributeGroupSpecification.buildSpecification(filters);
+        Page<AttributeGroup> groupPage = attributeGroupRepository.findAll(spec, pageable);
         List<AttributeGroupResponse> content = groupPage.getContent().stream()
                 .map(mapper::toDto)
                 .collect(Collectors.toList());

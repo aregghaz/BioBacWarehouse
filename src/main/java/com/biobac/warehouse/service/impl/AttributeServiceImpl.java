@@ -13,11 +13,13 @@ import com.biobac.warehouse.request.*;
 import com.biobac.warehouse.response.*;
 import com.biobac.warehouse.service.AttributeService;
 import com.biobac.warehouse.utils.AttributeValueUtil;
+import com.biobac.warehouse.utils.specifications.AttributeSpecification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -330,7 +332,9 @@ public class AttributeServiceImpl implements AttributeService {
     public Pair<List<AttributeDefResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
         Pageable pageable = buildPageable(page, size, sortBy, sortDir);
 
-        Page<AttributeDefinition> attributeDefinitionPage = definitionRepository.findAll(pageable);
+        Specification<AttributeDefinition> spec = AttributeSpecification.buildSpecification(filters);
+
+        Page<AttributeDefinition> attributeDefinitionPage = definitionRepository.findAll(spec, pageable);
 
         List<AttributeDefResponse> content = attributeDefinitionPage.getContent().stream().filter(a -> !a.isDeleted())
                 .map(this::toDefinitionResponse)
