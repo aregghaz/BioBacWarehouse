@@ -1,13 +1,11 @@
 package com.biobac.warehouse.mapper;
 
+import com.biobac.warehouse.client.AttributeClient;
 import com.biobac.warehouse.client.CompanyClient;
+import com.biobac.warehouse.entity.AttributeTargetType;
 import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.entity.InventoryItem;
-import com.biobac.warehouse.response.ApiResponse;
-import com.biobac.warehouse.response.IngredientResponse;
-import com.biobac.warehouse.response.InventoryItemResponse;
-import com.biobac.warehouse.response.UnitTypeConfigResponse;
-import com.biobac.warehouse.service.AttributeService;
+import com.biobac.warehouse.response.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -20,7 +18,7 @@ public class IngredientMapper {
     protected CompanyClient companyClient;
 
     @Autowired
-    protected AttributeService attributeService;
+    protected AttributeClient attributeClient;
 
     public IngredientResponse toResponse(Ingredient ingredient) {
         if (ingredient == null) return null;
@@ -40,8 +38,8 @@ public class IngredientMapper {
 
         try {
             if (ingredient.getId() != null) {
-                response.setAttributes(attributeService.getValuesForIngredient(ingredient.getId()));
-            }
+                ApiResponse<List<AttributeResponse>> apiResponse = attributeClient.getValues(ingredient.getId(), AttributeTargetType.INGREDIENT.name());
+                response.setAttributes(apiResponse.getData());            }
         } catch (Exception ignored) {
         }
 

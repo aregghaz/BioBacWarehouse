@@ -1,5 +1,6 @@
 package com.biobac.warehouse.service.impl;
 
+import com.biobac.warehouse.client.AttributeClient;
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.entity.*;
 import com.biobac.warehouse.exception.InvalidDataException;
@@ -12,7 +13,6 @@ import com.biobac.warehouse.request.IngredientCreateRequest;
 import com.biobac.warehouse.request.IngredientUpdateRequest;
 import com.biobac.warehouse.request.UnitTypeConfigRequest;
 import com.biobac.warehouse.response.IngredientResponse;
-import com.biobac.warehouse.service.AttributeService;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.IngredientService;
 import com.biobac.warehouse.service.ProductHistoryService;
@@ -47,7 +47,7 @@ public class IngredientServiceImpl implements IngredientService {
     private final IngredientHistoryService ingredientHistoryService;
     private final ProductHistoryService productHistoryService;
     private final IngredientMapper ingredientMapper;
-    private final AttributeService attributeService;
+    private final AttributeClient attributeClient;
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
@@ -74,7 +74,7 @@ public class IngredientServiceImpl implements IngredientService {
         ingredient.setName(request.getName());
         ingredient.setActive(request.isActive());
         ingredient.setDescription(request.getDescription());
-        if(request.getExpiration() != null){
+        if (request.getExpiration() != null) {
             ingredient.setExpiration(request.getExpiration());
         }
 
@@ -125,7 +125,8 @@ public class IngredientServiceImpl implements IngredientService {
 
 
         if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
-            attributeService.createValuesForIngredient(saved, request.getAttributes());
+            attributeClient.createValues(saved.getId(), AttributeTargetType.INGREDIENT.name(), request.getAttributes());
+
         }
 
         if (request.getAttributeGroupIds() != null && !request.getAttributeGroupIds().isEmpty()) {
@@ -215,7 +216,7 @@ public class IngredientServiceImpl implements IngredientService {
         Ingredient saved = ingredientRepository.save(existing);
 
         if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
-            attributeService.createValuesForIngredient(saved, request.getAttributes());
+            attributeClient.createValues(saved.getId(), AttributeTargetType.INGREDIENT.name(), request.getAttributes());
         }
 
         return ingredientMapper.toResponse(saved);
@@ -258,7 +259,7 @@ public class IngredientServiceImpl implements IngredientService {
         Ingredient ingredient = ingredientRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Ingredient not found"));
 
-        attributeService.deleteValuesForIngredient(id);
+        attributeClient.deleteValues(id, AttributeTargetType.INGREDIENT.name());
 
         double totalBefore = 0.0;
         List<InventoryItem> beforeItems = ingredient.getInventoryItems();

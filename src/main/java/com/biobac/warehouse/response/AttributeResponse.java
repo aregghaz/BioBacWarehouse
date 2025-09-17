@@ -1,18 +1,18 @@
 package com.biobac.warehouse.response;
 
+import com.biobac.warehouse.entity.AttributeDataType;
 import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Getter
 @Setter
-public class AttributeGroupResponse {
+public class AttributeResponse {
     private Long id;
     private String name;
-    private String description;
-    private LocalDateTime createdAt;
+    private AttributeDataType dataType;
+    private Object value;
     private LocalDateTime updatedAt;
-    private List<AttributeDefResponse> attributes;
+    private LocalDateTime createdAt;
 }

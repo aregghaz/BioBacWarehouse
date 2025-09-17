@@ -17,7 +17,7 @@ public class WarehouseResponse {
     private List<Long> attributeGroupIds;
     private String warehouseTypeName;
     private Long warehouseTypeId;
-    private List<AttributeDefResponse> attributes;
+    private List<AttributeResponse> attributes;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

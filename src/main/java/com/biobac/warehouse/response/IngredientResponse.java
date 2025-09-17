@@ -24,7 +24,7 @@ public class IngredientResponse {
     private Double totalQuantity;
     private List<InventoryItemResponse> inventoryItems;
     private List<UnitTypeConfigResponse> unitTypeConfigs;
-    private List<AttributeDefResponse> attributes;
+    private List<AttributeResponse> attributes;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

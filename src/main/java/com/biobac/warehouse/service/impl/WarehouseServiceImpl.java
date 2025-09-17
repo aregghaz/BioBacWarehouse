@@ -2,7 +2,9 @@
 package com.biobac.warehouse.service.impl;
 
 
+import com.biobac.warehouse.client.AttributeClient;
 import com.biobac.warehouse.dto.PaginationMetadata;
+import com.biobac.warehouse.entity.AttributeTargetType;
 import com.biobac.warehouse.entity.Warehouse;
 import com.biobac.warehouse.entity.WarehouseGroup;
 import com.biobac.warehouse.entity.WarehouseType;
@@ -15,11 +17,12 @@ import com.biobac.warehouse.repository.WarehouseTypeRepository;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.request.WarehouseRequest;
 import com.biobac.warehouse.response.WarehouseResponse;
-import com.biobac.warehouse.service.AttributeService;
 import com.biobac.warehouse.service.WarehouseService;
 import com.biobac.warehouse.utils.specifications.WarehouseSpecification;
+import jakarta.validation.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -44,7 +47,7 @@ public class WarehouseServiceImpl implements WarehouseService {
 
     private final WarehouseRepository warehouseRepository;
     private final WarehouseMapper mapper;
-    private final AttributeService attributeService;
+    private final AttributeClient attributeClient;
     private final WarehouseGroupRepository warehouseGroupRepository;
     private final WarehouseTypeRepository warehouseTypeRepository;
 
@@ -119,7 +122,7 @@ public class WarehouseServiceImpl implements WarehouseService {
         }
         Warehouse saved = warehouseRepository.save(warehouse);
         if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
-            attributeService.createValuesForWarehouse(saved, request.getAttributes());
+            attributeClient.createValues(saved.getId(), AttributeTargetType.WAREHOUSE.name(), request.getAttributes());
         }
         return mapper.toResponse(saved);
     }
@@ -145,7 +148,7 @@ public class WarehouseServiceImpl implements WarehouseService {
         }
         Warehouse saved = warehouseRepository.save(existing);
         if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
-            attributeService.createValuesForWarehouse(saved, request.getAttributes());
+            attributeClient.createValues(saved.getId(), AttributeTargetType.WAREHOUSE.name(), request.getAttributes());
         }
         return mapper.toResponse(saved);
     }
@@ -157,7 +160,7 @@ public class WarehouseServiceImpl implements WarehouseService {
             throw new NotFoundException("Warehouse not found with id: " + id);
         }
         try {
-            attributeService.deleteValuesForWarehouse(id);
+            attributeClient.deleteValues(id, AttributeTargetType.WAREHOUSE.name());
             warehouseRepository.deleteById(id);
             warehouseRepository.flush();
         } catch (Exception exception) {
@@ -180,10 +183,10 @@ public class WarehouseServiceImpl implements WarehouseService {
     private boolean isConstraintViolation(Throwable ex) {
         Throwable cause = ex;
         while (cause != null) {
-            if (cause instanceof org.springframework.dao.DataIntegrityViolationException) {
+            if (cause instanceof DataIntegrityViolationException) {
                 return true;
             }
-            if (cause instanceof org.hibernate.exception.ConstraintViolationException) {
+            if (cause instanceof ConstraintViolationException) {
                 return true;
             }
             String msg = cause.getMessage();

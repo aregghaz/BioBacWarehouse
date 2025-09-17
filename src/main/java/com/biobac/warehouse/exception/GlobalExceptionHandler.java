@@ -2,6 +2,9 @@ package com.biobac.warehouse.exception;
 
 import com.biobac.warehouse.response.ApiResponse;
 import com.biobac.warehouse.utils.ResponseUtil;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import feign.FeignException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -92,6 +95,29 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ExternalServiceException.class)
     public ResponseEntity<ApiResponse<Object>> handleExternalServiceException(ExternalServiceException ex) {
         return ResponseEntity.status((HttpStatus.INTERNAL_SERVER_ERROR)).body(ResponseUtil.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(FeignException.class)
+    public ResponseEntity<ApiResponse<Object>> handleFeignException(FeignException ex) {
+        String errorMessage = "Internal Server Error";
+
+        try {
+            String body = ex.contentUTF8();
+
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode node = mapper.readTree(body);
+
+            if (node.has("message")) {
+                errorMessage = node.get("message").asText();
+            } else {
+                errorMessage = body;
+            }
+        } catch (Exception parseEx) {
+            errorMessage = ex.getMessage();
+        }
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseUtil.error(errorMessage));
     }
 
     @ExceptionHandler(Exception.class)

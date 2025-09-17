@@ -1,5 +1,6 @@
 package com.biobac.warehouse.service.impl;
 
+import com.biobac.warehouse.client.AttributeClient;
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.entity.*;
 import com.biobac.warehouse.exception.InvalidDataException;
@@ -12,7 +13,6 @@ import com.biobac.warehouse.request.ProductCreateRequest;
 import com.biobac.warehouse.request.ProductUpdateRequest;
 import com.biobac.warehouse.request.UnitTypeConfigRequest;
 import com.biobac.warehouse.response.ProductResponse;
-import com.biobac.warehouse.service.AttributeService;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.ProductHistoryService;
 import com.biobac.warehouse.service.ProductService;
@@ -49,7 +49,7 @@ public class ProductServiceImpl implements ProductService {
     private final UnitTypeRepository unitTypeRepository;
     private final ProductGroupRepository productGroupRepository;
     private final ProductMapper productMapper;
-    private final AttributeService attributeService;
+    private final AttributeClient attributeClient;
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
@@ -154,7 +154,7 @@ public class ProductServiceImpl implements ProductService {
         }
 
         if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
-            attributeService.createValuesForProduct(saved, request.getAttributes());
+            attributeClient.createValues(saved.getId(), AttributeTargetType.PRODUCT.name(), request.getAttributes());
         }
         if (request.getAttributeGroupIds() != null && !request.getAttributeGroupIds().isEmpty()) {
             saved.setAttributeGroupIds(request.getAttributeGroupIds());
@@ -249,7 +249,7 @@ public class ProductServiceImpl implements ProductService {
         }
 
         if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
-            attributeService.createValuesForProduct(saved, request.getAttributes());
+            attributeClient.createValues(saved.getId(), AttributeTargetType.PRODUCT.name(), request.getAttributes());
         }
 
         return productMapper.toResponse(saved);
@@ -292,7 +292,7 @@ public class ProductServiceImpl implements ProductService {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Product not found"));
 
-        attributeService.deleteValuesForProduct(id);
+        attributeClient.deleteValues(id, AttributeTargetType.PRODUCT.name());
 
         double totalBefore = 0.0;
         List<InventoryItem> beforeItems = product.getInventoryItems();

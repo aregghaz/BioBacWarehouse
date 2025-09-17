@@ -1,14 +1,15 @@
 package com.biobac.warehouse.mapper;
 
+import com.biobac.warehouse.client.AttributeClient;
 import com.biobac.warehouse.dto.WarehouseDto;
+import com.biobac.warehouse.entity.AttributeTargetType;
 import com.biobac.warehouse.entity.Warehouse;
 import com.biobac.warehouse.request.WarehouseRequest;
+import com.biobac.warehouse.response.ApiResponse;
+import com.biobac.warehouse.response.AttributeResponse;
 import com.biobac.warehouse.response.WarehouseResponse;
-import com.biobac.warehouse.response.WarehouseTypeResponse;
-import com.biobac.warehouse.service.AttributeService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import com.biobac.warehouse.mapper.WarehouseTypeMapper;
 
 import java.util.List;
 
@@ -16,10 +17,9 @@ import java.util.List;
 public class WarehouseMapper {
 
     @Autowired
-    private AttributeService attributeService;
-
-    @Autowired
     private WarehouseTypeMapper warehouseTypeMapper;
+    @Autowired
+    private AttributeClient attributeClient;
 
     public WarehouseDto toDto(Warehouse warehouse) {
         if (warehouse == null) return null;
@@ -66,7 +66,8 @@ public class WarehouseMapper {
         response.setUpdatedAt(warehouse.getUpdatedAt());
         try {
             if (warehouse.getId() != null) {
-                response.setAttributes(attributeService.getValuesForWarehouse(warehouse.getId()));
+                ApiResponse<List<AttributeResponse>> attributes = attributeClient.getValues(warehouse.getId(), AttributeTargetType.WAREHOUSE.name());
+                response.setAttributes(attributes.getData());
             }
         } catch (Exception ignored) {
         }

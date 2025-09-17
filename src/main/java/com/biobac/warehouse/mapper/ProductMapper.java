@@ -1,18 +1,15 @@
 package com.biobac.warehouse.mapper;
 
+import com.biobac.warehouse.client.AttributeClient;
 import com.biobac.warehouse.client.CompanyClient;
+import com.biobac.warehouse.entity.AttributeTargetType;
 import com.biobac.warehouse.entity.InventoryItem;
 import com.biobac.warehouse.entity.Product;
-import com.biobac.warehouse.response.ApiResponse;
-import com.biobac.warehouse.response.InventoryItemResponse;
-import com.biobac.warehouse.response.ProductResponse;
-import com.biobac.warehouse.response.UnitTypeConfigResponse;
-import com.biobac.warehouse.service.AttributeService;
+import com.biobac.warehouse.response.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
-
-import org.springframework.stereotype.Component;
 
 @Component
 public class ProductMapper {
@@ -21,7 +18,7 @@ public class ProductMapper {
     protected CompanyClient companyClient;
 
     @Autowired
-    protected AttributeService attributeService;
+    protected AttributeClient attributeClient;
 
     public ProductResponse toResponse(Product product) {
         if (product == null) return null;
@@ -78,7 +75,8 @@ public class ProductMapper {
 
         try {
             if (product.getId() != null) {
-                response.setAttributes(attributeService.getValuesForProduct(product.getId()));
+                ApiResponse<List<AttributeResponse>> apiResponse = attributeClient.getValues(product.getId(), AttributeTargetType.PRODUCT.name());
+                response.setAttributes(apiResponse.getData());
             }
         } catch (Exception ignored) {
         }

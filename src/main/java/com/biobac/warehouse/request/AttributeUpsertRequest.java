@@ -1,17 +1,11 @@
 package com.biobac.warehouse.request;
 
-import com.biobac.warehouse.entity.AttributeDataType;
 import lombok.Getter;
 import lombok.Setter;
-
-import java.util.List;
-
 
 @Getter
 @Setter
 public class AttributeUpsertRequest {
-    private String name;
-    private AttributeDataType dataType;
-    private String value;
-    private List<Long> values;
+    private Long id;
+    private Object value;
 }
