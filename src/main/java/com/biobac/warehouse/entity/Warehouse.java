@@ -24,11 +24,7 @@ public class Warehouse extends BaseAuditable {
     @JoinColumn(name = "warehouse_group_id")
     private WarehouseGroup warehouseGroup;
 
-    @ManyToMany
-    @JoinTable(
-            name = "warehouse_types_mapping",
-            joinColumns = @JoinColumn(name = "warehouse_id"),
-            inverseJoinColumns = @JoinColumn(name = "type_id")
-    )
-    private List<WarehouseType> types;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "type_id", nullable = false)
+    private WarehouseType warehouseType;
 }

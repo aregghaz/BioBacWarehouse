@@ -58,20 +58,15 @@ public class WarehouseMapper {
             response.setWarehouseGroupId(warehouse.getWarehouseGroup().getId());
             response.setWarehouseGroupName(warehouse.getWarehouseGroup().getName());
         }
+        if (warehouse.getWarehouseType() != null) {
+            response.setWarehouseTypeId(warehouse.getWarehouseType().getId());
+            response.setWarehouseTypeName(warehouse.getWarehouseType().getType());
+        }
         response.setCreatedAt(warehouse.getCreatedAt());
         response.setUpdatedAt(warehouse.getUpdatedAt());
         try {
             if (warehouse.getId() != null) {
                 response.setAttributes(attributeService.getValuesForWarehouse(warehouse.getId()));
-            }
-        } catch (Exception ignored) {
-        }
-        try {
-            if (warehouse.getTypes() != null) {
-                List<WarehouseTypeResponse> types = warehouse.getTypes().stream()
-                        .map(warehouseTypeMapper::toResponse)
-                        .toList();
-                response.setTypes(types);
             }
         } catch (Exception ignored) {
         }

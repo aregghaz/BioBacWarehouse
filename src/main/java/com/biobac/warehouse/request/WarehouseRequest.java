@@ -10,7 +10,7 @@ import java.util.List;
 public class WarehouseRequest {
     private String name;
     private String location;
-    private List<Long> typeIds;
+    private Long warehouseTypeId;
     private List<Long> attributeGroupIds;
     private Long warehouseGroupId;
     private List<AttributeUpsertRequest> attributes;

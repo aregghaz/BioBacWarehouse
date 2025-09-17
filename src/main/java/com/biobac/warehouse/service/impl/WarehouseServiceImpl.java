@@ -106,9 +106,10 @@ public class WarehouseServiceImpl implements WarehouseService {
     @Override
     public WarehouseResponse create(WarehouseRequest request) {
         Warehouse warehouse = mapper.toEntity(request);
-        if (request.getTypeIds() != null && !request.getTypeIds().isEmpty()) {
-            List<WarehouseType> types = warehouseTypeRepository.findAllById(request.getTypeIds());
-            warehouse.setTypes(types);
+        if (request.getWarehouseTypeId() != null) {
+            WarehouseType type = warehouseTypeRepository.findById(request.getWarehouseTypeId())
+                    .orElseThrow(() -> new NotFoundException("Warehouse Type not found"));
+            warehouse.setWarehouseType(type);
         }
         WarehouseGroup warehouseGroup = warehouseGroupRepository.findById(request.getWarehouseGroupId())
                 .orElseThrow(() -> new NotFoundException("Warehouse group not found"));
@@ -137,9 +138,10 @@ public class WarehouseServiceImpl implements WarehouseService {
         if (request.getAttributeGroupIds() != null) {
             existing.setAttributeGroupIds(request.getAttributeGroupIds());
         }
-        if (request.getTypeIds() != null) {
-            List<WarehouseType> types = warehouseTypeRepository.findAllById(request.getTypeIds());
-            existing.setTypes(types);
+        if (request.getWarehouseTypeId() != null) {
+            WarehouseType type = warehouseTypeRepository.findById(request.getWarehouseTypeId())
+                    .orElseThrow(() -> new NotFoundException("Warehouse Type not found"));
+            existing.setWarehouseType(type);
         }
         Warehouse saved = warehouseRepository.save(existing);
         if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
