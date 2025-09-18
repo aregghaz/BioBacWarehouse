@@ -8,10 +8,7 @@ import com.biobac.warehouse.exception.NotEnoughException;
 import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.IngredientMapper;
 import com.biobac.warehouse.repository.*;
-import com.biobac.warehouse.request.FilterCriteria;
-import com.biobac.warehouse.request.IngredientCreateRequest;
-import com.biobac.warehouse.request.IngredientUpdateRequest;
-import com.biobac.warehouse.request.UnitTypeConfigRequest;
+import com.biobac.warehouse.request.*;
 import com.biobac.warehouse.response.IngredientResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.IngredientService;
@@ -28,10 +25,7 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -215,9 +209,9 @@ public class IngredientServiceImpl implements IngredientService {
 
         Ingredient saved = ingredientRepository.save(existing);
 
-        if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
-            attributeClient.createValues(saved.getId(), AttributeTargetType.INGREDIENT.name(), request.getAttributes());
-        }
+        List<AttributeUpsertRequest> attributes = request.getAttributeGroupIds() == null || request.getAttributeGroupIds().isEmpty() ? Collections.emptyList() : request.getAttributes();
+
+        attributeClient.updateValues(saved.getId(), AttributeTargetType.INGREDIENT.name(), request.getAttributeGroupIds(), attributes);
 
         return ingredientMapper.toResponse(saved);
     }

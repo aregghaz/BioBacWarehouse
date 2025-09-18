@@ -17,6 +17,14 @@ public interface AttributeClient {
             @RequestBody List<AttributeUpsertRequest> attributes
     );
 
+    @PutMapping("/attribute-value")
+    ApiResponse<List<AttributeResponse>> updateValues(
+            @RequestParam("targetId") Long targetId,
+            @RequestParam("targetType") String targetType,
+            @RequestParam(value = "attributeGroupIds", required = false)  List<Long> attributeGroupIds,
+            @RequestBody List<AttributeUpsertRequest> attributes
+    );
+
     @GetMapping("/attribute-value/{targetId}/{targetType}")
     ApiResponse<List<AttributeResponse>> getValues(
             @PathVariable("targetId") Long targetId,

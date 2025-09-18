@@ -14,6 +14,7 @@ import com.biobac.warehouse.mapper.WarehouseMapper;
 import com.biobac.warehouse.repository.WarehouseGroupRepository;
 import com.biobac.warehouse.repository.WarehouseRepository;
 import com.biobac.warehouse.repository.WarehouseTypeRepository;
+import com.biobac.warehouse.request.AttributeUpsertRequest;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.request.WarehouseRequest;
 import com.biobac.warehouse.response.WarehouseResponse;
@@ -32,6 +33,7 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -147,9 +149,9 @@ public class WarehouseServiceImpl implements WarehouseService {
             existing.setWarehouseType(type);
         }
         Warehouse saved = warehouseRepository.save(existing);
-        if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
-            attributeClient.createValues(saved.getId(), AttributeTargetType.WAREHOUSE.name(), request.getAttributes());
-        }
+        List<AttributeUpsertRequest> attributes = request.getAttributeGroupIds() == null || request.getAttributeGroupIds().isEmpty() ? Collections.emptyList() : request.getAttributes();
+
+        attributeClient.updateValues(saved.getId(), AttributeTargetType.WAREHOUSE.name(), request.getAttributeGroupIds(), attributes);
         return mapper.toResponse(saved);
     }
 

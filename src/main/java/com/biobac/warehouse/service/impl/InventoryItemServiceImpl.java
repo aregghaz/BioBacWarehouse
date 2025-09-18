@@ -131,6 +131,7 @@ public class InventoryItemServiceImpl implements InventoryItemService {
         }
 
         inventoryItem.setImportDate(request.getImportDate());
+        inventoryItem.setManufacturingDate(request.getManufacturingDate());
         if (ingredient.getExpiration() != null) {
             inventoryItem.setExpirationDate(request.getManufacturingDate().plusDays(ingredient.getExpiration()));
         }
