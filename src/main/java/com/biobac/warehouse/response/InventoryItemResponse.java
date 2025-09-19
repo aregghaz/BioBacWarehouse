@@ -3,12 +3,13 @@ package com.biobac.warehouse.response;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
 @Setter
-public class InventoryItemResponse {
+public class InventoryItemResponse extends AuditableResponse {
     private Long id;
     private Double quantity;
     private String warehouseName;
@@ -20,6 +21,5 @@ public class InventoryItemResponse {
     private LocalDate manufacturingDate;
     private Long companyId;
     private String companyName;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private BigDecimal price;
 }

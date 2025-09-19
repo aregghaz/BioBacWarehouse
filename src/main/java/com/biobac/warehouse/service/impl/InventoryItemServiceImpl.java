@@ -124,17 +124,15 @@ public class InventoryItemServiceImpl implements InventoryItemService {
 
         InventoryItem inventoryItem = new InventoryItem();
 
-        if (request.getWarehouseId() != null) {
-            Warehouse warehouse = warehouseRepository.findById(request.getWarehouseId())
-                    .orElseThrow(() -> new NotFoundException("Warehouse not found"));
-            inventoryItem.setWarehouse(warehouse);
-        }
+        inventoryItem.setPrice(request.getPrice());
+
+        Warehouse warehouse = warehouseRepository.findById(request.getWarehouseId())
+                .orElseThrow(() -> new NotFoundException("Warehouse not found"));
+        inventoryItem.setWarehouse(warehouse);
 
         inventoryItem.setImportDate(request.getImportDate());
         inventoryItem.setManufacturingDate(request.getManufacturingDate());
-        if (ingredient.getExpiration() != null) {
-            inventoryItem.setExpirationDate(request.getManufacturingDate().plusDays(ingredient.getExpiration()));
-        }
+        inventoryItem.setExpirationDate(request.getManufacturingDate().plusDays(ingredient.getExpiration()));
 
         double totalCount = 0.0;
 
@@ -214,7 +212,6 @@ public class InventoryItemServiceImpl implements InventoryItemService {
                                                                                 Integer size,
                                                                                 String sortBy,
                                                                                 String sortDir) {
-        // Validate product exists
         productRepository.findById(productId).orElseThrow(() -> new NotFoundException("Product not found"));
 
         Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
@@ -230,17 +227,17 @@ public class InventoryItemServiceImpl implements InventoryItemService {
                 .map(item -> enrichCompany(item, inventoryItemMapper.toSingleResponse(item)))
                 .collect(Collectors.toList());
 
-        PaginationMetadata metadata = new PaginationMetadata(
-                pageResult.getNumber(),
-                pageResult.getSize(),
-                pageResult.getTotalElements(),
-                pageResult.getTotalPages(),
-                pageResult.isLast(),
-                filters,
-                sortDir,
-                sortBy,
-                "inventoryItemTable"
-        );
+        PaginationMetadata metadata = PaginationMetadata.builder()
+                .page(pageResult.getNumber())
+                .size(pageResult.getSize())
+                .totalElements(pageResult.getTotalElements())
+                .totalPages(pageResult.getTotalPages())
+                .last(pageResult.isLast())
+                .filter(filters)
+                .sortDir(sortDir)
+                .sortBy(sortBy)
+                .table("inventoryItemTable")
+                .build();
 
         return Pair.of(content, metadata);
     }

@@ -8,5 +8,7 @@ public enum AttributeDataType {
     NUMBER,
     DATE,
     TIME,
-    DATE_TIME
+    DATE_TIME,
+    BOOLEAN,
+    RADIO
 }

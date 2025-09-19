@@ -1,7 +1,6 @@
 package com.biobac.warehouse.controller;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
-import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.request.IngredientCreateRequest;
 import com.biobac.warehouse.request.IngredientUpdateRequest;

@@ -1,8 +1,6 @@
 package com.biobac.warehouse.controller;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
-import com.biobac.warehouse.dto.WarehouseDto;
-import com.biobac.warehouse.entity.Entities;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.request.RecipeItemCreateRequest;
 import com.biobac.warehouse.response.ApiResponse;
@@ -54,7 +52,6 @@ public class RecipeItemController extends BaseController {
             @RequestBody RecipeItemCreateRequest recipeItemDto,
             HttpServletRequest request) {
         RecipeItemResponse createdRecipeItem = recipeItemService.createRecipeItem(recipeItemDto);
-        auditLogService.logCreate(Entities.RECIPEITEM.name(), createdRecipeItem.getId(), recipeItemDto, getUsername(request));
 
         return ResponseUtil.success("Recipe item created successfully", createdRecipeItem);
     }
@@ -64,16 +61,13 @@ public class RecipeItemController extends BaseController {
             @PathVariable Long id,
             @RequestBody RecipeItemCreateRequest recipeItemDto,
             HttpServletRequest request) {
-        RecipeItemResponse existingRecipeItem = recipeItemService.getRecipeItemById(id);
         RecipeItemResponse updatedRecipeItem = recipeItemService.updateRecipeItem(id, recipeItemDto);
-        auditLogService.logUpdate(Entities.RECIPEITEM.name(), updatedRecipeItem.getId(), existingRecipeItem, recipeItemDto, getUsername(request));
         return ResponseUtil.success("Recipe item updated successfully", updatedRecipeItem);
     }
 
     @DeleteMapping("/{id}")
     public ApiResponse<String> deleteRecipeItem(@PathVariable Long id, HttpServletRequest request) {
         recipeItemService.deleteRecipeItem(id);
-        auditLogService.logDelete(Entities.RECIPEITEM.name(), id, getUsername(request));
         return ResponseUtil.success("Recipe item deleted successfully");
     }
 }

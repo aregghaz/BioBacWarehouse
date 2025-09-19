@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
@@ -31,7 +32,7 @@ public class InventoryItem extends BaseAuditable {
 
     private LocalDate manufacturingDate;
 
-//    private Double price;
+    private BigDecimal price;
 
     private Double quantity;
 }

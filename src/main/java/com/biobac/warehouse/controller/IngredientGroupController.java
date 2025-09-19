@@ -2,7 +2,6 @@ package com.biobac.warehouse.controller;
 
 import com.biobac.warehouse.dto.IngredientGroupDto;
 import com.biobac.warehouse.dto.PaginationMetadata;
-import com.biobac.warehouse.entity.Entities;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.ApiResponse;
 import com.biobac.warehouse.response.IngredientGroupResponse;
@@ -50,23 +49,19 @@ public class IngredientGroupController extends BaseController {
     public ApiResponse<IngredientGroupResponse> create(@RequestBody IngredientGroupDto dto, HttpServletRequest request) {
         dto.setId(null); // Ensure it's treated as a new entity
         IngredientGroupResponse createdGroup = service.create(dto);
-        auditLogService.logCreate(Entities.INGREDIENTGROUP.name(), createdGroup.getId(), dto, getUsername(request));
 
         return ResponseUtil.success("Ingredient group created successfully", createdGroup);
     }
 
     @PutMapping("/{id}")
     public ApiResponse<IngredientGroupResponse> update(@PathVariable Long id, @RequestBody IngredientGroupDto dto, HttpServletRequest request) {
-        IngredientGroupResponse existingGroup = service.getById(id);
         IngredientGroupResponse updatedGroup = service.update(id, dto);
-        auditLogService.logUpdate(Entities.INGREDIENTGROUP.name(), updatedGroup.getId(), existingGroup, dto, getUsername(request));
         return ResponseUtil.success("Ingredient group updated successfully", updatedGroup);
     }
 
     @DeleteMapping("/{id}")
     public ApiResponse<String> delete(@PathVariable Long id, HttpServletRequest request) {
         service.delete(id);
-        auditLogService.logDelete(Entities.INGREDIENTGROUP.name(), id, getUsername(request));
         return ResponseUtil.success("Ingredient group deleted successfully");
     }
 }
