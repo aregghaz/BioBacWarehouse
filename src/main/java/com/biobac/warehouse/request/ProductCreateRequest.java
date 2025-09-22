@@ -12,12 +12,10 @@ public class ProductCreateRequest {
     private String name;
     private String description;
     private String sku;
-    private Long recipeItemId;
     @NotNull(message = "Recipe is required")
-    private Double quantity;
-    private Long warehouseId;
-    private Long companyId;
+    private Long recipeItemId;
     private Long unitId;
+    private Integer expiration;
     private List<Long> attributeGroupIds;
     private Long productGroupId;
     private List<UnitTypeConfigRequest> unitTypeConfigs;

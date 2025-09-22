@@ -10,8 +10,8 @@ import java.util.List;
 public class IngredientUpdateRequest {
     private String name;
     private String description;
-    private boolean active;
     private Long ingredientGroupId;
+    private Integer expiration;
     private Long recipeItemId;
     private List<Long> attributeGroupIds;
     private Long unitId;

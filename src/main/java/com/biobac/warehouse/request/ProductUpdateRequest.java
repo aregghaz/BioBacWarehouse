@@ -11,9 +11,9 @@ public class ProductUpdateRequest {
     private String name;
     private String description;
     private String sku;
+    private Integer expiration;
     private Long recipeItemId;
     private Long unitId;
-    private Long companyId;
     private Long productGroupId;
     private List<UnitTypeConfigRequest> unitTypeConfigs;
     private List<Long> attributeGroupIds;

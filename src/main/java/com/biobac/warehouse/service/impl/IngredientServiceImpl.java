@@ -66,7 +66,6 @@ public class IngredientServiceImpl implements IngredientService {
     public IngredientResponse create(IngredientCreateRequest request) {
         Ingredient ingredient = new Ingredient();
         ingredient.setName(request.getName());
-        ingredient.setActive(request.isActive());
         ingredient.setDescription(request.getDescription());
         if (request.getExpiration() != null) {
             ingredient.setExpiration(request.getExpiration());
@@ -115,7 +114,7 @@ public class IngredientServiceImpl implements IngredientService {
 
         Ingredient saved = ingredientRepository.save(ingredient);
 
-        ingredientHistoryService.recordQuantityChange(saved, 0.0, 0.0, "INCREASE", "Initial stock added during ingredient creation");
+        ingredientHistoryService.recordQuantityChange(saved, 0.0, 0.0, "INCREASE", "Added new ingredient to system");
 
 
         if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
@@ -161,7 +160,6 @@ public class IngredientServiceImpl implements IngredientService {
         if (request.getDescription() != null) {
             existing.setDescription(request.getDescription());
         }
-        existing.setActive(request.isActive());
 
         if (request.getIngredientGroupId() != null) {
             IngredientGroup ingredientGroup = ingredientGroupRepository.findById(request.getIngredientGroupId())
@@ -283,7 +281,6 @@ public class IngredientServiceImpl implements IngredientService {
             ingredient.getInventoryItems().clear();
         }
 
-        ingredient.setActive(false);
         ingredient.setDeleted(true);
         ingredientRepository.save(ingredient);
 

@@ -10,7 +10,6 @@ import java.util.List;
 public class IngredientCreateRequest {
     private String name;
     private String description;
-    private boolean active;
     private Long ingredientGroupId;
     private Integer expiration;
     private Long recipeItemId;

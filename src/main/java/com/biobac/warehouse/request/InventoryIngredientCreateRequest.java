@@ -15,13 +15,13 @@ import java.util.List;
 @Getter
 @Setter
 public class InventoryIngredientCreateRequest {
-    @NotNull(message = "Warehouse ID is required")
+    @NotNull(message = "Warehouse is required")
     private Long warehouseId;
 
-    @NotNull(message = "Ingredient ID is required")
+    @NotNull(message = "Ingredient is required")
     private Long ingredientId;
 
-    @NotNull(message = "Company ID is required")
+    @NotNull(message = "Company is required")
     private Long companyId;
 
     @NotNull(message = "Price is required")
@@ -38,4 +38,6 @@ public class InventoryIngredientCreateRequest {
 
     @NotEmpty(message = "At least one unit type is required")
     private List<@Valid InventoryUnitTypeRequest> unitTypes;
+
+    private List<ComponentInventorySelection> recipeInventorySelections;
 }

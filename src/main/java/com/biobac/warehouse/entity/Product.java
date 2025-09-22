@@ -16,8 +16,12 @@ public class Product extends BaseAuditable {
     private Long id;
 
     private String name;
+
     private String description;
+
     private String sku;
+
+    private Integer expiration;
 
     @OneToOne(mappedBy = "product")
     private RecipeItem recipeItem;
@@ -26,8 +30,6 @@ public class Product extends BaseAuditable {
 
     @OneToMany(mappedBy = "product")
     private List<InventoryItem> inventoryItems = new ArrayList<>();
-
-    private Long companyId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "unit_id")

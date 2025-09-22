@@ -17,8 +17,8 @@ public class Ingredient extends BaseAuditable {
     private Long id;
 
     private String name;
+
     private String description;
-    private boolean active;
 
     @ManyToOne
     private IngredientGroup ingredientGroup;

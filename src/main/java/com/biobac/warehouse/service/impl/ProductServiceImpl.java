@@ -3,8 +3,8 @@ package com.biobac.warehouse.service.impl;
 import com.biobac.warehouse.client.AttributeClient;
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.entity.*;
+import com.biobac.warehouse.exception.DuplicateException;
 import com.biobac.warehouse.exception.InvalidDataException;
-import com.biobac.warehouse.exception.NotEnoughException;
 import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.ProductMapper;
 import com.biobac.warehouse.repository.*;
@@ -66,46 +66,24 @@ public class ProductServiceImpl implements ProductService {
     @Override
     @Transactional
     public ProductResponse create(ProductCreateRequest request) {
+        Product existingProduct = productRepository.findBySku(request.getSku());
+        if(existingProduct != null) {
+            throw new DuplicateException("provided Sku is exist");
+        }
         Product product = new Product();
         product.setName(request.getName());
         product.setDescription(request.getDescription());
         product.setSku(request.getSku());
-        product.setCompanyId(request.getCompanyId());
+
+        if (request.getExpiration() != null) product.setExpiration(request.getExpiration());
 
         if (request.getRecipeItemId() != null) {
             RecipeItem recipeItem = recipeItemRepository.findById(request.getRecipeItemId())
                     .orElseThrow(() -> new NotFoundException("Recipe not found"));
 
-            double multiplier = request.getQuantity() != null ? request.getQuantity() : 1.0;
-            if (recipeItem.getComponents() != null && !recipeItem.getComponents().isEmpty() && multiplier > 0) {
-                for (RecipeComponent component : recipeItem.getComponents()) {
-                    double perUnit = component.getQuantity() != null ? component.getQuantity() : 0.0;
-                    double requiredQty = perUnit * multiplier;
-                    if (requiredQty > 0) {
-                        Ingredient compIng = component.getIngredient();
-                        Product compProd = component.getProduct();
-                        if (compIng != null && compProd == null) {
-                            consumeIngredientRecursive(compIng, requiredQty, new HashSet<>(), new HashSet<>());
-                        } else if (compProd != null && compIng == null) {
-                            consumeProductRecursive(compProd, requiredQty, new HashSet<>(), new HashSet<>());
-                        } else {
-                            throw new InvalidDataException("Recipe component must be either ingredient or product");
-                        }
-                    }
-                }
-            }
             recipeItem.setProduct(product);
             product.setRecipeItem(recipeItem);
         }
-
-        InventoryItem inventoryItem = new InventoryItem();
-        if (request.getWarehouseId() != null) {
-            Warehouse warehouse = warehouseRepository.findById(request.getWarehouseId())
-                    .orElseThrow(() -> new NotFoundException("Warehouse not found"));
-            inventoryItem.setWarehouse(warehouse);
-        }
-        inventoryItem.setQuantity(request.getQuantity());
-        inventoryItem.setProduct(product);
         if (request.getUnitId() != null) {
             Unit unit = unitRepository.findById(request.getUnitId())
                     .orElseThrow(() -> new NotFoundException("Unit not found"));
@@ -138,18 +116,14 @@ public class ProductServiceImpl implements ProductService {
             }
         }
 
-        product.getInventoryItems().add(inventoryItem);
         Product saved = productRepository.save(product);
-        inventoryItemRepository.save(inventoryItem);
 
-        double addedQty = request.getQuantity() != null ? request.getQuantity() : 0.0;
-        if (addedQty > 0) {
-            productHistoryService.recordQuantityChange(saved, 0.0, addedQty, "INCREASE", "Initial stock added during product creation");
-        }
+        productHistoryService.recordQuantityChange(saved, 0.0, 0.0, "CREATED", "Added new product to system");
 
         if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
             attributeClient.createValues(saved.getId(), AttributeTargetType.PRODUCT.name(), request.getAttributes());
         }
+
         if (request.getAttributeGroupIds() != null && !request.getAttributeGroupIds().isEmpty()) {
             saved.setAttributeGroupIds(request.getAttributeGroupIds());
         }
@@ -158,46 +132,22 @@ public class ProductServiceImpl implements ProductService {
     }
 
     @Override
-    @Transactional(readOnly = true)
-    public ProductResponse getById(Long id) {
-        Product product = productRepository.findByIdAndDeletedFalse(id)
-                .orElseThrow(() -> new NotFoundException("Product not found"));
-        return productMapper.toResponse(product);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<ProductResponse> getAll() {
-        return productRepository.findAllByDeletedFalse().stream().map(productMapper::toResponse).collect(Collectors.toList());
-    }
-
-    @Override
     @Transactional
     public ProductResponse update(Long id, ProductUpdateRequest request) {
         Product existing = productRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Product not found"));
 
-        if (request.getName() != null) {
-            existing.setName(request.getName());
-        }
-        if (request.getDescription() != null) {
-            existing.setDescription(request.getDescription());
-        }
-        if (request.getSku() != null) {
-            existing.setSku(request.getSku());
-        }
-        if (request.getCompanyId() != null) {
-            existing.setCompanyId(request.getCompanyId());
-        }
+        if (request.getName() != null) existing.setName(request.getName());
 
-        boolean inventoryNeedsUpdate = false;
-        List<InventoryItem> items = existing.getInventoryItems();
+        if (request.getDescription() != null) existing.setDescription(request.getDescription());
+
+        if (request.getSku() != null) existing.setSku(request.getSku());
+
 
         if (request.getUnitId() != null) {
             Unit unit = unitRepository.findById(request.getUnitId())
                     .orElseThrow(() -> new NotFoundException("Unit not found"));
             existing.setUnit(unit);
-            inventoryNeedsUpdate = true;
         }
 
         if (request.getProductGroupId() != null) {
@@ -238,15 +188,26 @@ public class ProductServiceImpl implements ProductService {
         }
 
         Product saved = productRepository.save(existing);
-        if (inventoryNeedsUpdate && items != null && !items.isEmpty()) {
-            inventoryItemRepository.saveAll(items);
-        }
 
         List<AttributeUpsertRequest> attributes = request.getAttributeGroupIds() == null || request.getAttributeGroupIds().isEmpty() ? Collections.emptyList() : request.getAttributes();
 
         attributeClient.updateValues(saved.getId(), AttributeTargetType.PRODUCT.name(), request.getAttributeGroupIds(), attributes);
 
         return productMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProductResponse getById(Long id) {
+        Product product = productRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new NotFoundException("Product not found"));
+        return productMapper.toResponse(product);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductResponse> getAll() {
+        return productRepository.findAllByDeletedFalse().stream().map(productMapper::toResponse).collect(Collectors.toList());
     }
 
     @Override
@@ -321,138 +282,5 @@ public class ProductServiceImpl implements ProductService {
         productRepository.save(product);
 
         productHistoryService.recordQuantityChange(product, totalBefore, 0.0, "DELETE", "Soft deleted");
-    }
-
-
-    private void consumeIngredientRecursive(Ingredient ingredient, double requiredQty, Set<Long> visitingIngredientIds, Set<Long> visitingProductIds) {
-        if (requiredQty <= 0) return;
-        if (ingredient == null) {
-            throw new InvalidDataException("Ingredient is null for consumption");
-        }
-
-        Long ingredientId = ingredient.getId();
-        if (ingredientId != null) {
-            if (visitingIngredientIds.contains(ingredientId)) {
-                throw new InvalidDataException("Cyclic recipe detected for ingredient id=" + ingredientId);
-            }
-            visitingIngredientIds.add(ingredientId);
-        }
-        try {
-            List<InventoryItem> inventory = ingredient.getInventoryItems();
-            double available = inventory != null ? inventory.stream()
-                    .mapToDouble(i -> i.getQuantity() != null ? i.getQuantity() : 0.0)
-                    .sum() : 0.0;
-
-            double remaining = requiredQty;
-            if (available > 0) {
-                double toConsume = Math.min(available, remaining);
-                double left = toConsume;
-                if (inventory != null) {
-                    for (InventoryItem inv : inventory) {
-                        if (left <= 0) break;
-                        double invQty = inv.getQuantity() != null ? inv.getQuantity() : 0.0;
-                        double use = Math.min(invQty, left);
-                        if (use > 0) {
-                            inv.setQuantity(invQty - use);
-                            left -= use;
-                        }
-                    }
-                    inventoryItemRepository.saveAll(inventory);
-                }
-                ingredientHistoryService.recordQuantityChange(ingredient, available, available - toConsume, "DECREASE", "Consumed for recipe requirements");
-                remaining -= toConsume;
-            }
-
-            if (remaining <= 0) return;
-
-            RecipeItem subRecipe = ingredient.getRecipeItem();
-            if (subRecipe == null || subRecipe.getComponents() == null || subRecipe.getComponents().isEmpty()) {
-                throw new NotEnoughException("Not enough ingredient '" + ingredient.getName() + "' to cover required quantity: " + requiredQty);
-            }
-
-            for (RecipeComponent subComp : subRecipe.getComponents()) {
-                double perUnit = subComp.getQuantity() != null ? subComp.getQuantity() : 0.0;
-                double subRequired = perUnit * remaining;
-                if (subRequired > 0) {
-                    Ingredient subIng = subComp.getIngredient();
-                    Product subProd = subComp.getProduct();
-                    if (subIng != null && subProd == null) {
-                        consumeIngredientRecursive(subIng, subRequired, visitingIngredientIds, visitingProductIds);
-                    } else if (subProd != null && subIng == null) {
-                        consumeProductRecursive(subProd, subRequired, visitingIngredientIds, visitingProductIds);
-                    } else {
-                        throw new InvalidDataException("Recipe component must be either ingredient or product");
-                    }
-                }
-            }
-        } finally {
-            if (ingredientId != null) visitingIngredientIds.remove(ingredientId);
-        }
-    }
-
-    private void consumeProductRecursive(Product product, double requiredQty, Set<Long> visitingIngredientIds, Set<Long> visitingProductIds) {
-        if (requiredQty <= 0) return;
-        if (product == null) {
-            throw new InvalidDataException("Product is null for consumption");
-        }
-
-        Long productId = product.getId();
-        if (productId != null) {
-            if (visitingProductIds.contains(productId)) {
-                throw new InvalidDataException("Cyclic recipe detected for product id=" + productId);
-            }
-            visitingProductIds.add(productId);
-        }
-        try {
-            List<InventoryItem> inventory = product.getInventoryItems();
-            double available = inventory != null ? inventory.stream()
-                    .mapToDouble(i -> i.getQuantity() != null ? i.getQuantity() : 0.0)
-                    .sum() : 0.0;
-
-            double remaining = requiredQty;
-            if (available > 0) {
-                double toConsume = Math.min(available, remaining);
-                double left = toConsume;
-                if (inventory != null) {
-                    for (InventoryItem inv : inventory) {
-                        if (left <= 0) break;
-                        double invQty = inv.getQuantity() != null ? inv.getQuantity() : 0.0;
-                        double use = Math.min(invQty, left);
-                        if (use > 0) {
-                            inv.setQuantity(invQty - use);
-                            left -= use;
-                        }
-                    }
-                    inventoryItemRepository.saveAll(inventory);
-                }
-                productHistoryService.recordQuantityChange(product, available, available - toConsume, "DECREASE", "Consumed for recipe requirements");
-                remaining -= toConsume;
-            }
-
-            if (remaining <= 0) return;
-
-            RecipeItem subRecipe = product.getRecipeItem();
-            if (subRecipe == null || subRecipe.getComponents() == null || subRecipe.getComponents().isEmpty()) {
-                throw new NotEnoughException("Not enough product '" + product.getName() + "' to cover required quantity: " + requiredQty);
-            }
-
-            for (RecipeComponent subComp : subRecipe.getComponents()) {
-                double perUnit = subComp.getQuantity() != null ? subComp.getQuantity() : 0.0;
-                double subRequired = perUnit * remaining;
-                if (subRequired > 0) {
-                    Ingredient subIng = subComp.getIngredient();
-                    Product subProd = subComp.getProduct();
-                    if (subIng != null && subProd == null) {
-                        consumeIngredientRecursive(subIng, subRequired, visitingIngredientIds, visitingProductIds);
-                    } else if (subProd != null && subIng == null) {
-                        consumeProductRecursive(subProd, subRequired, visitingIngredientIds, visitingProductIds);
-                    } else {
-                        throw new InvalidDataException("Recipe component must be either ingredient or product");
-                    }
-                }
-            }
-        } finally {
-            if (productId != null) visitingProductIds.remove(productId);
-        }
     }
 }
