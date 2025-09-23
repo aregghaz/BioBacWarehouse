@@ -4,10 +4,10 @@ import com.biobac.warehouse.entity.InventoryItem;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
-import java.util.Optional;
+import java.util.List;
 
 public interface InventoryItemRepository extends JpaRepository<InventoryItem, Long>, JpaSpecificationExecutor<InventoryItem> {
-    Optional<InventoryItem> findByWarehouseIdAndProductId(Long warehouse_id, Long product_id);
+    List<InventoryItem> findByProductIdIn(List<Long> productIds);
 
-    Optional<InventoryItem> findByWarehouseIdAndIngredientId(Long warehouse_id, Long ingredient_id);
+    List<InventoryItem> findByIngredientIdIn(List<Long> ingredientIds);
 }

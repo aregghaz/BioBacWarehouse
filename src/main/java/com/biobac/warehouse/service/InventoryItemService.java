@@ -39,4 +39,10 @@ public interface InventoryItemService {
                                  Integer size,
                                  String sortBy,
                                  String sortDir);
+
+    @Transactional(readOnly = true)
+    Map<Long, List<InventoryItemResponse>> getAllByIngredientIds(List<Long> ids);
+
+    @Transactional(readOnly = true)
+    Map<Long, List<InventoryItemResponse>> getAllByProductIds(List<Long> ids);
 }

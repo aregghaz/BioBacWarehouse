@@ -26,10 +26,7 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -292,6 +289,34 @@ public class InventoryItemServiceImpl implements InventoryItemService {
         );
 
         return Pair.of(content, metadata);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, List<InventoryItemResponse>> getAllByIngredientIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<InventoryItem> inventoryItems = inventoryItemRepository.findByIngredientIdIn(ids);
+
+        return inventoryItems.stream()
+                .map(inventoryItemMapper::toSingleResponse)
+                .collect(Collectors.groupingBy(InventoryItemResponse::getIngredientId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, List<InventoryItemResponse>> getAllByProductIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return Collections.emptyMap();
+        }
+
+        List<InventoryItem> inventoryItems = inventoryItemRepository.findByProductIdIn(ids);
+
+        return inventoryItems.stream()
+                .map(inventoryItemMapper::toSingleResponse)
+                .collect(Collectors.groupingBy(InventoryItemResponse::getProductId));
     }
 
     private void consumeIngredientRecursive(Ingredient ingredient, double requiredQty, SelectionContext selectionContext,

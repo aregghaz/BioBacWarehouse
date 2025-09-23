@@ -26,19 +26,19 @@ public class InventoryItemController {
                                                            @RequestParam(required = false, defaultValue = "10") Integer size,
                                                            @RequestParam(required = false, defaultValue = "id") String sortBy,
                                                            @RequestParam(required = false, defaultValue = "asc") String sortDir,
-                                                           @RequestBody Map<String, FilterCriteria> filters){
+                                                           @RequestBody Map<String, FilterCriteria> filters) {
         Pair<List<InventoryItemResponse>, PaginationMetadata> result = inventoryItemService.getAll(filters, page, size, sortBy, sortDir);
         return ResponseUtil.success("Inventory items retrieved successfully", result.getFirst(), result.getSecond());
     }
 
     @PostMapping("/product")
-    public ApiResponse<InventoryItemResponse> createForProduct(@RequestBody InventoryProductCreateRequest request){
+    public ApiResponse<InventoryItemResponse> createForProduct(@RequestBody InventoryProductCreateRequest request) {
         InventoryItemResponse response = inventoryItemService.createForProduct(request);
         return ResponseUtil.success("Inventory item created successfully", response);
     }
 
     @PostMapping("/ingredient")
-    public ApiResponse<InventoryItemResponse> createForIngredient(@RequestBody InventoryIngredientCreateRequest request){
+    public ApiResponse<InventoryItemResponse> createForIngredient(@RequestBody InventoryIngredientCreateRequest request) {
         InventoryItemResponse response = inventoryItemService.createForIngredient(request);
         return ResponseUtil.success("Inventory item created successfully", response);
     }
@@ -49,7 +49,7 @@ public class InventoryItemController {
                                                                    @RequestParam(required = false, defaultValue = "10") Integer size,
                                                                    @RequestParam(required = false, defaultValue = "id") String sortBy,
                                                                    @RequestParam(required = false, defaultValue = "asc") String sortDir,
-                                                                   @RequestBody Map<String, FilterCriteria> filters){
+                                                                   @RequestBody Map<String, FilterCriteria> filters) {
         Pair<List<InventoryItemResponse>, PaginationMetadata> result = inventoryItemService.getByProductId(productId, filters, page, size, sortBy, sortDir);
         return ResponseUtil.success("Inventory items retrieved successfully", result.getFirst(), result.getSecond());
     }
@@ -60,8 +60,20 @@ public class InventoryItemController {
                                                                       @RequestParam(required = false, defaultValue = "10") Integer size,
                                                                       @RequestParam(required = false, defaultValue = "id") String sortBy,
                                                                       @RequestParam(required = false, defaultValue = "asc") String sortDir,
-                                                                      @RequestBody Map<String, FilterCriteria> filters){
+                                                                      @RequestBody Map<String, FilterCriteria> filters) {
         Pair<List<InventoryItemResponse>, PaginationMetadata> result = inventoryItemService.getByIngredientId(ingredientId, filters, page, size, sortBy, sortDir);
         return ResponseUtil.success("Inventory items retrieved successfully", result.getFirst(), result.getSecond());
+    }
+
+    @GetMapping("/ingredient/by-ids")
+    public ApiResponse<Map<Long, List<InventoryItemResponse>>> getAllByIngredientId(@RequestParam(value = "ingredientIds") List<Long> ingredientIds) {
+        Map<Long, List<InventoryItemResponse>> response = inventoryItemService.getAllByIngredientIds(ingredientIds);
+        return ResponseUtil.success("Inventory items retrieved successfully", response);
+    }
+
+    @GetMapping("/product/by-ids")
+    public ApiResponse<Map<Long, List<InventoryItemResponse>>> getAllByProductId(@RequestParam(value = "productIds") List<Long> productIds) {
+        Map<Long, List<InventoryItemResponse>> response = inventoryItemService.getAllByProductIds(productIds);
+        return ResponseUtil.success("Inventory items retrieved successfully", response);
     }
 }

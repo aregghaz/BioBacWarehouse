@@ -15,7 +15,9 @@ public class InventoryItemResponse extends AuditableResponse {
     private String warehouseName;
     private Long warehouseId;
     private String productName;
+    private Long productId;
     private String ingredientName;
+    private Long ingredientId;
     private LocalDate importDate;
     private LocalDate expirationDate;
     private LocalDate manufacturingDate;
