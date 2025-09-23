@@ -60,4 +60,10 @@ public class IngredientController {
         ingredientService.delete(id);
         return ResponseUtil.success("Ingredient deleted successfully");
     }
+
+    @GetMapping("/exclude-recipe/{id}")
+    public ApiResponse<List<IngredientResponse>> getAllExcludeRecipe(@PathVariable Long id) {
+        List<IngredientResponse> responses = ingredientService.getAllExcludeRecipeIngredient(id);
+        return ResponseUtil.success("Products retrieved successfully", responses);
+    }
 }

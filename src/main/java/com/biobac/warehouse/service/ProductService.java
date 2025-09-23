@@ -11,10 +11,17 @@ import java.util.List;
 import java.util.Map;
 
 public interface ProductService {
-     ProductResponse create(ProductCreateRequest request);
-     ProductResponse getById(Long id);
-     List<ProductResponse> getAll();
-     Pair<List<ProductResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir);
-     ProductResponse update(Long id, ProductUpdateRequest request);
-     void delete(Long id);
+    ProductResponse create(ProductCreateRequest request);
+
+    ProductResponse getById(Long id);
+
+    List<ProductResponse> getAll();
+
+    Pair<List<ProductResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir);
+
+    ProductResponse update(Long id, ProductUpdateRequest request);
+
+    void delete(Long id);
+
+    List<ProductResponse> getAllExcludeRecipeIngredient(Long recipeItemId);
 }

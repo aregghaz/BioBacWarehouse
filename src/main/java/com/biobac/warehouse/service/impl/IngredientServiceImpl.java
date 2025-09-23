@@ -287,6 +287,16 @@ public class IngredientServiceImpl implements IngredientService {
         ingredientHistoryService.recordQuantityChange(ingredient, totalBefore, 0.0, "DELETE", "Soft deleted");
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<IngredientResponse> getAllExcludeRecipeIngredient(Long recipeItemId) {
+        List<Ingredient> ingredients = ingredientRepository.findAllByDeletedFalseExcludeRecipe(recipeItemId);
+
+        return ingredients.stream()
+                .map(ingredientMapper::toResponse)
+                .toList();
+    }
+
 
     // Recursively consume required quantities of an ingredient from inventory or build via its recipe (supports ingredient and product components)
     private void consumeIngredientRecursive(Ingredient ingredient, double requiredQty, Set<Long> visitingIngredientIds, Set<Long> visitingProductIds) {

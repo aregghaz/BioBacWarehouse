@@ -23,7 +23,7 @@ public class ProductController {
     private final ProductService productService;
 
     @PostMapping
-    public ApiResponse<ProductResponse> create(@Valid @RequestBody ProductCreateRequest request){
+    public ApiResponse<ProductResponse> create(@Valid @RequestBody ProductCreateRequest request) {
         ProductResponse response = productService.create(request);
         return ResponseUtil.success("Product created successfully", response);
     }
@@ -60,5 +60,11 @@ public class ProductController {
     public ApiResponse<String> delete(@PathVariable Long id) {
         productService.delete(id);
         return ResponseUtil.success("Product deleted successfully");
+    }
+
+    @GetMapping("/exclude-recipe/{id}")
+    public ApiResponse<List<ProductResponse>> getAllExcludeRecipe(@PathVariable Long id) {
+        List<ProductResponse> responses = productService.getAllExcludeRecipeIngredient(id);
+        return ResponseUtil.success("Products retrieved successfully", responses);
     }
 }

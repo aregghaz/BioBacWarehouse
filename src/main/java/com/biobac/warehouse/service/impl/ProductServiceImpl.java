@@ -10,7 +10,6 @@ import com.biobac.warehouse.mapper.ProductMapper;
 import com.biobac.warehouse.repository.*;
 import com.biobac.warehouse.request.*;
 import com.biobac.warehouse.response.ProductResponse;
-import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.ProductHistoryService;
 import com.biobac.warehouse.service.ProductService;
 import com.biobac.warehouse.utils.specifications.ProductSpecification;
@@ -33,11 +32,9 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ProductServiceImpl implements ProductService {
     private final ProductRepository productRepository;
-    private final WarehouseRepository warehouseRepository;
     private final InventoryItemRepository inventoryItemRepository;
     private final RecipeItemRepository recipeItemRepository;
     private final RecipeComponentRepository recipeComponentRepository;
-    private final IngredientHistoryService ingredientHistoryService;
     private final ProductHistoryService productHistoryService;
     private final UnitRepository unitRepository;
     private final UnitTypeRepository unitTypeRepository;
@@ -67,7 +64,7 @@ public class ProductServiceImpl implements ProductService {
     @Transactional
     public ProductResponse create(ProductCreateRequest request) {
         Product existingProduct = productRepository.findBySku(request.getSku());
-        if(existingProduct != null) {
+        if (existingProduct != null) {
             throw new DuplicateException("provided Sku is exist");
         }
         Product product = new Product();
@@ -282,5 +279,15 @@ public class ProductServiceImpl implements ProductService {
         productRepository.save(product);
 
         productHistoryService.recordQuantityChange(product, totalBefore, 0.0, "DELETE", "Soft deleted");
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductResponse> getAllExcludeRecipeIngredient(Long recipeItemId) {
+        List<Product> products = productRepository.findAllByDeletedFalseExcludeRecipe(recipeItemId);
+
+        return products.stream()
+                .map(productMapper::toResponse)
+                .toList();
     }
 }

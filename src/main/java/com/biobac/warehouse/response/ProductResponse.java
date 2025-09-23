@@ -16,6 +16,7 @@ public class ProductResponse {
     private Double totalQuantity;
     private Long recipeItemId;
     private String recipeItemName;
+    private Integer expiration;
     private Long unitId;
     private String unitName;
     private Long productGroupId;

@@ -25,6 +25,7 @@ public class ProductMapper {
         ProductResponse response = new ProductResponse();
         response.setId(product.getId());
         response.setName(product.getName());
+        response.setExpiration(product.getExpiration());
         response.setDescription(product.getDescription());
         response.setSku(product.getSku());
         response.setAttributeGroupIds(product.getAttributeGroupIds());
