@@ -77,8 +77,7 @@ public class ProductServiceImpl implements ProductService {
         if (request.getRecipeItemId() != null) {
             RecipeItem recipeItem = recipeItemRepository.findById(request.getRecipeItemId())
                     .orElseThrow(() -> new NotFoundException("Recipe not found"));
-
-            recipeItem.setProduct(product);
+            // Many products can share one recipe
             product.setRecipeItem(recipeItem);
         }
         if (request.getUnitId() != null) {
@@ -156,7 +155,7 @@ public class ProductServiceImpl implements ProductService {
         if (request.getRecipeItemId() != null) {
             RecipeItem recipeItem = recipeItemRepository.findById(request.getRecipeItemId())
                     .orElseThrow(() -> new NotFoundException("Recipe not found"));
-            recipeItem.setProduct(existing);
+            // Many products can share one recipe
             existing.setRecipeItem(recipeItem);
         }
 
@@ -256,9 +255,13 @@ public class ProductServiceImpl implements ProductService {
 
         RecipeItem recipeItem = product.getRecipeItem();
         if (recipeItem != null) {
-            recipeItem.setProduct(null);
-            recipeItemRepository.save(recipeItem);
+            // Detach product from recipe
             product.setRecipeItem(null);
+            // Maintain bidirectional consistency
+            if (recipeItem.getProducts() != null) {
+                recipeItem.getProducts().remove(product);
+            }
+            recipeItemRepository.save(recipeItem);
         }
 
         List<RecipeComponent> productComponents = recipeComponentRepository.findByProductId(id);

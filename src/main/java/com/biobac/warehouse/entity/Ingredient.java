@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -23,10 +24,10 @@ public class Ingredient extends BaseAuditable {
     @ManyToOne
     private IngredientGroup ingredientGroup;
 
-    @OneToOne(mappedBy = "ingredient")
-    private RecipeItem recipeItem;
-
     private List<Long> attributeGroupIds;
+
+    private BigDecimal price;
+
 
     @OneToMany(mappedBy = "ingredient")
     private List<RecipeComponent> recipeComponents = new ArrayList<>();
@@ -40,6 +41,9 @@ public class Ingredient extends BaseAuditable {
 
     @OneToMany(mappedBy = "ingredient", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<IngredientUnitType> unitTypeConfigs = new ArrayList<>();
+
+    @ManyToMany(mappedBy = "ingredients")
+    private List<Product> products = new ArrayList<>();
 
     private Integer expiration;
 

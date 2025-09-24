@@ -103,7 +103,7 @@ public class RecipeItemServiceImpl implements RecipeItemService {
     public List<RecipeItemResponse> getAll() {
         return recipeItemRepository.findAll()
                 .stream()
-                .filter(r -> r.getIngredient() == null && r.getProduct() == null)
+                .filter(r -> (r.getProducts() == null || r.getProducts().isEmpty()))
                 .map(mapper::toDto)
                 .collect(Collectors.toList());
     }
@@ -210,8 +210,8 @@ public class RecipeItemServiceImpl implements RecipeItemService {
         RecipeItem recipeItem = recipeItemRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Recipe item not found"));
 
-        if (recipeItem.getIngredient() != null || recipeItem.getProduct() != null) {
-            throw new DeleteException("Recipe item used for product or ingredient");
+        if (recipeItem.getProducts() != null && !recipeItem.getProducts().isEmpty()) {
+            throw new DeleteException("Recipe item used for product");
         }
 
         if (recipeItem.getComponents() != null && !recipeItem.getComponents().isEmpty()) {

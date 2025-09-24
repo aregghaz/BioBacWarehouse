@@ -77,13 +77,6 @@ public class IngredientServiceImpl implements IngredientService {
             ingredient.setIngredientGroup(ingredientGroup);
         }
 
-        if (request.getRecipeItemId() != null) {
-            RecipeItem recipeItem = recipeItemRepository.findById(request.getRecipeItemId())
-                    .orElseThrow(() -> new NotFoundException("Recipe not found"));
-
-            recipeItem.setIngredient(ingredient);
-            ingredient.setRecipeItem(recipeItem);
-        }
 
         if (request.getUnitId() != null) {
             Unit unit = unitRepository.findById(request.getUnitId())
@@ -173,12 +166,6 @@ public class IngredientServiceImpl implements IngredientService {
             existing.setUnit(unit);
         }
 
-        if (request.getRecipeItemId() != null) {
-            RecipeItem recipeItem = recipeItemRepository.findById(request.getRecipeItemId())
-                    .orElseThrow(() -> new NotFoundException("Recipe not found"));
-            recipeItem.setIngredient(existing);
-            existing.setRecipeItem(recipeItem);
-        }
 
         if (request.getUnitTypeConfigs() != null) {
             Set<UnitType> allowedTypes = existing.getUnit() != null && existing.getUnit().getUnitTypes() != null
@@ -261,12 +248,6 @@ public class IngredientServiceImpl implements IngredientService {
                     .sum();
         }
 
-        RecipeItem recipeItem = ingredient.getRecipeItem();
-        if (recipeItem != null) {
-            recipeItem.setIngredient(null);
-            recipeItemRepository.save(recipeItem);
-            ingredient.setRecipeItem(null);
-        }
 
         List<RecipeComponent> refComponents = ingredient.getRecipeComponents();
         if (refComponents != null && !refComponents.isEmpty()) {
@@ -339,27 +320,8 @@ public class IngredientServiceImpl implements IngredientService {
                 remaining -= toConsume;
             }
 
-            if (remaining <= 0) return;
-
-            RecipeItem subRecipe = ingredient.getRecipeItem();
-            if (subRecipe == null || subRecipe.getComponents() == null || subRecipe.getComponents().isEmpty()) {
+            if (remaining > 0) {
                 throw new NotEnoughException("Not enough ingredient '" + ingredient.getName() + "' to cover required quantity: " + requiredQty);
-            }
-
-            for (RecipeComponent subComp : subRecipe.getComponents()) {
-                double perUnit = subComp.getQuantity() != null ? subComp.getQuantity() : 0.0;
-                double subRequired = perUnit * remaining;
-                if (subRequired > 0) {
-                    Ingredient subIng = subComp.getIngredient();
-                    Product subProd = subComp.getProduct();
-                    if (subIng != null && subProd == null) {
-                        consumeIngredientRecursive(subIng, subRequired, visitingIngredientIds, visitingProductIds);
-                    } else if (subProd != null && subIng == null) {
-                        consumeProductRecursive(subProd, subRequired, visitingIngredientIds, visitingProductIds);
-                    } else {
-                        throw new InvalidDataException("Recipe component must be either ingredient or product");
-                    }
-                }
             }
         } finally {
             if (ingredientId != null) visitingIngredientIds.remove(ingredientId);

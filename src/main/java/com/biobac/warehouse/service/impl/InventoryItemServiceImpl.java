@@ -147,8 +147,6 @@ public class InventoryItemServiceImpl implements InventoryItemService {
                     .sum();
         }
 
-        // Consume ingredient's own recipe (if defined) for the total quantity
-        consumeRecipeItem(totalCount, ingredient.getRecipeItem(), request.getRecipeInventorySelections());
 
         // Create inventory item for the received ingredient
         InventoryItem inventoryItem = new InventoryItem();

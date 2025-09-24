@@ -23,13 +23,22 @@ public class Product extends BaseAuditable {
 
     private Integer expiration;
 
-    @OneToOne(mappedBy = "product")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "recipe_item_id")
     private RecipeItem recipeItem;
 
     private List<Long> attributeGroupIds;
 
     @OneToMany(mappedBy = "product")
     private List<InventoryItem> inventoryItems = new ArrayList<>();
+
+    @ManyToMany
+    @JoinTable(
+            name = "product_ingredient",
+            joinColumns = @JoinColumn(name = "product_id"),
+            inverseJoinColumns = @JoinColumn(name = "ingredient_id")
+    )
+    private List<Ingredient> ingredients = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "unit_id")

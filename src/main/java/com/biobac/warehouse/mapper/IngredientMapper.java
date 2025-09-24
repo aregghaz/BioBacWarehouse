@@ -42,10 +42,6 @@ public class IngredientMapper {
         } catch (Exception ignored) {
         }
 
-        if (ingredient.getRecipeItem() != null) {
-            response.setRecipeItemId(ingredient.getRecipeItem().getId());
-            response.setRecipeItemName(ingredient.getRecipeItem().getName());
-        }
 
         if (ingredient.getUnit() != null) {
             response.setUnitId(ingredient.getUnit().getId());
