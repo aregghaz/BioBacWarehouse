@@ -11,12 +11,13 @@ import java.util.List;
 public class ProductCreateRequest {
     private String name;
     private String description;
+    @NotNull(message = "Sku is required")
     private String sku;
-    @NotNull(message = "Recipe is required")
     private Long recipeItemId;
     private Long unitId;
     private Integer expiration;
     private List<Long> attributeGroupIds;
+    private List<ProductAdditionalComponents> extraComponents;
     private Long productGroupId;
     private List<UnitTypeConfigRequest> unitTypeConfigs;
     private List<AttributeUpsertRequest> attributes;

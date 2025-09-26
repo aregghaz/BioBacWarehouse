@@ -34,5 +34,5 @@ public class InventoryProductCreateRequest {
 
     private List<ComponentInventorySelection> recipeInventorySelections;
 
-    private List<AdditionalComponents> additionalComponents;
+    private List<ComponentInventorySelection> extraInventorySelections;
 }

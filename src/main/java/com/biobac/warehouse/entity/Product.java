@@ -32,13 +32,8 @@ public class Product extends BaseAuditable {
     @OneToMany(mappedBy = "product")
     private List<InventoryItem> inventoryItems = new ArrayList<>();
 
-    @ManyToMany
-    @JoinTable(
-            name = "product_ingredient",
-            joinColumns = @JoinColumn(name = "product_id"),
-            inverseJoinColumns = @JoinColumn(name = "ingredient_id")
-    )
-    private List<Ingredient> ingredients = new ArrayList<>();
+    @OneToMany(mappedBy = "product")
+    private List<ProductComponent> extraComponents = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "unit_id")

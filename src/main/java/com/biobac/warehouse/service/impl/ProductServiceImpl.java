@@ -31,6 +31,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ProductServiceImpl implements ProductService {
+    private final ProductComponentRepository productComponentRepository;
+    private final IngredientRepository ingredientRepository;
     private final ProductRepository productRepository;
     private final InventoryItemRepository inventoryItemRepository;
     private final RecipeItemRepository recipeItemRepository;
@@ -65,29 +67,33 @@ public class ProductServiceImpl implements ProductService {
     public ProductResponse create(ProductCreateRequest request) {
         Product existingProduct = productRepository.findBySku(request.getSku());
         if (existingProduct != null) {
-            throw new DuplicateException("provided Sku is exist");
+            throw new DuplicateException("provided Sku already exists");
         }
+
         Product product = new Product();
         product.setName(request.getName());
         product.setDescription(request.getDescription());
         product.setSku(request.getSku());
 
-        if (request.getExpiration() != null) product.setExpiration(request.getExpiration());
+        if (request.getExpiration() != null) {
+            product.setExpiration(request.getExpiration());
+        }
 
         if (request.getRecipeItemId() != null) {
             RecipeItem recipeItem = recipeItemRepository.findById(request.getRecipeItemId())
                     .orElseThrow(() -> new NotFoundException("Recipe not found"));
-            // Many products can share one recipe
             product.setRecipeItem(recipeItem);
         }
+
         if (request.getUnitId() != null) {
             Unit unit = unitRepository.findById(request.getUnitId())
                     .orElseThrow(() -> new NotFoundException("Unit not found"));
             product.setUnit(unit);
         }
+
         if (request.getProductGroupId() != null) {
             ProductGroup productGroup = productGroupRepository.findById(request.getProductGroupId())
-                    .orElseThrow(() -> new NotFoundException("ProductGroup not found"));
+                    .orElseThrow(() -> new NotFoundException("Product Group not found"));
             product.setProductGroup(productGroup);
         }
 
@@ -109,6 +115,27 @@ public class ProductServiceImpl implements ProductService {
                 link.setUnitType(ut);
                 link.setSize(cfgReq.getSize());
                 product.getUnitTypeConfigs().add(link);
+            }
+        }
+
+        if (request.getExtraComponents() != null && !request.getExtraComponents().isEmpty()) {
+            for (ProductAdditionalComponents compReq : request.getExtraComponents()) {
+                ProductComponent component = new ProductComponent();
+                component.setProduct(product);
+
+                if (compReq.getIngredientId() != null) {
+                    Ingredient ingredient = ingredientRepository.findById(compReq.getIngredientId())
+                            .orElseThrow(() -> new NotFoundException("Ingredient not found"));
+                    component.setIngredient(ingredient);
+                }
+
+                if (compReq.getProductId() != null) {
+                    Product childProduct = productRepository.findById(compReq.getProductId())
+                            .orElseThrow(() -> new NotFoundException("Product not found"));
+                    component.setChildProduct(childProduct);
+                }
+
+                productComponentRepository.save(component);
             }
         }
 
@@ -155,7 +182,6 @@ public class ProductServiceImpl implements ProductService {
         if (request.getRecipeItemId() != null) {
             RecipeItem recipeItem = recipeItemRepository.findById(request.getRecipeItemId())
                     .orElseThrow(() -> new NotFoundException("Recipe not found"));
-            // Many products can share one recipe
             existing.setRecipeItem(recipeItem);
         }
 
@@ -181,6 +207,37 @@ public class ProductServiceImpl implements ProductService {
         }
         if (request.getAttributeGroupIds() != null) {
             existing.setAttributeGroupIds(request.getAttributeGroupIds());
+        }
+
+        if (request.getExtraComponents() != null) {
+            List<ProductComponent> current = existing.getExtraComponents();
+            if (current != null && !current.isEmpty()) {
+                productComponentRepository.deleteAll(current);
+                current.clear();
+            }
+            if (!request.getExtraComponents().isEmpty()) {
+                for (ProductAdditionalComponents compReq : request.getExtraComponents()) {
+                    ProductComponent component = new ProductComponent();
+                    component.setProduct(existing);
+
+                    if (compReq.getIngredientId() != null) {
+                        Ingredient ingredient = ingredientRepository.findById(compReq.getIngredientId())
+                                .orElseThrow(() -> new NotFoundException("Ingredient not found"));
+                        component.setIngredient(ingredient);
+                    }
+
+                    if (compReq.getProductId() != null) {
+                        Product childProduct = productRepository.findById(compReq.getProductId())
+                                .orElseThrow(() -> new NotFoundException("Product not found"));
+                        if(Objects.equals(existing.getId(), childProduct.getId())) {
+                            throw new DuplicateException("Parent product can't be part of extra component");
+                        }
+                        component.setChildProduct(childProduct);
+                    }
+
+                    productComponentRepository.save(component);
+                }
+            }
         }
 
         Product saved = productRepository.save(existing);
@@ -255,9 +312,7 @@ public class ProductServiceImpl implements ProductService {
 
         RecipeItem recipeItem = product.getRecipeItem();
         if (recipeItem != null) {
-            // Detach product from recipe
             product.setRecipeItem(null);
-            // Maintain bidirectional consistency
             if (recipeItem.getProducts() != null) {
                 recipeItem.getProducts().remove(product);
             }

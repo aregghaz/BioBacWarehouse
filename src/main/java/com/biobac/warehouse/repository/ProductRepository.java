@@ -21,11 +21,6 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
             FROM Product p
             WHERE p.deleted = false
               AND p.id NOT IN (
-                  SELECT ri.ingredient.id
-                  FROM RecipeItem ri
-                  WHERE ri.ingredient IS NOT NULL
-              )
-              AND p.id NOT IN (
                   SELECT rc.ingredient.id
                   FROM RecipeComponent rc
                   WHERE rc.recipeItem.id = :recipeItemId

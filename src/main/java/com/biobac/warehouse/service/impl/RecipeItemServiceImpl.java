@@ -103,7 +103,6 @@ public class RecipeItemServiceImpl implements RecipeItemService {
     public List<RecipeItemResponse> getAll() {
         return recipeItemRepository.findAll()
                 .stream()
-                .filter(r -> (r.getProducts() == null || r.getProducts().isEmpty()))
                 .map(mapper::toDto)
                 .collect(Collectors.toList());
     }
@@ -115,7 +114,6 @@ public class RecipeItemServiceImpl implements RecipeItemService {
                 .orElseThrow(() -> new NotFoundException("Recipe item not found"));
         return mapper.toDto(recipeItem);
     }
-
 
     @Override
     @Transactional

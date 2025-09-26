@@ -32,6 +32,16 @@ public class ProductMapper {
         response.setCreatedAt(product.getCreatedAt());
         response.setUpdatedAt(product.getUpdatedAt());
 
+        if (product.getExtraComponents() != null) {
+            List<ExtraComponentsResponse> comps = product.getExtraComponents().stream()
+                    .map(comp -> new ExtraComponentsResponse(
+                            comp.getIngredient() != null ? comp.getIngredient().getId() : null,
+                            comp.getChildProduct() != null ? comp.getChildProduct().getId() : null
+                    ))
+                    .toList();
+            response.setExtraComponents(comps);
+        }
+
         if (product.getRecipeItem() != null) {
             response.setRecipeItemName(product.getRecipeItem().getName());
             response.setRecipeItemId(product.getRecipeItem().getId());

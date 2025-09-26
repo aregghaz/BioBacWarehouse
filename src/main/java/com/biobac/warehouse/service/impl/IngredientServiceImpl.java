@@ -67,6 +67,7 @@ public class IngredientServiceImpl implements IngredientService {
         Ingredient ingredient = new Ingredient();
         ingredient.setName(request.getName());
         ingredient.setDescription(request.getDescription());
+        ingredient.setPrice(request.getPrice());
         if (request.getExpiration() != null) {
             ingredient.setExpiration(request.getExpiration());
         }
@@ -152,6 +153,10 @@ public class IngredientServiceImpl implements IngredientService {
         }
         if (request.getDescription() != null) {
             existing.setDescription(request.getDescription());
+        }
+
+        if(request.getPrice() != null) {
+            existing.setPrice(request.getPrice());
         }
 
         if (request.getIngredientGroupId() != null) {
@@ -249,12 +254,12 @@ public class IngredientServiceImpl implements IngredientService {
         }
 
 
-        List<RecipeComponent> refComponents = ingredient.getRecipeComponents();
-        if (refComponents != null && !refComponents.isEmpty()) {
-            for (RecipeComponent rc : refComponents) {
-                rc.setIngredient(null);
-            }
-        }
+//        List<RecipeComponent> refComponents = ingredient.getRecipeComponents();
+//        if (refComponents != null && !refComponents.isEmpty()) {
+//            for (RecipeComponent rc : refComponents) {
+//                rc.setIngredient(null);
+//            }
+//        }
 
         List<InventoryItem> items = ingredient.getInventoryItems();
         if (items != null && !items.isEmpty()) {
@@ -271,11 +276,12 @@ public class IngredientServiceImpl implements IngredientService {
     @Override
     @Transactional(readOnly = true)
     public List<IngredientResponse> getAllExcludeRecipeIngredient(Long recipeItemId) {
-        List<Ingredient> ingredients = ingredientRepository.findAllByDeletedFalseExcludeRecipe(recipeItemId);
-
-        return ingredients.stream()
-                .map(ingredientMapper::toResponse)
-                .toList();
+//        List<Ingredient> ingredients = ingredientRepository.findAllByDeletedFalseExcludeRecipe(recipeItemId);
+//
+//        return ingredients.stream()
+//                .map(ingredientMapper::toResponse)
+//                .toList();
+        return null;
     }
 
 

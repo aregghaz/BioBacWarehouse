@@ -18,4 +18,5 @@ public class ProductUpdateRequest {
     private List<UnitTypeConfigRequest> unitTypeConfigs;
     private List<Long> attributeGroupIds;
     private List<AttributeUpsertRequest> attributes;
+    private List<ProductAdditionalComponents> extraComponents;
 }
