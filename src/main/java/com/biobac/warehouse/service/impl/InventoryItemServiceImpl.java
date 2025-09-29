@@ -103,7 +103,7 @@ public class InventoryItemServiceImpl implements InventoryItemService {
 
         return inventoryItemMapper.toSingleResponse(saved);
     }
-    
+
     private void consumeExtraComponents(double totalCount, List<ProductComponent> components, List<ComponentInventorySelection> selections) {
         if (totalCount <= 0) return;
         if (components == null || components.isEmpty()) return;
@@ -335,6 +335,39 @@ public class InventoryItemServiceImpl implements InventoryItemService {
                 .collect(Collectors.groupingBy(InventoryItemResponse::getProductId));
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Pair<List<InventoryItemResponse>, PaginationMetadata> getByWarehouseId(Long warehouseId, Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
+        warehouseRepository.findById(warehouseId).orElseThrow(() -> new NotFoundException("Warehouse not found"));
+
+        Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Specification<InventoryItem> spec = InventoryItemSpecification.buildSpecification(filters)
+                .and((root, query, cb) -> root.join("warehouse", JoinType.LEFT).get("id").in(warehouseId));
+
+        Page<InventoryItem> pageResult = inventoryItemRepository.findAll(spec, pageable);
+
+        List<InventoryItemResponse> content = pageResult.getContent()
+                .stream()
+                .map(item -> enrichCompany(item, inventoryItemMapper.toSingleResponse(item)))
+                .collect(Collectors.toList());
+
+        PaginationMetadata metadata = new PaginationMetadata(
+                pageResult.getNumber(),
+                pageResult.getSize(),
+                pageResult.getTotalElements(),
+                pageResult.getTotalPages(),
+                pageResult.isLast(),
+                filters,
+                sortDir,
+                sortBy,
+                "inventoryItemTable"
+        );
+
+        return Pair.of(content, metadata);
+    }
+
     private void consumeIngredientRecursive(Ingredient ingredient, double requiredQty, SelectionContext selectionContext,
                                             Set<Long> visitingIngredientIds, Set<Long> visitingProductIds, String reason) {
         if (requiredQty <= 0) return;
@@ -382,7 +415,6 @@ public class InventoryItemServiceImpl implements InventoryItemService {
 
             if (target != null) {
                 double invQty = target.getQuantity() != null ? target.getQuantity() : 0.0;
-                // Allow negative inventory: consume even if not enough
                 target.setQuantity(invQty - requiredQty);
                 inventoryItemRepository.save(target);
 

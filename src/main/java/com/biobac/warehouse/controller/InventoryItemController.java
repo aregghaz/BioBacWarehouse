@@ -65,6 +65,17 @@ public class InventoryItemController {
         return ResponseUtil.success("Inventory items retrieved successfully", result.getFirst(), result.getSecond());
     }
 
+    @PostMapping("/warehouse/all")
+    public ApiResponse<List<InventoryItemResponse>> getByWarehouseId(@RequestParam Long warehouseId,
+                                                                     @RequestParam(required = false, defaultValue = "0") Integer page,
+                                                                     @RequestParam(required = false, defaultValue = "10") Integer size,
+                                                                     @RequestParam(required = false, defaultValue = "id") String sortBy,
+                                                                     @RequestParam(required = false, defaultValue = "asc") String sortDir,
+                                                                     @RequestBody Map<String, FilterCriteria> filters) {
+        Pair<List<InventoryItemResponse>, PaginationMetadata> result = inventoryItemService.getByWarehouseId(warehouseId, filters, page, size, sortBy, sortDir);
+        return ResponseUtil.success("Inventory items retrieved successfully", result.getFirst(), result.getSecond());
+    }
+
     @GetMapping("/ingredient/by-ids")
     public ApiResponse<Map<Long, List<InventoryItemResponse>>> getAllByIngredientId(@RequestParam(value = "ingredientIds") List<Long> ingredientIds) {
         Map<Long, List<InventoryItemResponse>> response = inventoryItemService.getAllByIngredientIds(ingredientIds);
