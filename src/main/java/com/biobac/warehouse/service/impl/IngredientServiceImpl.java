@@ -159,6 +159,10 @@ public class IngredientServiceImpl implements IngredientService {
             existing.setPrice(request.getPrice());
         }
 
+        if (request.getExpiration() != null) {
+            existing.setExpiration(request.getExpiration());
+        }
+
         if (request.getIngredientGroupId() != null) {
             IngredientGroup ingredientGroup = ingredientGroupRepository.findById(request.getIngredientGroupId())
                     .orElseThrow(() -> new NotFoundException("Ingredient group not found"));

@@ -166,6 +166,9 @@ public class ProductServiceImpl implements ProductService {
 
         if (request.getSku() != null) existing.setSku(request.getSku());
 
+        if (request.getExpiration() != null) {
+            existing.setExpiration(request.getExpiration());
+        }
 
         if (request.getUnitId() != null) {
             Unit unit = unitRepository.findById(request.getUnitId())

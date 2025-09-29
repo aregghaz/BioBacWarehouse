@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "ingredient_history")
 @Getter
@@ -24,4 +26,8 @@ public class IngredientHistory extends BaseAuditable {
     private Double quantityAfter;
 
     private String notes;
+
+    private Long companyId;
+
+    private BigDecimal lastPrice;
 }
