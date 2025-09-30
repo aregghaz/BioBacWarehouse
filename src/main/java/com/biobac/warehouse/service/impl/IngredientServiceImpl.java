@@ -106,6 +106,28 @@ public class IngredientServiceImpl implements IngredientService {
             }
         }
 
+        if (ingredient.getUnit() != null) {
+            Unit unit = ingredient.getUnit();
+
+            UnitType baseUnitType = unitTypeRepository.findByName(unit.getName())
+                    .orElseGet(() -> {
+                        UnitType newType = new UnitType();
+                        newType.setName(unit.getName());
+                        return unitTypeRepository.save(newType);
+                    });
+
+            boolean alreadyExists = ingredient.getUnitTypeConfigs().stream()
+                    .anyMatch(link -> link.getUnitType().equals(baseUnitType));
+
+            if (!alreadyExists) {
+                IngredientUnitType baseLink = new IngredientUnitType();
+                baseLink.setIngredient(ingredient);
+                baseLink.setUnitType(baseUnitType);
+                baseLink.setSize(1.0);
+                ingredient.getUnitTypeConfigs().add(baseLink);
+            }
+        }
+
         Ingredient saved = ingredientRepository.save(ingredient);
 
         ingredientHistoryService.recordQuantityChange(saved, 0.0, 0.0, "INCREASE", "Added new ingredient to system");
@@ -155,7 +177,7 @@ public class IngredientServiceImpl implements IngredientService {
             existing.setDescription(request.getDescription());
         }
 
-        if(request.getPrice() != null) {
+        if (request.getPrice() != null) {
             existing.setPrice(request.getPrice());
         }
 

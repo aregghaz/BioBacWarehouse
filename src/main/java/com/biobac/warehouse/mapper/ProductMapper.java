@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
+import java.util.Objects;
 
 @Component
 public class ProductMapper {
@@ -36,7 +37,8 @@ public class ProductMapper {
             List<ExtraComponentsResponse> comps = product.getExtraComponents().stream()
                     .map(comp -> new ExtraComponentsResponse(
                             comp.getIngredient() != null ? comp.getIngredient().getId() : null,
-                            comp.getChildProduct() != null ? comp.getChildProduct().getId() : null
+                            comp.getChildProduct() != null ? comp.getChildProduct().getId() : null,
+                            comp.getIngredient() != null ? comp.getIngredient().getName() : Objects.requireNonNull(comp.getChildProduct()).getName()
                     ))
                     .toList();
             response.setExtraComponents(comps);

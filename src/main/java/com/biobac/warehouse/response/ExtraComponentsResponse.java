@@ -10,4 +10,5 @@ import lombok.Setter;
 public class ExtraComponentsResponse {
     private Long ingredientId;
     private Long productId;
+    private String name;
 }

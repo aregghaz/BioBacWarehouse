@@ -118,6 +118,28 @@ public class ProductServiceImpl implements ProductService {
             }
         }
 
+        if (product.getUnit() != null) {
+            Unit unit = product.getUnit();
+
+            UnitType baseUnitType = unitTypeRepository.findByName(unit.getName())
+                    .orElseGet(() -> {
+                        UnitType newType = new UnitType();
+                        newType.setName(unit.getName());
+                        return unitTypeRepository.save(newType);
+                    });
+
+            boolean alreadyExists = product.getUnitTypeConfigs().stream()
+                    .anyMatch(link -> link.getUnitType().equals(baseUnitType));
+
+            if (!alreadyExists) {
+                ProductUnitType baseLink = new ProductUnitType();
+                baseLink.setProduct(product);
+                baseLink.setUnitType(baseUnitType);
+                baseLink.setSize(1.0);
+                product.getUnitTypeConfigs().add(baseLink);
+            }
+        }
+
         if (request.getExtraComponents() != null && !request.getExtraComponents().isEmpty()) {
             for (ProductAdditionalComponents compReq : request.getExtraComponents()) {
                 ProductComponent component = new ProductComponent();
@@ -232,7 +254,7 @@ public class ProductServiceImpl implements ProductService {
                     if (compReq.getProductId() != null) {
                         Product childProduct = productRepository.findById(compReq.getProductId())
                                 .orElseThrow(() -> new NotFoundException("Product not found"));
-                        if(Objects.equals(existing.getId(), childProduct.getId())) {
+                        if (Objects.equals(existing.getId(), childProduct.getId())) {
                             throw new DuplicateException("Parent product can't be part of extra component");
                         }
                         component.setChildProduct(childProduct);

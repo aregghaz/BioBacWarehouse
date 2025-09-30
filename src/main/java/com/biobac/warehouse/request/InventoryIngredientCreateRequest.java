@@ -38,6 +38,4 @@ public class InventoryIngredientCreateRequest {
 
     @NotEmpty(message = "At least one unit type is required")
     private List<@Valid InventoryUnitTypeRequest> unitTypes;
-
-    private List<ComponentInventorySelection> recipeInventorySelections;
 }

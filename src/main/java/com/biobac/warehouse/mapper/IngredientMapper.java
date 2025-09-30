@@ -27,6 +27,7 @@ public class IngredientMapper {
         response.setName(ingredient.getName());
         response.setDescription(ingredient.getDescription());
         response.setExpiration(ingredient.getExpiration());
+        response.setPrice(ingredient.getPrice());
         response.setAttributeGroupIds(ingredient.getAttributeGroupIds());
         if (ingredient.getIngredientGroup() != null) {
             response.setIngredientGroupId(ingredient.getIngredientGroup().getId());
