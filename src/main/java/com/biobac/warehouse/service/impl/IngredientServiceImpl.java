@@ -82,28 +82,6 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
             ingredient.setUnit(unit);
         }
 
-        if (request.getUnitTypeConfigs() != null) {
-            Set<UnitType> allowedTypes = ingredient.getUnit() != null && ingredient.getUnit().getUnitTypes() != null
-                    ? ingredient.getUnit().getUnitTypes() : new HashSet<>();
-            ingredient.getUnitTypeConfigs().clear();
-            for (UnitTypeConfigRequest cfgReq : request.getUnitTypeConfigs()) {
-                if (cfgReq.getUnitTypeId() == null) {
-                    throw new InvalidDataException("unitTypeId is required in unitTypeConfigs");
-                }
-                UnitType ut = unitTypeRepository.findById(cfgReq.getUnitTypeId())
-                        .orElseThrow(() -> new NotFoundException("UnitType not found"));
-                if (!allowedTypes.isEmpty() && !allowedTypes.contains(ut)) {
-                    throw new InvalidDataException("UnitType '" + ut.getName() + "' is not allowed for selected Unit");
-                }
-                IngredientUnitType link = new IngredientUnitType();
-                link.setIngredient(ingredient);
-                link.setUnitType(ut);
-                link.setBaseType(false);
-                link.setSize(cfgReq.getSize());
-                ingredient.getUnitTypeConfigs().add(link);
-            }
-        }
-
         if (ingredient.getUnit() != null) {
             Unit unit = ingredient.getUnit();
 
@@ -124,6 +102,27 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
                 baseLink.setSize(1.0);
                 baseLink.setBaseType(true);
                 ingredient.getUnitTypeConfigs().add(baseLink);
+            }
+        }
+
+        if (request.getUnitTypeConfigs() != null) {
+            Set<UnitType> allowedTypes = ingredient.getUnit() != null && ingredient.getUnit().getUnitTypes() != null
+                    ? ingredient.getUnit().getUnitTypes() : new HashSet<>();
+            for (UnitTypeConfigRequest cfgReq : request.getUnitTypeConfigs()) {
+                if (cfgReq.getUnitTypeId() == null) {
+                    throw new InvalidDataException("unitTypeId is required in unitTypeConfigs");
+                }
+                UnitType ut = unitTypeRepository.findById(cfgReq.getUnitTypeId())
+                        .orElseThrow(() -> new NotFoundException("UnitType not found"));
+                if (!allowedTypes.isEmpty() && !allowedTypes.contains(ut)) {
+                    throw new InvalidDataException("UnitType '" + ut.getName() + "' is not allowed for selected Unit");
+                }
+                IngredientUnitType link = new IngredientUnitType();
+                link.setIngredient(ingredient);
+                link.setUnitType(ut);
+                link.setBaseType(false);
+                link.setSize(cfgReq.getSize());
+                ingredient.getUnitTypeConfigs().add(link);
             }
         }
 
@@ -306,7 +305,8 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
         return ingredient.getUnitTypeConfigs().stream().map(utc -> {
             UnitTypeCalculatedResponse calculatedResponse = new UnitTypeCalculatedResponse();
             calculatedResponse.setUnitTypeName(utc.getUnitType().getName());
-            calculatedResponse.setUnitTypeId(utc.getUnitType().getId());
+            calculatedResponse.setUnitTypeId(utc.getId());
+            calculatedResponse.setBaseUnit(utc.isBaseType());
             calculatedResponse.setSize(utc.getSize() * total);
             return calculatedResponse;
         }).toList();

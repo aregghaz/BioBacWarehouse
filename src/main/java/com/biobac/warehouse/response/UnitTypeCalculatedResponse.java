@@ -8,5 +8,6 @@ import lombok.Setter;
 public class UnitTypeCalculatedResponse {
     private Long unitTypeId;
     private String unitTypeName;
+    private boolean baseUnit;
     private Double size;
 }

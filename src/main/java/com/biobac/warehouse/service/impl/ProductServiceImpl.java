@@ -99,27 +99,6 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
             product.setProductGroup(productGroup);
         }
 
-        if (request.getUnitTypeConfigs() != null) {
-            Set<UnitType> allowedTypes = product.getUnit() != null && product.getUnit().getUnitTypes() != null
-                    ? product.getUnit().getUnitTypes() : new HashSet<>();
-            product.getUnitTypeConfigs().clear();
-            for (UnitTypeConfigRequest cfgReq : request.getUnitTypeConfigs()) {
-                if (cfgReq.getUnitTypeId() == null) {
-                    throw new InvalidDataException("unitTypeId is required in unitTypeConfigs");
-                }
-                UnitType ut = unitTypeRepository.findById(cfgReq.getUnitTypeId())
-                        .orElseThrow(() -> new NotFoundException("UnitType not found"));
-                if (!allowedTypes.isEmpty() && !allowedTypes.contains(ut)) {
-                    throw new InvalidDataException("UnitType '" + ut.getName() + "' is not allowed for selected Unit");
-                }
-                ProductUnitType link = new ProductUnitType();
-                link.setProduct(product);
-                link.setUnitType(ut);
-                link.setSize(cfgReq.getSize());
-                product.getUnitTypeConfigs().add(link);
-            }
-        }
-
         if (product.getUnit() != null) {
             Unit unit = product.getUnit();
 
@@ -139,6 +118,26 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
                 baseLink.setUnitType(baseUnitType);
                 baseLink.setSize(1.0);
                 product.getUnitTypeConfigs().add(baseLink);
+            }
+        }
+
+        if (request.getUnitTypeConfigs() != null) {
+            Set<UnitType> allowedTypes = product.getUnit() != null && product.getUnit().getUnitTypes() != null
+                    ? product.getUnit().getUnitTypes() : new HashSet<>();
+            for (UnitTypeConfigRequest cfgReq : request.getUnitTypeConfigs()) {
+                if (cfgReq.getUnitTypeId() == null) {
+                    throw new InvalidDataException("unitTypeId is required in unitTypeConfigs");
+                }
+                UnitType ut = unitTypeRepository.findById(cfgReq.getUnitTypeId())
+                        .orElseThrow(() -> new NotFoundException("UnitType not found"));
+                if (!allowedTypes.isEmpty() && !allowedTypes.contains(ut)) {
+                    throw new InvalidDataException("UnitType '" + ut.getName() + "' is not allowed for selected Unit");
+                }
+                ProductUnitType link = new ProductUnitType();
+                link.setProduct(product);
+                link.setUnitType(ut);
+                link.setSize(cfgReq.getSize());
+                product.getUnitTypeConfigs().add(link);
             }
         }
 
@@ -392,7 +391,8 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
         return product.getUnitTypeConfigs().stream().map(utc -> {
             UnitTypeCalculatedResponse calculatedResponse = new UnitTypeCalculatedResponse();
             calculatedResponse.setUnitTypeName(utc.getUnitType().getName());
-            calculatedResponse.setUnitTypeId(utc.getUnitType().getId());
+            calculatedResponse.setUnitTypeId(utc.getId());
+            calculatedResponse.setBaseUnit(utc.isBaseType());
             calculatedResponse.setSize(utc.getSize() * total);
             return calculatedResponse;
         }).toList();
