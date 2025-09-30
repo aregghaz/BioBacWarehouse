@@ -10,8 +10,10 @@ import com.biobac.warehouse.mapper.ProductMapper;
 import com.biobac.warehouse.repository.*;
 import com.biobac.warehouse.request.*;
 import com.biobac.warehouse.response.ProductResponse;
+import com.biobac.warehouse.response.UnitTypeCalculatedResponse;
 import com.biobac.warehouse.service.ProductHistoryService;
 import com.biobac.warehouse.service.ProductService;
+import com.biobac.warehouse.service.UnitTypeCalculator;
 import com.biobac.warehouse.utils.specifications.ProductSpecification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -30,7 +32,7 @@ import java.util.stream.Collectors;
 @Slf4j
 @Service
 @RequiredArgsConstructor
-public class ProductServiceImpl implements ProductService {
+public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
     private final ProductComponentRepository productComponentRepository;
     private final IngredientRepository ingredientRepository;
     private final ProductRepository productRepository;
@@ -372,5 +374,27 @@ public class ProductServiceImpl implements ProductService {
         return products.stream()
                 .map(productMapper::toResponse)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<UnitTypeCalculatedResponse> calculateUnitTypes(Long id, InventoryUnitTypeRequest request) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Product not found"));
+
+        ProductUnitType config = product.getUnitTypeConfigs().stream()
+                .filter(c -> c.getId().equals(request.getId()))
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException("Unit Type Config not found for this product"));
+
+        Double total = config.isBaseType() ? request.getCount() : config.getSize() * request.getCount();
+
+        return product.getUnitTypeConfigs().stream().map(utc -> {
+            UnitTypeCalculatedResponse calculatedResponse = new UnitTypeCalculatedResponse();
+            calculatedResponse.setUnitTypeName(utc.getUnitType().getName());
+            calculatedResponse.setUnitTypeId(utc.getUnitType().getId());
+            calculatedResponse.setSize(utc.getSize() * total);
+            return calculatedResponse;
+        }).toList();
     }
 }

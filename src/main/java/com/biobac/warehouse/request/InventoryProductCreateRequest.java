@@ -1,6 +1,5 @@
 package com.biobac.warehouse.request;
 
-import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
@@ -29,10 +28,10 @@ public class InventoryProductCreateRequest {
     @PastOrPresent(message = "Manufacturing date cannot be in the future")
     private LocalDate manufacturingDate;
 
-    @NotEmpty(message = "At least one unit type is required")
-    private List<@Valid InventoryUnitTypeRequest> unitTypes;
+    @NotEmpty(message = "Quantity is required")
+    private Double quantity;
 
     private List<ComponentInventorySelection> recipeInventorySelections;
 
-    private List<ComponentInventorySelection> extraInventorySelections;
+    private List<ExtraInventorySelection> extraInventorySelections;
 }

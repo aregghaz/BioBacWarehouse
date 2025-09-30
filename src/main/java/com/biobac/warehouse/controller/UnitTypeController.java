@@ -3,8 +3,13 @@ package com.biobac.warehouse.controller;
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.dto.UnitTypeDto;
 import com.biobac.warehouse.request.FilterCriteria;
+import com.biobac.warehouse.request.InventoryUnitTypeRequest;
 import com.biobac.warehouse.request.UnitTypeCreateRequest;
 import com.biobac.warehouse.response.ApiResponse;
+import com.biobac.warehouse.response.UnitTypeCalculatedResponse;
+import com.biobac.warehouse.service.IngredientService;
+import com.biobac.warehouse.service.ProductService;
+import com.biobac.warehouse.service.UnitTypeCalculator;
 import com.biobac.warehouse.service.UnitTypeService;
 import com.biobac.warehouse.utils.ResponseUtil;
 import lombok.RequiredArgsConstructor;
@@ -19,6 +24,8 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class UnitTypeController {
     private final UnitTypeService unitTypeService;
+    private final ProductService productService;
+    private final IngredientService ingredientService;
 
     @PostMapping
     public ApiResponse<UnitTypeDto> create(@RequestBody UnitTypeCreateRequest request) {
@@ -58,5 +65,21 @@ public class UnitTypeController {
     public ApiResponse<String> delete(@PathVariable Long id) {
         unitTypeService.delete(id);
         return ResponseUtil.success("Unit type deleted successfully");
+    }
+
+    @PostMapping("/calculation/{type}/{id}")
+    public ApiResponse<List<UnitTypeCalculatedResponse>> calculate(
+            @PathVariable String type,
+            @PathVariable Long id,
+            @RequestBody InventoryUnitTypeRequest request
+    ) {
+        UnitTypeCalculator calculator = switch (type.toLowerCase()) {
+            case "product" -> productService;
+            case "ingredient" -> ingredientService;
+            default -> throw new IllegalArgumentException("Unknown type: " + type);
+        };
+
+        List<UnitTypeCalculatedResponse> responses = calculator.calculateUnitTypes(id, request);
+        return ResponseUtil.success("Unit types calculated", responses);
     }
 }

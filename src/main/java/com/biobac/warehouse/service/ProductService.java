@@ -10,7 +10,7 @@ import org.springframework.data.util.Pair;
 import java.util.List;
 import java.util.Map;
 
-public interface ProductService {
+public interface ProductService extends UnitTypeCalculator {
     ProductResponse create(ProductCreateRequest request);
 
     ProductResponse getById(Long id);

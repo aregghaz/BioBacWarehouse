@@ -20,5 +20,7 @@ public class IngredientUnitType extends BaseAuditable {
     @JoinColumn(name = "unit_type_id")
     private UnitType unitType;
 
+    private boolean baseType;
+
     private Double size;
 }

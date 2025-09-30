@@ -36,6 +36,6 @@ public class InventoryIngredientCreateRequest {
     @PastOrPresent(message = "Manufacturing date cannot be in the future")
     private LocalDate manufacturingDate;
 
-    @NotEmpty(message = "At least one unit type is required")
-    private List<@Valid InventoryUnitTypeRequest> unitTypes;
+    @NotEmpty(message = "Quantity is required")
+    private Double quantity;
 }

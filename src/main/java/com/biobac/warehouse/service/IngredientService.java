@@ -10,7 +10,7 @@ import org.springframework.data.util.Pair;
 import java.util.List;
 import java.util.Map;
 
-public interface IngredientService {
+public interface IngredientService extends UnitTypeCalculator{
     IngredientResponse create(IngredientCreateRequest ingredient);
 
     IngredientResponse getById(Long id);
@@ -22,6 +22,4 @@ public interface IngredientService {
     IngredientResponse update(Long id, IngredientUpdateRequest request);
 
     void delete(Long id);
-
-    List<IngredientResponse> getAllExcludeRecipeIngredient(Long recipeItemId);
 }
