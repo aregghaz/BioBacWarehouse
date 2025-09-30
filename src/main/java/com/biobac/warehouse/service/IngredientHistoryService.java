@@ -15,6 +15,8 @@ public interface IngredientHistoryService {
     IngredientHistoryDto recordQuantityChange(Ingredient ingredient, Double quantityBefore,
                                               Double quantityAfter, String action, String notes, BigDecimal lastPrice, Long lastCompanyId);
 
+    IngredientHistoryDto recordQuantityChange(Ingredient ingredient, Double quantityBefore,
+                                              Double quantityAfter, String action, String notes);
 
     Pair<List<IngredientHistoryDto>, PaginationMetadata> getHistoryForIngredient(Long ingredientId, Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir);
 

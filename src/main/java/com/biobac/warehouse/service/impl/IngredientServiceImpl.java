@@ -128,7 +128,7 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
 
         Ingredient saved = ingredientRepository.save(ingredient);
 
-        ingredientHistoryService.recordQuantityChange(saved, 0.0, 0.0, "INCREASE", "Added new ingredient to system", null, null);
+        ingredientHistoryService.recordQuantityChange(saved, 0.0, 0.0, "INCREASE", "Added new ingredient to system");
 
 
         if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
@@ -286,7 +286,7 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
         ingredient.setDeleted(true);
         ingredientRepository.save(ingredient);
 
-        ingredientHistoryService.recordQuantityChange(ingredient, totalBefore, 0.0, "DELETE", "Soft deleted", null, null);
+        ingredientHistoryService.recordQuantityChange(ingredient, totalBefore, 0.0, "DELETE", "Soft deleted");
     }
 
     @Override

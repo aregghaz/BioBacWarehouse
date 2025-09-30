@@ -42,6 +42,21 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
         history.setQuantityBefore(quantityBefore);
         history.setQuantityAfter(quantityAfter);
         history.setNotes(notes);
+        history.setCompanyId(lastCompanyId);
+        history.setLastPrice(lastPrice);
+
+        IngredientHistory savedHistory = ingredientHistoryRepository.save(history);
+        return ingredientHistoryMapper.toDto(savedHistory);
+    }
+
+    @Override
+    public IngredientHistoryDto recordQuantityChange(Ingredient ingredient, Double quantityBefore, Double quantityAfter, String action, String notes) {
+        IngredientHistory history = new IngredientHistory();
+        history.setIngredient(ingredient);
+        history.setAction(action);
+        history.setQuantityBefore(quantityBefore);
+        history.setQuantityAfter(quantityAfter);
+        history.setNotes(notes);
 
         IngredientHistory savedHistory = ingredientHistoryRepository.save(history);
         return ingredientHistoryMapper.toDto(savedHistory);
@@ -50,20 +65,26 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
     @Override
     @Transactional(readOnly = true)
     public Pair<List<IngredientHistoryDto>, PaginationMetadata> getHistoryForIngredient(Long ingredientId, Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
-        Sort sort = sortDir.equalsIgnoreCase("asc") ?
-                Sort.by(sortBy).ascending() :
-                Sort.by(sortBy).descending();
+        int safePage = (page == null || page < 0) ? 0 : page;
+        int safeSize = (size == null || size <= 0) ? 20 : size;
+        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? "id" : sortBy;
+        String safeSortDir = (sortDir == null || sortDir.isBlank()) ? "desc" : sortDir;
 
-        Pageable pageable = PageRequest.of(page, size, sort);
+        Sort sort = safeSortDir.equalsIgnoreCase("asc") ? Sort.by(safeSortBy).ascending() : Sort.by(safeSortBy).descending();
+        Pageable pageable = PageRequest.of(safePage, safeSize, sort);
+
         Specification<IngredientHistory> spec = IngredientHistorySpecification.buildSpecification(filters)
-                .and((root, query, cb) -> root.join("ingredient", JoinType.LEFT).get("id").in(ingredientId));
-        ;
+                .and((root, query, cb) -> cb.equal(root.join("ingredient", JoinType.LEFT).get("id"), ingredientId));
+
         Page<IngredientHistory> ingredientHistoryPage = ingredientHistoryRepository.findAll(spec, pageable);
 
         List<IngredientHistoryDto> content = ingredientHistoryPage.getContent()
                 .stream()
                 .map(ingredientHistoryMapper::toDto)
                 .collect(Collectors.toList());
+
+        String metaSortDir = pageable.getSort().toString().contains("ASC") ? "asc" : "desc";
+        String metaSortBy = pageable.getSort().stream().findFirst().map(Sort.Order::getProperty).orElse("id");
 
         PaginationMetadata metadata = new PaginationMetadata(
                 ingredientHistoryPage.getNumber(),
@@ -72,8 +93,8 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
                 ingredientHistoryPage.getTotalPages(),
                 ingredientHistoryPage.isLast(),
                 filters,
-                sortDir,
-                sortBy,
+                metaSortDir,
+                metaSortBy,
                 "ingredientHistoryTable"
         );
 
@@ -83,11 +104,14 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
     @Override
     @Transactional(readOnly = true)
     public Pair<List<IngredientHistoryDto>, PaginationMetadata> getHistory(Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
-        Sort sort = sortDir.equalsIgnoreCase("asc") ?
-                Sort.by(sortBy).ascending() :
-                Sort.by(sortBy).descending();
+        int safePage = (page == null || page < 0) ? 0 : page;
+        int safeSize = (size == null || size <= 0) ? 20 : size;
+        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? "id" : sortBy;
+        String safeSortDir = (sortDir == null || sortDir.isBlank()) ? "desc" : sortDir;
 
-        Pageable pageable = PageRequest.of(page, size, sort);
+        Sort sort = safeSortDir.equalsIgnoreCase("asc") ? Sort.by(safeSortBy).ascending() : Sort.by(safeSortBy).descending();
+        Pageable pageable = PageRequest.of(safePage, safeSize, sort);
+
         Specification<IngredientHistory> spec = IngredientHistorySpecification.buildSpecification(filters);
         Page<IngredientHistory> ingredientHistoryPage = ingredientHistoryRepository.findAll(spec, pageable);
 
@@ -96,6 +120,9 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
                 .map(ingredientHistoryMapper::toDto)
                 .collect(Collectors.toList());
 
+        String metaSortDir = pageable.getSort().toString().contains("ASC") ? "asc" : "desc";
+        String metaSortBy = pageable.getSort().stream().findFirst().map(Sort.Order::getProperty).orElse("id");
+
         PaginationMetadata metadata = new PaginationMetadata(
                 ingredientHistoryPage.getNumber(),
                 ingredientHistoryPage.getSize(),
@@ -103,8 +130,8 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
                 ingredientHistoryPage.getTotalPages(),
                 ingredientHistoryPage.isLast(),
                 filters,
-                sortDir,
-                sortBy,
+                metaSortDir,
+                metaSortBy,
                 "ingredientsHistoryTable"
         );
 

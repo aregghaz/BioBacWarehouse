@@ -355,7 +355,7 @@ public class InventoryItemServiceImpl implements InventoryItemService {
 
                 String where = " using inventory item id=" + selectedInventoryItemId;
                 ingredientHistoryService.recordQuantityChange(ingredient, totalBeforeAll, totalBeforeAll - requiredQty, "DECREASE",
-                        (reason != null ? reason : "Consumed for recipe requirements") + where, null, null);
+                        (reason != null ? reason : "Consumed for recipe requirements") + where);
                 return;
             }
 

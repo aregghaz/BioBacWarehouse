@@ -6,7 +6,6 @@ import com.biobac.warehouse.entity.AttributeTargetType;
 import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.entity.IngredientHistory;
 import com.biobac.warehouse.entity.InventoryItem;
-import com.biobac.warehouse.repository.IngredientHistoryRepository;
 import com.biobac.warehouse.response.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -22,9 +21,6 @@ public class IngredientMapper {
 
     @Autowired
     protected AttributeClient attributeClient;
-
-    @Autowired
-    IngredientHistoryRepository ingredientHistoryRepository;
 
     public IngredientResponse toResponse(Ingredient ingredient) {
         if (ingredient == null) return null;
@@ -52,20 +48,27 @@ public class IngredientMapper {
 
         if (ingredient.getHistories() != null && !ingredient.getHistories().isEmpty()) {
             IngredientHistory lastHistory = ingredient.getHistories().stream()
+                    .filter(h -> h.getCreatedAt() != null)
                     .max(Comparator.comparing(IngredientHistory::getCreatedAt))
-                    .orElse(null);
-            try {
-                ApiResponse<String> resp = companyClient.getCompanyName(lastHistory.getCompanyId());
-                if (resp != null && Boolean.TRUE.equals(resp.getSuccess())) {
-                    response.setLastCompanyName(resp.getData());
-                } else if (resp != null && resp.getData() != null) {
-                    response.setLastCompanyName(resp.getData());
-                }
-            } catch (Exception ignored) {
+                    .orElseGet(() -> ingredient.getHistories().stream()
+                            .filter(h -> h.getLastPrice() != null || h.getCompanyId() != null)
+                            .findFirst()
+                            .orElse(null));
 
+            if (lastHistory != null) {
+                try {
+                    ApiResponse<String> resp = companyClient.getCompanyName(lastHistory.getCompanyId());
+                    if (resp != null && Boolean.TRUE.equals(resp.getSuccess())) {
+                        response.setLastCompanyName(resp.getData());
+                    } else if (resp != null && resp.getData() != null) {
+                        response.setLastCompanyName(resp.getData());
+                    }
+                } catch (Exception ignored) {
+                }
+
+                response.setLastPrice(lastHistory.getLastPrice());
+                response.setLastCompanyId(lastHistory.getCompanyId());
             }
-            response.setLastPrice(lastHistory.getLastPrice());
-            response.setLastCompanyId(lastHistory.getCompanyId());
         }
 
         if (ingredient.getUnit() != null) {
