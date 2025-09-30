@@ -393,7 +393,11 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
             calculatedResponse.setUnitTypeName(utc.getUnitType().getName());
             calculatedResponse.setUnitTypeId(utc.getId());
             calculatedResponse.setBaseUnit(utc.isBaseType());
-            calculatedResponse.setSize(utc.getSize() * total);
+            if (utc.isBaseType()) {
+                calculatedResponse.setSize(total);
+            } else {
+                calculatedResponse.setSize(Math.ceil(total / utc.getSize()));
+            }
             return calculatedResponse;
         }).toList();
     }

@@ -20,7 +20,7 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -35,7 +35,7 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
     @Override
     @Transactional
     public IngredientHistoryDto recordQuantityChange(Ingredient ingredient, Double quantityBefore,
-                                                     Double quantityAfter, String action, String notes) {
+                                                     Double quantityAfter, String action, String notes, BigDecimal lastPrice, Long lastCompanyId) {
         IngredientHistory history = new IngredientHistory();
         history.setIngredient(ingredient);
         history.setAction(action);

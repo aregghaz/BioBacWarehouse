@@ -30,4 +30,6 @@ public class IngredientHistory extends BaseAuditable {
     private Long companyId;
 
     private BigDecimal lastPrice;
+
+    private Long userId;
 }

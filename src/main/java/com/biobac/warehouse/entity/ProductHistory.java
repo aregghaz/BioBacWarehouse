@@ -29,4 +29,5 @@ public class ProductHistory extends BaseAuditable {
 
     private String notes;
 
+    private Long userId;
 }

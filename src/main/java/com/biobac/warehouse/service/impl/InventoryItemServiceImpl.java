@@ -125,7 +125,9 @@ public class InventoryItemServiceImpl implements InventoryItemService {
                     totalBefore,
                     totalBefore + totalCount,
                     "INCREASE",
-                    "Added new inventory item" + warehouseNote
+                    "Added new inventory item" + warehouseNote,
+                    request.getPrice(),
+                    request.getCompanyId()
             );
         }
 
@@ -353,7 +355,7 @@ public class InventoryItemServiceImpl implements InventoryItemService {
 
                 String where = " using inventory item id=" + selectedInventoryItemId;
                 ingredientHistoryService.recordQuantityChange(ingredient, totalBeforeAll, totalBeforeAll - requiredQty, "DECREASE",
-                        (reason != null ? reason : "Consumed for recipe requirements") + where);
+                        (reason != null ? reason : "Consumed for recipe requirements") + where, null, null);
                 return;
             }
 

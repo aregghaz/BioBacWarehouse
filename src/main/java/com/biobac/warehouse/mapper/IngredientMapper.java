@@ -4,11 +4,14 @@ import com.biobac.warehouse.client.AttributeClient;
 import com.biobac.warehouse.client.CompanyClient;
 import com.biobac.warehouse.entity.AttributeTargetType;
 import com.biobac.warehouse.entity.Ingredient;
+import com.biobac.warehouse.entity.IngredientHistory;
 import com.biobac.warehouse.entity.InventoryItem;
+import com.biobac.warehouse.repository.IngredientHistoryRepository;
 import com.biobac.warehouse.response.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+import java.util.Comparator;
 import java.util.List;
 
 @Component
@@ -19,6 +22,9 @@ public class IngredientMapper {
 
     @Autowired
     protected AttributeClient attributeClient;
+
+    @Autowired
+    IngredientHistoryRepository ingredientHistoryRepository;
 
     public IngredientResponse toResponse(Ingredient ingredient) {
         if (ingredient == null) return null;
@@ -39,10 +45,28 @@ public class IngredientMapper {
         try {
             if (ingredient.getId() != null) {
                 ApiResponse<List<AttributeResponse>> apiResponse = attributeClient.getValues(ingredient.getId(), AttributeTargetType.INGREDIENT.name());
-                response.setAttributes(apiResponse.getData());            }
+                response.setAttributes(apiResponse.getData());
+            }
         } catch (Exception ignored) {
         }
 
+        if (ingredient.getHistories() != null && !ingredient.getHistories().isEmpty()) {
+            IngredientHistory lastHistory = ingredient.getHistories().stream()
+                    .max(Comparator.comparing(IngredientHistory::getCreatedAt))
+                    .orElse(null);
+            try {
+                ApiResponse<String> resp = companyClient.getCompanyName(lastHistory.getCompanyId());
+                if (resp != null && Boolean.TRUE.equals(resp.getSuccess())) {
+                    response.setLastCompanyName(resp.getData());
+                } else if (resp != null && resp.getData() != null) {
+                    response.setLastCompanyName(resp.getData());
+                }
+            } catch (Exception ignored) {
+
+            }
+            response.setLastPrice(lastHistory.getLastPrice());
+            response.setLastCompanyId(lastHistory.getCompanyId());
+        }
 
         if (ingredient.getUnit() != null) {
             response.setUnitId(ingredient.getUnit().getId());

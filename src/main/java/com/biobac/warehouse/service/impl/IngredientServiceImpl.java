@@ -128,7 +128,7 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
 
         Ingredient saved = ingredientRepository.save(ingredient);
 
-        ingredientHistoryService.recordQuantityChange(saved, 0.0, 0.0, "INCREASE", "Added new ingredient to system");
+        ingredientHistoryService.recordQuantityChange(saved, 0.0, 0.0, "INCREASE", "Added new ingredient to system", null, null);
 
 
         if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
@@ -286,7 +286,7 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
         ingredient.setDeleted(true);
         ingredientRepository.save(ingredient);
 
-        ingredientHistoryService.recordQuantityChange(ingredient, totalBefore, 0.0, "DELETE", "Soft deleted");
+        ingredientHistoryService.recordQuantityChange(ingredient, totalBefore, 0.0, "DELETE", "Soft deleted", null, null);
     }
 
     @Override
@@ -300,14 +300,18 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
                 .findFirst()
                 .orElseThrow(() -> new NotFoundException("Unit Type Config not found for this ingredient"));
 
-        Double total = config.isBaseType() ? request.getCount() : config.getSize() * request.getCount();
+        double total = config.isBaseType() ? request.getCount() : config.getSize() * request.getCount();
 
         return ingredient.getUnitTypeConfigs().stream().map(utc -> {
             UnitTypeCalculatedResponse calculatedResponse = new UnitTypeCalculatedResponse();
             calculatedResponse.setUnitTypeName(utc.getUnitType().getName());
             calculatedResponse.setUnitTypeId(utc.getId());
             calculatedResponse.setBaseUnit(utc.isBaseType());
-            calculatedResponse.setSize(utc.getSize() * total);
+            if (utc.isBaseType()) {
+                calculatedResponse.setSize(total);
+            } else {
+                calculatedResponse.setSize(Math.ceil(total / utc.getSize()));
+            }
             return calculatedResponse;
         }).toList();
     }

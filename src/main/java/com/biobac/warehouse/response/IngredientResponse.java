@@ -20,6 +20,9 @@ public class IngredientResponse {
     private List<Long> attributeGroupIds;
     private Long unitId;
     private BigDecimal price;
+    private BigDecimal lastPrice;
+    private Long lastCompanyId;
+    private String lastCompanyName;
     private String unitName;
     private Double totalQuantity;
     private List<InventoryItemResponse> inventoryItems;

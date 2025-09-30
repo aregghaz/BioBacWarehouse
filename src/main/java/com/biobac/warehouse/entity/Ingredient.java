@@ -40,5 +40,8 @@ public class Ingredient extends BaseAuditable {
 
     private Integer expiration;
 
+    @OneToMany(mappedBy = "ingredient")
+    private List<IngredientHistory> histories = new ArrayList<>();
+
     private boolean deleted = false;
 }
