@@ -117,6 +117,7 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
                 baseLink.setProduct(product);
                 baseLink.setUnitType(baseUnitType);
                 baseLink.setSize(1.0);
+                baseLink.setBaseType(true);
                 product.getUnitTypeConfigs().add(baseLink);
             }
         }
@@ -214,13 +215,37 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
         if (request.getUnitTypeConfigs() != null) {
             Set<UnitType> allowedTypes = existing.getUnit() != null && existing.getUnit().getUnitTypes() != null
                     ? existing.getUnit().getUnitTypes() : new HashSet<>();
+
             existing.getUnitTypeConfigs().clear();
+
+            UnitType baseUnitType = null;
+            if (existing.getUnit() != null) {
+                Unit unit = existing.getUnit();
+                baseUnitType = unitTypeRepository.findByName(unit.getName())
+                        .orElseGet(() -> {
+                            UnitType newType = new UnitType();
+                            newType.setName(unit.getName());
+                            return unitTypeRepository.save(newType);
+                        });
+                ProductUnitType baseLink = new ProductUnitType();
+                baseLink.setProduct(existing);
+                baseLink.setUnitType(baseUnitType);
+                baseLink.setSize(1.0);
+                baseLink.setBaseType(true);
+                existing.getUnitTypeConfigs().add(baseLink);
+            }
+
             for (UnitTypeConfigRequest cfgReq : request.getUnitTypeConfigs()) {
                 if (cfgReq.getUnitTypeId() == null) {
                     throw new InvalidDataException("unitTypeId is required in unitTypeConfigs");
                 }
                 UnitType ut = unitTypeRepository.findById(cfgReq.getUnitTypeId())
                         .orElseThrow(() -> new NotFoundException("UnitType not found"));
+
+                if (baseUnitType != null && ut.equals(baseUnitType)) {
+                    continue;
+                }
+
                 if (!allowedTypes.isEmpty() && !allowedTypes.contains(ut)) {
                     throw new InvalidDataException("UnitType '" + ut.getName() + "' is not allowed for selected Unit");
                 }
@@ -228,6 +253,7 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
                 link.setProduct(existing);
                 link.setUnitType(ut);
                 link.setSize(cfgReq.getSize());
+                link.setBaseType(false);
                 existing.getUnitTypeConfigs().add(link);
             }
         }
