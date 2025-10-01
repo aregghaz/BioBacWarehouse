@@ -43,6 +43,7 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
     private final UnitRepository unitRepository;
     private final UnitTypeRepository unitTypeRepository;
     private final ProductGroupRepository productGroupRepository;
+    private final WarehouseRepository warehouseRepository;
     private final ProductMapper productMapper;
     private final AttributeClient attributeClient;
 
@@ -99,6 +100,12 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
             product.setProductGroup(productGroup);
         }
 
+        if (request.getDefaultWarehouseId() != null) {
+            Warehouse warehouse = warehouseRepository.findById(request.getDefaultWarehouseId())
+                    .orElseThrow(() -> new NotFoundException("Warehouse not found"));
+            product.setDefaultWarehouse(warehouse);
+        }
+
         if (product.getUnit() != null) {
             Unit unit = product.getUnit();
 
@@ -147,17 +154,23 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
                 ProductComponent component = new ProductComponent();
                 component.setProduct(product);
 
-                if (compReq.getIngredientId() != null) {
+                boolean hasIng = compReq.getIngredientId() != null;
+                boolean hasProd = compReq.getProductId() != null;
+                if (hasIng == hasProd) {
+                    throw new InvalidDataException("Extra component must reference exactly one of ingredientId or productId");
+                }
+
+                if (hasIng) {
                     Ingredient ingredient = ingredientRepository.findById(compReq.getIngredientId())
                             .orElseThrow(() -> new NotFoundException("Ingredient not found"));
                     component.setIngredient(ingredient);
-                }
-
-                if (compReq.getProductId() != null) {
+                } else {
                     Product childProduct = productRepository.findById(compReq.getProductId())
                             .orElseThrow(() -> new NotFoundException("Product not found"));
                     component.setChildProduct(childProduct);
                 }
+
+                component.setQuantity(compReq.getQuantity());
 
                 productComponentRepository.save(component);
             }
@@ -206,6 +219,12 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
             existing.setProductGroup(productGroup);
         }
 
+        if (request.getDefaultWarehouseId() != null) {
+            Warehouse warehouse = warehouseRepository.findById(request.getDefaultWarehouseId())
+                    .orElseThrow(() -> new NotFoundException("Warehouse not found"));
+            existing.setDefaultWarehouse(warehouse);
+        }
+
         if (request.getRecipeItemId() != null) {
             RecipeItem recipeItem = recipeItemRepository.findById(request.getRecipeItemId())
                     .orElseThrow(() -> new NotFoundException("Recipe not found"));
@@ -242,7 +261,7 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
                 UnitType ut = unitTypeRepository.findById(cfgReq.getUnitTypeId())
                         .orElseThrow(() -> new NotFoundException("UnitType not found"));
 
-                if (baseUnitType != null && ut.equals(baseUnitType)) {
+                if (ut.equals(baseUnitType)) {
                     continue;
                 }
 
@@ -272,13 +291,17 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
                     ProductComponent component = new ProductComponent();
                     component.setProduct(existing);
 
-                    if (compReq.getIngredientId() != null) {
+                    boolean hasIng = compReq.getIngredientId() != null;
+                    boolean hasProd = compReq.getProductId() != null;
+                    if (hasIng == hasProd) {
+                        throw new InvalidDataException("Extra component must reference exactly one of ingredientId or productId");
+                    }
+
+                    if (hasIng) {
                         Ingredient ingredient = ingredientRepository.findById(compReq.getIngredientId())
                                 .orElseThrow(() -> new NotFoundException("Ingredient not found"));
                         component.setIngredient(ingredient);
-                    }
-
-                    if (compReq.getProductId() != null) {
+                    } else {
                         Product childProduct = productRepository.findById(compReq.getProductId())
                                 .orElseThrow(() -> new NotFoundException("Product not found"));
                         if (Objects.equals(existing.getId(), childProduct.getId())) {
@@ -286,6 +309,8 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
                         }
                         component.setChildProduct(childProduct);
                     }
+
+                    component.setQuantity(compReq.getQuantity());
 
                     productComponentRepository.save(component);
                 }

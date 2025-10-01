@@ -19,4 +19,5 @@ public class ProductUpdateRequest {
     private List<Long> attributeGroupIds;
     private List<AttributeUpsertRequest> attributes;
     private List<ProductAdditionalComponents> extraComponents;
+    private Long defaultWarehouseId;
 }

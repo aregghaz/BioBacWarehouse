@@ -8,4 +8,5 @@ import lombok.Setter;
 public class ProductAdditionalComponents {
     private Long ingredientId;
     private Long productId;
+    private Double quantity;
 }

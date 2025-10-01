@@ -1,7 +1,6 @@
 package com.biobac.warehouse.request;
 
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PastOrPresent;
 import lombok.Getter;
@@ -9,7 +8,6 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
 
 @Getter
 @Setter
@@ -28,10 +26,7 @@ public class InventoryProductCreateRequest {
     @PastOrPresent(message = "Manufacturing date cannot be in the future")
     private LocalDate manufacturingDate;
 
-    @NotEmpty(message = "Quantity is required")
+    @NotNull(message = "Quantity is required")
+    @DecimalMin(value = "0.0", inclusive = false, message = "Quantity must be greater than 0")
     private Double quantity;
-
-    private List<ComponentInventorySelection> recipeInventorySelections;
-
-    private List<ExtraInventorySelection> extraInventorySelections;
 }

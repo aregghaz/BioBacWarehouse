@@ -43,5 +43,9 @@ public class Ingredient extends BaseAuditable {
     @OneToMany(mappedBy = "ingredient")
     private List<IngredientHistory> histories = new ArrayList<>();
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "default_warehouse_id")
+    private Warehouse defaultWarehouse;
+
     private boolean deleted = false;
 }

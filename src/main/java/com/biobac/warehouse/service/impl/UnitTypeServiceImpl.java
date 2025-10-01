@@ -2,8 +2,13 @@ package com.biobac.warehouse.service.impl;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.dto.UnitTypeDto;
+import com.biobac.warehouse.entity.IngredientUnitType;
+import com.biobac.warehouse.entity.ProductUnitType;
 import com.biobac.warehouse.entity.UnitType;
 import com.biobac.warehouse.exception.NotFoundException;
+import com.biobac.warehouse.mapper.UnitTypeMapper;
+import com.biobac.warehouse.repository.IngredientUnitTypeRepository;
+import com.biobac.warehouse.repository.ProductUnitTypeRepository;
 import com.biobac.warehouse.repository.UnitTypeRepository;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.request.UnitTypeCreateRequest;
@@ -19,9 +24,12 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Slf4j
 @Service
@@ -32,8 +40,10 @@ public class UnitTypeServiceImpl implements UnitTypeService {
     private static final String DEFAULT_SORT_BY = "id";
     private static final String DEFAULT_SORT_DIR = "desc";
 
+    private final IngredientUnitTypeRepository ingredientUnitTypeRepository;
+    private final ProductUnitTypeRepository productUnitTypeRepository;
     private final UnitTypeRepository unitTypeRepository;
-    private final com.biobac.warehouse.mapper.UnitTypeMapper unitTypeMapper;
+    private final UnitTypeMapper unitTypeMapper;
 
     private Pageable buildPageable(Integer page, Integer size, String sortBy, String sortDir) {
         int safePage = page == null || page < 0 ? DEFAULT_PAGE : page;
@@ -99,10 +109,19 @@ public class UnitTypeServiceImpl implements UnitTypeService {
         Specification<UnitType> spec = com.biobac.warehouse.utils.specifications.UnitTypeSpecification.buildSpecification(filters);
         Page<UnitType> unitTypePage = unitTypeRepository.findAll(spec, pageable);
 
-        List<UnitTypeDto> content = unitTypePage.getContent()
-                .stream()
+        Set<Long> excludeIds = Stream.concat(
+                ingredientUnitTypeRepository.findAll().stream()
+                        .filter(IngredientUnitType::isBaseType)
+                        .map(i -> i.getUnitType().getId()),
+                productUnitTypeRepository.findAll().stream()
+                        .filter(ProductUnitType::isBaseType)
+                        .map(i -> i.getUnitType().getId())
+        ).collect(Collectors.toSet());
+
+        List<UnitTypeDto> content = unitTypePage.getContent().stream()
+                .filter(unitType -> !excludeIds.contains(unitType.getId()))
                 .map(unitTypeMapper::toDto)
-                .collect(java.util.stream.Collectors.toList());
+                .collect(Collectors.toList());
 
         PaginationMetadata metadata = new PaginationMetadata(
                 unitTypePage.getNumber(),

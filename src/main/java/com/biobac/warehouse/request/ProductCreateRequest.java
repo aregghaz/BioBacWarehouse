@@ -21,4 +21,5 @@ public class ProductCreateRequest {
     private Long productGroupId;
     private List<UnitTypeConfigRequest> unitTypeConfigs;
     private List<AttributeUpsertRequest> attributes;
+    private Long defaultWarehouseId;
 }

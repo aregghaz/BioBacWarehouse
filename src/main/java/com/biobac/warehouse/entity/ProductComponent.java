@@ -23,4 +23,6 @@ public class ProductComponent extends BaseAuditable {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "child_product_id")
     private Product childProduct;
+
+    private Double quantity;
 }

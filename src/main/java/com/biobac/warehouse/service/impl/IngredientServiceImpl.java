@@ -35,6 +35,7 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
     private final IngredientRepository ingredientRepository;
     private final InventoryItemRepository inventoryItemRepository;
     private final IngredientGroupRepository ingredientGroupRepository;
+    private final WarehouseRepository warehouseRepository;
     private final UnitRepository unitRepository;
     private final UnitTypeRepository unitTypeRepository;
     private final IngredientHistoryService ingredientHistoryService;
@@ -80,6 +81,12 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
             Unit unit = unitRepository.findById(request.getUnitId())
                     .orElseThrow(() -> new NotFoundException("Unit not found"));
             ingredient.setUnit(unit);
+        }
+
+        if (request.getDefaultWarehouseId() != null) {
+            Warehouse warehouse = warehouseRepository.findById(request.getDefaultWarehouseId())
+                    .orElseThrow(() -> new NotFoundException("Warehouse not found"));
+            ingredient.setDefaultWarehouse(warehouse);
         }
 
         if (ingredient.getUnit() != null) {
@@ -195,6 +202,11 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
             existing.setUnit(unit);
         }
 
+        if (request.getDefaultWarehouseId() != null) {
+            Warehouse warehouse = warehouseRepository.findById(request.getDefaultWarehouseId())
+                    .orElseThrow(() -> new NotFoundException("Warehouse not found"));
+            existing.setDefaultWarehouse(warehouse);
+        }
 
         if (request.getUnitTypeConfigs() != null) {
             Set<UnitType> allowedTypes = existing.getUnit() != null && existing.getUnit().getUnitTypes() != null

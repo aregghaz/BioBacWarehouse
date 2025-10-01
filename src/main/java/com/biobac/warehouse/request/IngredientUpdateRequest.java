@@ -18,4 +18,5 @@ public class IngredientUpdateRequest {
     private Long unitId;
     private List<UnitTypeConfigRequest> unitTypeConfigs;
     private List<AttributeUpsertRequest> attributes;
+    private Long defaultWarehouseId;
 }

@@ -118,7 +118,6 @@ public class ProductMapper {
                     ir.setCompanyName(resp.getData());
                 }
             } catch (Exception ignored) {
-                // Ignore failures from company service
             }
         }
         ir.setCreatedAt(item.getCreatedAt());
