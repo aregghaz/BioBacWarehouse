@@ -16,6 +16,7 @@ public class IngredientUpdateRequest {
     private BigDecimal price;
     private List<Long> attributeGroupIds;
     private Long unitId;
+    private Double minimalBalance;
     private List<UnitTypeConfigRequest> unitTypeConfigs;
     private List<AttributeUpsertRequest> attributes;
     private Long defaultWarehouseId;

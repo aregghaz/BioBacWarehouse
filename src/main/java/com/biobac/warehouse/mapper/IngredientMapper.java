@@ -30,6 +30,9 @@ public class IngredientMapper {
         response.setDescription(ingredient.getDescription());
         response.setExpiration(ingredient.getExpiration());
         response.setPrice(ingredient.getPrice());
+        response.setMinimalBalance(ingredient.getMinimalBalance());
+        response.setDefaultWarehouseName(ingredient.getDefaultWarehouse().getName());
+        response.setDefaultWarehouseId(ingredient.getDefaultWarehouse().getId());
         response.setAttributeGroupIds(ingredient.getAttributeGroupIds());
         if (ingredient.getIngredientGroup() != null) {
             response.setIngredientGroupId(ingredient.getIngredientGroup().getId());

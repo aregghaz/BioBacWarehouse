@@ -67,6 +67,7 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
         ingredient.setName(request.getName());
         ingredient.setDescription(request.getDescription());
         ingredient.setPrice(request.getPrice());
+        ingredient.setMinimalBalance(request.getMinimalBalance());
         if (request.getExpiration() != null) {
             ingredient.setExpiration(request.getExpiration());
         }
@@ -184,6 +185,10 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
 
         if (request.getPrice() != null) {
             existing.setPrice(request.getPrice());
+        }
+
+        if(request.getMinimalBalance() != null){
+            existing.setMinimalBalance(request.getMinimalBalance());
         }
 
         if (request.getExpiration() != null) {

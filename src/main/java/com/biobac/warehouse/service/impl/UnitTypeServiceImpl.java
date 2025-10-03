@@ -24,7 +24,6 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -96,8 +95,17 @@ public class UnitTypeServiceImpl implements UnitTypeService {
     @Override
     @Transactional(readOnly = true)
     public List<UnitTypeDto> getAll() {
+        Set<Long> excludeIds = Stream.concat(
+                ingredientUnitTypeRepository.findAll().stream()
+                        .filter(IngredientUnitType::isBaseType)
+                        .map(i -> i.getUnitType().getId()),
+                productUnitTypeRepository.findAll().stream()
+                        .filter(ProductUnitType::isBaseType)
+                        .map(i -> i.getUnitType().getId())
+        ).collect(Collectors.toSet());
         return unitTypeRepository.findAll()
                 .stream()
+                .filter(ut -> !excludeIds.contains(ut.getId()))
                 .map(unitTypeMapper::toDto)
                 .collect(Collectors.toList());
     }

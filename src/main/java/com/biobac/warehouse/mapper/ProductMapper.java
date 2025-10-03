@@ -29,18 +29,63 @@ public class ProductMapper {
         response.setExpiration(product.getExpiration());
         response.setDescription(product.getDescription());
         response.setSku(product.getSku());
+        response.setMinimalBalance(product.getMinimalBalance());
+        response.setDefaultWarehouseName(product.getDefaultWarehouse().getName());
+        response.setDefaultWarehouseId(product.getDefaultWarehouse().getId());
         response.setAttributeGroupIds(product.getAttributeGroupIds());
         response.setCreatedAt(product.getCreatedAt());
         response.setUpdatedAt(product.getUpdatedAt());
 
-        if (product.getExtraComponents() != null) {
+        if (product.getExtraComponents() != null && !product.getExtraComponents().isEmpty()) {
             List<ExtraComponentsResponse> comps = product.getExtraComponents().stream()
-                    .map(comp -> new ExtraComponentsResponse(
-                            comp.getIngredient() != null ? comp.getIngredient().getId() : null,
-                            comp.getChildProduct() != null ? comp.getChildProduct().getId() : null,
-                            comp.getIngredient() != null ? comp.getIngredient().getName() : Objects.requireNonNull(comp.getChildProduct()).getName()
-                    ))
+                    .map(comp -> {
+                        ExtraComponentsResponse resp = new ExtraComponentsResponse();
+                        resp.setIngredientId(comp.getIngredient() != null ? comp.getIngredient().getId() : null);
+                        resp.setProductId(comp.getChildProduct() != null ? comp.getChildProduct().getId() : null);
+                        resp.setName(comp.getIngredient() != null
+                                ? comp.getIngredient().getName()
+                                : Objects.requireNonNull(comp.getChildProduct()).getName());
+
+                        double baseQuantity = comp.getQuantity();
+                        List<UnitTypeCalculatedResponse> unitTypes;
+
+                        if (comp.getChildProduct() != null) {
+                            unitTypes = comp.getChildProduct().getUnitTypeConfigs().stream()
+                                    .map(utc -> {
+                                        UnitTypeCalculatedResponse calculatedResponse = new UnitTypeCalculatedResponse();
+                                        calculatedResponse.setUnitTypeName(utc.getUnitType().getName());
+                                        calculatedResponse.setUnitTypeId(utc.getId());
+                                        calculatedResponse.setBaseUnit(utc.isBaseType());
+                                        if (utc.isBaseType()) {
+                                            calculatedResponse.setSize(baseQuantity);
+                                        } else {
+                                            calculatedResponse.setSize(Math.ceil(baseQuantity / utc.getSize()));
+                                        }
+                                        return calculatedResponse;
+                                    })
+                                    .toList();
+                        } else {
+                            unitTypes = comp.getIngredient().getUnitTypeConfigs().stream()
+                                    .map(utc -> {
+                                        UnitTypeCalculatedResponse calculatedResponse = new UnitTypeCalculatedResponse();
+                                        calculatedResponse.setUnitTypeName(utc.getUnitType().getName());
+                                        calculatedResponse.setUnitTypeId(utc.getId());
+                                        calculatedResponse.setBaseUnit(utc.isBaseType());
+                                        if (utc.isBaseType()) {
+                                            calculatedResponse.setSize(baseQuantity);
+                                        } else {
+                                            calculatedResponse.setSize(Math.ceil(baseQuantity / utc.getSize()));
+                                        }
+                                        return calculatedResponse;
+                                    })
+                                    .toList();
+                        }
+
+                        resp.setUnitTypeConfigs(unitTypes);
+                        return resp;
+                    })
                     .toList();
+
             response.setExtraComponents(comps);
         }
 
@@ -78,6 +123,7 @@ public class ProductMapper {
                     r.setUnitTypeId(cfg.getUnitType().getId());
                     r.setUnitTypeName(cfg.getUnitType().getName());
                 }
+                r.setBaseUnit(cfg.isBaseType());
                 r.setSize(cfg.getSize());
                 r.setCreatedAt(cfg.getCreatedAt());
                 r.setUpdatedAt(cfg.getUpdatedAt());
@@ -95,6 +141,48 @@ public class ProductMapper {
         }
 
         return response;
+    }
+
+    private List<UnitTypeCalculatedResponse> calculateExtraComponentUnits(Product product) {
+        if (product.getExtraComponents() == null) {
+            return List.of();
+        }
+
+        return product.getExtraComponents().stream()
+                .flatMap(comp -> {
+                    double baseQuantity = comp.getQuantity();
+
+                    if (comp.getChildProduct() != null) {
+                        return comp.getChildProduct().getUnitTypeConfigs().stream()
+                                .map(utc -> {
+                                    UnitTypeCalculatedResponse calculatedResponse = new UnitTypeCalculatedResponse();
+                                    calculatedResponse.setUnitTypeName(utc.getUnitType().getName());
+                                    calculatedResponse.setUnitTypeId(utc.getId());
+                                    calculatedResponse.setBaseUnit(utc.isBaseType());
+                                    if (utc.isBaseType()) {
+                                        calculatedResponse.setSize(baseQuantity);
+                                    } else {
+                                        calculatedResponse.setSize(Math.ceil(baseQuantity / utc.getSize()));
+                                    }
+                                    return calculatedResponse;
+                                });
+                    } else {
+                        return comp.getIngredient().getUnitTypeConfigs().stream()
+                                .map(utc -> {
+                                    UnitTypeCalculatedResponse calculatedResponse = new UnitTypeCalculatedResponse();
+                                    calculatedResponse.setUnitTypeName(utc.getUnitType().getName());
+                                    calculatedResponse.setUnitTypeId(utc.getId());
+                                    calculatedResponse.setBaseUnit(utc.isBaseType());
+                                    if (utc.isBaseType()) {
+                                        calculatedResponse.setSize(baseQuantity);
+                                    } else {
+                                        calculatedResponse.setSize(Math.ceil(baseQuantity / utc.getSize()));
+                                    }
+                                    return calculatedResponse;
+                                });
+                    }
+                })
+                .toList();
     }
 
     private InventoryItemResponse mapInventoryItem(InventoryItem item, String ingredientName, String productName) {

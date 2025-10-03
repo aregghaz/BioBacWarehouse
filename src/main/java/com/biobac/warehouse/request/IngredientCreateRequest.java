@@ -14,6 +14,7 @@ public class IngredientCreateRequest {
     private Long ingredientGroupId;
     private Integer expiration;
     private BigDecimal price;
+    private Double minimalBalance;
     private List<Long> attributeGroupIds;
     private Long unitId;
     private List<UnitTypeConfigRequest> unitTypeConfigs;

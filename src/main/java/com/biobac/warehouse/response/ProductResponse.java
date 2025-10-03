@@ -21,6 +21,9 @@ public class ProductResponse {
     private Long unitId;
     private String unitName;
     private Long productGroupId;
+    private Double minimalBalance;
+    private Long defaultWarehouseId;
+    private String defaultWarehouseName;
     private List<Long> attributeGroupIds;
     private String productGroupName;
     private List<InventoryItemResponse> inventoryItems;

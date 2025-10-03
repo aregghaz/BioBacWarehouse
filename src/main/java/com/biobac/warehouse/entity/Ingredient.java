@@ -21,6 +21,8 @@ public class Ingredient extends BaseAuditable {
 
     private String description;
 
+    private Double minimalBalance;
+
     @ManyToOne
     private IngredientGroup ingredientGroup;
 

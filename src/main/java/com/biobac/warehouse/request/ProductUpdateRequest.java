@@ -14,6 +14,7 @@ public class ProductUpdateRequest {
     private Integer expiration;
     private Long recipeItemId;
     private Long unitId;
+    private Double minimalBalance;
     private Long productGroupId;
     private List<UnitTypeConfigRequest> unitTypeConfigs;
     private List<Long> attributeGroupIds;

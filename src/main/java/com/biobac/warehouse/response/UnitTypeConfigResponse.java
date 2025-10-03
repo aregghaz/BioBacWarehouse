@@ -11,6 +11,7 @@ public class UnitTypeConfigResponse {
     private Long id;
     private Long unitTypeId;
     private String unitTypeName;
+    private boolean baseUnit;
     private Double size;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;

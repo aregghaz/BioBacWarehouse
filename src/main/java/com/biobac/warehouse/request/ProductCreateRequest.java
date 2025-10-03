@@ -15,6 +15,7 @@ public class ProductCreateRequest {
     private String sku;
     private Long recipeItemId;
     private Long unitId;
+    private Double minimalBalance;
     private Integer expiration;
     private List<Long> attributeGroupIds;
     private List<ProductAdditionalComponents> extraComponents;

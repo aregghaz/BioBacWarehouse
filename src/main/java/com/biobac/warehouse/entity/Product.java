@@ -21,6 +21,8 @@ public class Product extends BaseAuditable {
 
     private String sku;
 
+    private Double minimalBalance;
+
     private Integer expiration;
 
     @ManyToOne(fetch = FetchType.LAZY)

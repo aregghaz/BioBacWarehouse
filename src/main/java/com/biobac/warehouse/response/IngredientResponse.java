@@ -25,6 +25,9 @@ public class IngredientResponse {
     private String lastCompanyName;
     private String unitName;
     private Double totalQuantity;
+    private Double minimalBalance;
+    private Long defaultWarehouseId;
+    private String defaultWarehouseName;
     private List<InventoryItemResponse> inventoryItems;
     private List<UnitTypeConfigResponse> unitTypeConfigs;
     private List<AttributeResponse> attributes;
