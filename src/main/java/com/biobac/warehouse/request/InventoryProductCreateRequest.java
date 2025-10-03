@@ -18,10 +18,6 @@ public class InventoryProductCreateRequest {
     @NotNull(message = "Product is required")
     private Long productId;
 
-    @NotNull(message = "Price is required")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Price must be greater than 0")
-    private BigDecimal price;
-
     @NotNull(message = "Manufacturing date is required")
     @PastOrPresent(message = "Manufacturing date cannot be in the future")
     private LocalDate manufacturingDate;

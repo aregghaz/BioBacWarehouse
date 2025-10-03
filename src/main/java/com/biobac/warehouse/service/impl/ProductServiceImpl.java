@@ -77,7 +77,7 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
         product.setName(request.getName());
         product.setDescription(request.getDescription());
         product.setSku(request.getSku());
-        product.setMinimalBalance(request.getMinimalBalance());
+        product.setMinimalBalance(request.getMinimalBalance() != null ? request.getMinimalBalance() : 0);
 
         if (request.getExpiration() != null) {
             product.setExpiration(request.getExpiration());
@@ -208,7 +208,7 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
             existing.setExpiration(request.getExpiration());
         }
 
-        if(request.getMinimalBalance() != null){
+        if (request.getMinimalBalance() != null) {
             existing.setMinimalBalance(request.getMinimalBalance());
         }
 
@@ -352,7 +352,7 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
                                                                          Integer size,
                                                                          String sortBy,
                                                                          String sortDir) {
-            Pageable pageable = buildPageable(page, size, sortBy, sortDir);
+        Pageable pageable = buildPageable(page, size, sortBy, sortDir);
         Specification<Product> spec = ProductSpecification.buildSpecification(filters);
         Page<Product> productPage = productRepository.findAll(spec, pageable);
 

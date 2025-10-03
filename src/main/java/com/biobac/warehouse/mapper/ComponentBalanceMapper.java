@@ -1,7 +1,9 @@
 package com.biobac.warehouse.mapper;
 
 import com.biobac.warehouse.entity.ComponentBalance;
+import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.entity.InventoryItem;
+import com.biobac.warehouse.entity.Product;
 import com.biobac.warehouse.repository.InventoryItemRepository;
 import com.biobac.warehouse.response.ComponentBalanceIngResponse;
 import com.biobac.warehouse.response.ComponentBalanceProdResponse;
@@ -13,6 +15,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 
 @Component
 public class ComponentBalanceMapper {
@@ -21,24 +24,36 @@ public class ComponentBalanceMapper {
     private InventoryItemRepository inventoryItemRepository;
 
     public ComponentBalanceIngResponse toIngResponse(ComponentBalance entity) {
-        if(entity.getIngredient() == null){
+        if (entity.getIngredient() == null) {
             return null;
         }
         ComponentBalanceIngResponse response = new ComponentBalanceIngResponse();
-        response.setName(entity.getIngredient().getName());
+        response.setIngredientName(entity.getIngredient().getName());
+        response.setWarehouseName(entity.getWarehouse() == null ? null : entity.getWarehouse().getName());
         response.setBalance(entity.getBalance());
+        response.setMinimalBalance(
+                Optional.of(entity.getIngredient())
+                        .map(Ingredient::getMinimalBalance)
+                        .orElse(0.0)
+        );
         response.setIngredientGroupName(entity.getIngredient().getIngredientGroup().getName());
         response.setExpirationDate(getLastExpirationDate(entity));
         return response;
     }
 
     public ComponentBalanceProdResponse toProdResponse(ComponentBalance entity) {
-        if(entity.getProduct() == null){
+        if (entity.getProduct() == null) {
             return null;
         }
         ComponentBalanceProdResponse response = new ComponentBalanceProdResponse();
-        response.setName(entity.getIngredient().getName());
+        response.setProductName(entity.getProduct().getName());
         response.setBalance(entity.getBalance());
+        response.setWarehouseName(entity.getWarehouse() == null ? null : entity.getWarehouse().getName());
+        response.setMinimalBalance(
+                Optional.of(entity.getProduct())
+                        .map(Product::getMinimalBalance)
+                        .orElse(0.0)
+        );
         response.setProductGroupName(entity.getProduct().getProductGroup().getName());
         response.setExpirationDate(getLastExpirationDate(entity));
         return response;

@@ -8,8 +8,10 @@ import java.time.LocalDate;
 @Getter
 @Setter
 public class ComponentBalanceIngResponse {
-    private String name;
+    private String ingredientName;
     private String ingredientGroupName;
+    private String warehouseName;
+    private Double minimalBalance;
     private Double balance;
     private LocalDate expirationDate;
 }

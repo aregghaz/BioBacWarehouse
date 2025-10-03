@@ -63,7 +63,6 @@ public class InventoryItemServiceImpl implements InventoryItemService {
         InventoryItem inventoryItem = new InventoryItem();
         inventoryItem.setWarehouse(warehouse);
         inventoryItem.setProduct(product);
-        inventoryItem.setPrice(request.getPrice());
         inventoryItem.setManufacturingDate(request.getManufacturingDate());
         inventoryItem.setExpirationDate(request.getManufacturingDate().plusDays(product.getExpiration()));
         inventoryItem.setQuantity(totalCount);
