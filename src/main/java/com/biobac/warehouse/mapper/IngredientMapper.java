@@ -98,6 +98,7 @@ public class IngredientMapper {
                     r.setUnitTypeId(cfg.getUnitType().getId());
                     r.setUnitTypeName(cfg.getUnitType().getName());
                 }
+                r.setBaseUnit(cfg.isBaseType());
                 r.setSize(cfg.getSize());
                 r.setCreatedAt(cfg.getCreatedAt());
                 r.setUpdatedAt(cfg.getUpdatedAt());
