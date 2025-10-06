@@ -1,14 +1,26 @@
 package com.biobac.warehouse.service.impl;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
-import com.biobac.warehouse.entity.ComponentBalance;
+import com.biobac.warehouse.entity.IngredientBalance;
+import com.biobac.warehouse.entity.IngredientDetail;
+import com.biobac.warehouse.entity.ProductBalance;
+import com.biobac.warehouse.entity.ProductDetail;
 import com.biobac.warehouse.mapper.ComponentBalanceMapper;
-import com.biobac.warehouse.repository.ComponentBalanceRepository;
+import com.biobac.warehouse.repository.IngredientBalanceRepository;
+import com.biobac.warehouse.repository.IngredientDetailRepository;
+import com.biobac.warehouse.repository.ProductBalanceRepository;
+import com.biobac.warehouse.repository.ProductDetailRepository;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.ComponentBalanceIngResponse;
 import com.biobac.warehouse.response.ComponentBalanceProdResponse;
+import com.biobac.warehouse.response.IngredientDetailResponse;
+import com.biobac.warehouse.response.ProductDetailResponse;
 import com.biobac.warehouse.service.ComponentBalanceService;
-import com.biobac.warehouse.utils.specifications.ComponentBalanceSpecification;
+import com.biobac.warehouse.utils.specifications.IngredientBalanceSpecification;
+import com.biobac.warehouse.utils.specifications.IngredientDetailSpecification;
+import com.biobac.warehouse.utils.specifications.ProductBalanceSpecification;
+import com.biobac.warehouse.utils.specifications.ProductDetailSpecification;
+import jakarta.persistence.criteria.JoinType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -26,8 +38,11 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ComponentBalanceServiceImpl implements ComponentBalanceService {
-    private final ComponentBalanceRepository componentBalanceRepository;
     private final ComponentBalanceMapper componentBalanceMapper;
+    private final IngredientBalanceRepository ingredientBalanceRepository;
+    private final ProductBalanceRepository productBalanceRepository;
+    private final ProductDetailRepository productDetailRepository;
+    private final IngredientDetailRepository ingredientDetailRepository;
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
@@ -54,10 +69,10 @@ public class ComponentBalanceServiceImpl implements ComponentBalanceService {
                                                                                         String sortBy,
                                                                                         String sortDir) {
         Pageable pageable = buildPageable(page, size, sortBy, sortDir);
-        Specification<ComponentBalance> spec = ComponentBalanceSpecification.buildSpecification(filters, "ingredient")
+        Specification<IngredientBalance> spec = IngredientBalanceSpecification.buildSpecification(filters)
                 .and((root, query, cb) -> cb.isNotNull(root.get("ingredient")));
 
-        Page<ComponentBalance> componentBalancePage = componentBalanceRepository.findAll(spec, pageable);
+        Page<IngredientBalance> componentBalancePage = ingredientBalanceRepository.findAll(spec, pageable);
 
         List<ComponentBalanceIngResponse> content = componentBalancePage.getContent()
                 .stream()
@@ -73,7 +88,7 @@ public class ComponentBalanceServiceImpl implements ComponentBalanceService {
                 filters,
                 pageable.getSort().toString().contains("ASC") ? "asc" : "desc",
                 pageable.getSort().stream().findFirst().map(Sort.Order::getProperty).orElse(DEFAULT_SORT_BY),
-                "balanceTable"
+                "ingredientBalanceTable"
         );
 
         return Pair.of(content, metadata);
@@ -87,9 +102,9 @@ public class ComponentBalanceServiceImpl implements ComponentBalanceService {
                                                                                           String sortBy,
                                                                                           String sortDir) {
         Pageable pageable = buildPageable(page, size, sortBy, sortDir);
-        Specification<ComponentBalance> spec = ComponentBalanceSpecification.buildSpecification(filters, "product")
+        Specification<ProductBalance> spec = ProductBalanceSpecification.buildSpecification(filters)
                 .and((root, query, cb) -> cb.isNotNull(root.get("product")));
-        Page<ComponentBalance> componentBalancePage = componentBalanceRepository.findAll(spec, pageable);
+        Page<ProductBalance> componentBalancePage = productBalanceRepository.findAll(spec, pageable);
 
         List<ComponentBalanceProdResponse> content = componentBalancePage.getContent()
                 .stream()
@@ -105,7 +120,78 @@ public class ComponentBalanceServiceImpl implements ComponentBalanceService {
                 filters,
                 pageable.getSort().toString().contains("ASC") ? "asc" : "desc",
                 pageable.getSort().stream().findFirst().map(Sort.Order::getProperty).orElse(DEFAULT_SORT_BY),
-                "balanceTable"
+                "productBalanceTable"
+        );
+
+        return Pair.of(content, metadata);
+    }
+
+    @Override
+    public Pair<List<ProductDetailResponse>, PaginationMetadata> getProductDetailsByProductId(Long id, Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
+        Pageable pageable = buildPageable(page, size, sortBy, sortDir);
+
+        Specification<ProductDetail> spec = ProductDetailSpecification.buildSpecification(filters)
+                .and((root, query, cb) -> root.join("productBalance", JoinType.LEFT).get("id").in(id));
+        Page<ProductDetail> productDetailPage = productDetailRepository.findAll(spec, pageable);
+
+        List<ProductDetailResponse> content = productDetailPage.getContent()
+                .stream()
+                .map(c -> {
+                    ProductDetailResponse response = new ProductDetailResponse();
+                    response.setExpirationDate(c.getExpirationDate());
+                    response.setQuantity(c.getQuantity());
+                    response.setManufacturingDate(c.getManufacturingDate());
+                    response.setPrice(c.getPrice());
+                    return response;
+                })
+                .collect(Collectors.toList());
+
+        PaginationMetadata metadata = new PaginationMetadata(
+                productDetailPage.getNumber(),
+                productDetailPage.getSize(),
+                productDetailPage.getTotalElements(),
+                productDetailPage.getTotalPages(),
+                productDetailPage.isLast(),
+                filters,
+                pageable.getSort().toString().contains("ASC") ? "asc" : "desc",
+                pageable.getSort().stream().findFirst().map(Sort.Order::getProperty).orElse(DEFAULT_SORT_BY),
+                "productBalanceTable"
+        );
+
+        return Pair.of(content, metadata);
+    }
+
+    @Override
+    public Pair<List<IngredientDetailResponse>, PaginationMetadata> getIngredientDetailsByProductId(Long id, Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
+        Pageable pageable = buildPageable(page, size, sortBy, sortDir);
+
+        Specification<IngredientDetail> spec = IngredientDetailSpecification.buildSpecification(filters)
+                .and((root, query, cb) -> root.join("ingredientBalance", JoinType.LEFT).get("id").in(id));
+        Page<IngredientDetail> ingredientDetailPage = ingredientDetailRepository.findAll(spec, pageable);
+
+        List<IngredientDetailResponse> content = ingredientDetailPage.getContent()
+                .stream()
+                .map(c -> {
+                    IngredientDetailResponse response = new IngredientDetailResponse();
+                    response.setExpirationDate(c.getExpirationDate());
+                    response.setQuantity(c.getQuantity());
+                    response.setManufacturingDate(c.getManufacturingDate());
+                    response.setPrice(c.getPrice());
+                    response.setImportDate(c.getImportDate());
+                    return response;
+                })
+                .collect(Collectors.toList());
+
+        PaginationMetadata metadata = new PaginationMetadata(
+                ingredientDetailPage.getNumber(),
+                ingredientDetailPage.getSize(),
+                ingredientDetailPage.getTotalElements(),
+                ingredientDetailPage.getTotalPages(),
+                ingredientDetailPage.isLast(),
+                filters,
+                pageable.getSort().toString().contains("ASC") ? "asc" : "desc",
+                pageable.getSort().stream().findFirst().map(Sort.Order::getProperty).orElse(DEFAULT_SORT_BY),
+                "productBalanceTable"
         );
 
         return Pair.of(content, metadata);

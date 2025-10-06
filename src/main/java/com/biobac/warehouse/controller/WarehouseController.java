@@ -1,12 +1,10 @@
 package com.biobac.warehouse.controller;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
-import com.biobac.warehouse.entity.Entities;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.request.WarehouseRequest;
 import com.biobac.warehouse.response.ApiResponse;
 import com.biobac.warehouse.response.WarehouseResponse;
-import com.biobac.warehouse.service.AuditLogService;
 import com.biobac.warehouse.service.WarehouseService;
 import com.biobac.warehouse.utils.ResponseUtil;
 import jakarta.servlet.http.HttpServletRequest;
@@ -21,7 +19,6 @@ import java.util.Map;
 @RequestMapping("/api/warehouses")
 @RequiredArgsConstructor
 public class WarehouseController extends BaseController {
-    private final AuditLogService auditLogService;
     private final WarehouseService warehouseService;
 
     @PostMapping("/all")
@@ -66,7 +63,6 @@ public class WarehouseController extends BaseController {
     @DeleteMapping("/{id}")
     public ApiResponse<String> delete(@PathVariable Long id, HttpServletRequest request) {
         warehouseService.delete(id);
-        auditLogService.logDelete(Entities.WAREHOUSE.name(), id, getUsername(request));
         return ResponseUtil.success("Warehouse deleted successfully");
     }
 }

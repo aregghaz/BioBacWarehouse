@@ -7,7 +7,9 @@ import com.biobac.warehouse.exception.InvalidDataException;
 import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.InventoryItemMapper;
 import com.biobac.warehouse.repository.*;
-import com.biobac.warehouse.request.*;
+import com.biobac.warehouse.request.ComponentInventorySelection;
+import com.biobac.warehouse.request.ExtraInventorySelection;
+import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.ApiResponse;
 import com.biobac.warehouse.response.InventoryItemResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
@@ -41,178 +43,10 @@ public class InventoryItemServiceImpl implements InventoryItemService {
     private final CompanyClient companyClient;
     private final ComponentBalanceRepository componentBalanceRepository;
 
-    @Override
-    @Transactional
-    public InventoryItemResponse createForProduct(InventoryProductCreateRequest request) {
-        Product product = productRepository.findById(request.getProductId())
-                .orElseThrow(() -> new NotFoundException("Product not found"));
 
-        Warehouse warehouse = warehouseRepository.findById(request.getWarehouseId())
-                .orElseThrow(() -> new NotFoundException("Warehouse not found"));
 
-        double totalCount = request.getQuantity();
 
-        if (product.getExtraComponents() != null && !product.getExtraComponents().isEmpty()) {
-            consumeExtraComponents(product.getExtraComponents(), totalCount);
-        }
 
-        if (product.getRecipeItem() != null) {
-            consumeRecipeItem(totalCount, product.getRecipeItem());
-        }
-
-        InventoryItem inventoryItem = new InventoryItem();
-        inventoryItem.setWarehouse(warehouse);
-        inventoryItem.setProduct(product);
-        inventoryItem.setManufacturingDate(request.getManufacturingDate());
-        inventoryItem.setExpirationDate(request.getManufacturingDate().plusDays(product.getExpiration()));
-        inventoryItem.setQuantity(totalCount);
-
-        double totalBefore = product.getInventoryItems() != null
-                ? product.getInventoryItems().stream().mapToDouble(i -> i.getQuantity() != null ? i.getQuantity() : 0.0).sum()
-                : 0.0;
-
-        InventoryItem saved = inventoryItemRepository.save(inventoryItem);
-
-        increaseBalanceForProduct(warehouse, product, totalCount);
-
-        if (totalCount > 0) {
-            String warehouseNote = saved.getWarehouse() != null && saved.getWarehouse().getId() != null
-                    ? " to warehouse id=" + saved.getWarehouse().getId() : "";
-            productHistoryService.recordQuantityChange(
-                    product,
-                    totalBefore,
-                    totalBefore + totalCount,
-                    "INCREASE",
-                    "Added new inventory item" + warehouseNote
-            );
-        }
-
-        return inventoryItemMapper.toSingleResponse(saved);
-    }
-
-    @Override
-    @Transactional
-    public List<InventoryItemResponse> createForIngredient(List<InventoryIngredientCreateRequest> request) {
-        return request.stream().map(this::createSingleInventoryItemIngredient).toList();
-    }
-
-    private InventoryItemResponse createSingleInventoryItemIngredient(InventoryIngredientCreateRequest request) {
-        Ingredient ingredient = ingredientRepository.findById(request.getIngredientId())
-                .orElseThrow(() -> new NotFoundException("Ingredient not found"));
-
-        Warehouse warehouse = warehouseRepository.findById(request.getWarehouseId())
-                .orElseThrow(() -> new NotFoundException("Warehouse not found"));
-
-        double totalCount = request.getQuantity();
-
-        InventoryItem inventoryItem = new InventoryItem();
-        inventoryItem.setWarehouse(warehouse);
-        inventoryItem.setIngredient(ingredient);
-        inventoryItem.setCompanyId(request.getCompanyId());
-        inventoryItem.setPrice(request.getPrice());
-        inventoryItem.setImportDate(request.getImportDate());
-        inventoryItem.setManufacturingDate(request.getManufacturingDate());
-        inventoryItem.setExpirationDate(request.getManufacturingDate().plusDays(ingredient.getExpiration()));
-        inventoryItem.setQuantity(totalCount);
-
-        double totalBefore = ingredient.getInventoryItems() != null
-                ? ingredient.getInventoryItems().stream().mapToDouble(i -> i.getQuantity() != null ? i.getQuantity() : 0.0).sum()
-                : 0.0;
-
-        InventoryItem saved = inventoryItemRepository.save(inventoryItem);
-
-        increaseBalanceForIngredient(warehouse, ingredient, totalCount);
-
-        if (totalCount > 0) {
-            String warehouseNote = saved.getWarehouse() != null && saved.getWarehouse().getId() != null
-                    ? " to warehouse id=" + saved.getWarehouse().getId() : "";
-            ingredientHistoryService.recordQuantityChange(
-                    ingredient,
-                    totalBefore,
-                    totalBefore + totalCount,
-                    "INCREASE",
-                    "Added new inventory item" + warehouseNote,
-                    request.getPrice(),
-                    request.getCompanyId()
-            );
-        }
-
-        return enrichCompany(saved, inventoryItemMapper.toSingleResponse(saved));
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Pair<List<InventoryItemResponse>, PaginationMetadata> getByProductId(Long productId, Map<String, FilterCriteria> filters,
-                                                                                Integer page,
-                                                                                Integer size,
-                                                                                String sortBy,
-                                                                                String sortDir) {
-        productRepository.findById(productId).orElseThrow(() -> new NotFoundException("Product not found"));
-
-        Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
-        Pageable pageable = PageRequest.of(page, size, sort);
-
-        Specification<InventoryItem> spec = InventoryItemSpecification.buildSpecification(filters)
-                .and((root, query, cb) -> root.join("product", JoinType.LEFT).get("id").in(productId));
-
-        Page<InventoryItem> pageResult = inventoryItemRepository.findAll(spec, pageable);
-
-        List<InventoryItemResponse> content = pageResult.getContent()
-                .stream()
-                .map(item -> enrichCompany(item, inventoryItemMapper.toSingleResponse(item)))
-                .collect(Collectors.toList());
-
-        PaginationMetadata metadata = PaginationMetadata.builder()
-                .page(pageResult.getNumber())
-                .size(pageResult.getSize())
-                .totalElements(pageResult.getTotalElements())
-                .totalPages(pageResult.getTotalPages())
-                .last(pageResult.isLast())
-                .filter(filters)
-                .sortDir(sortDir)
-                .sortBy(sortBy)
-                .table("inventoryItemTable")
-                .build();
-
-        return Pair.of(content, metadata);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Pair<List<InventoryItemResponse>, PaginationMetadata> getByIngredientId(Long ingredientId, Map<String, FilterCriteria> filters,
-                                                                                   Integer page,
-                                                                                   Integer size,
-                                                                                   String sortBy,
-                                                                                   String sortDir) {
-        ingredientRepository.findById(ingredientId).orElseThrow(() -> new NotFoundException("Ingredient not found"));
-
-        Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
-        Pageable pageable = PageRequest.of(page, size, sort);
-
-        Specification<InventoryItem> spec = InventoryItemSpecification.buildSpecification(filters)
-                .and((root, query, cb) -> root.join("ingredient", JoinType.LEFT).get("id").in(ingredientId));
-
-        Page<InventoryItem> pageResult = inventoryItemRepository.findAll(spec, pageable);
-
-        List<InventoryItemResponse> content = pageResult.getContent()
-                .stream()
-                .map(item -> enrichCompany(item, inventoryItemMapper.toSingleResponse(item)))
-                .collect(Collectors.toList());
-
-        PaginationMetadata metadata = new PaginationMetadata(
-                pageResult.getNumber(),
-                pageResult.getSize(),
-                pageResult.getTotalElements(),
-                pageResult.getTotalPages(),
-                pageResult.isLast(),
-                filters,
-                sortDir,
-                sortBy,
-                "inventoryItemTable"
-        );
-
-        return Pair.of(content, metadata);
-    }
 
     @Override
     @Transactional(readOnly = true)
@@ -246,34 +80,6 @@ public class InventoryItemServiceImpl implements InventoryItemService {
         );
 
         return Pair.of(content, metadata);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Map<Long, List<InventoryItemResponse>> getAllByIngredientIds(List<Long> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return Collections.emptyMap();
-        }
-
-        List<InventoryItem> inventoryItems = inventoryItemRepository.findByIngredientIdIn(ids);
-
-        return inventoryItems.stream()
-                .map(inventoryItemMapper::toSingleResponse)
-                .collect(Collectors.groupingBy(InventoryItemResponse::getIngredientId));
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Map<Long, List<InventoryItemResponse>> getAllByProductIds(List<Long> ids) {
-        if (ids == null || ids.isEmpty()) {
-            return Collections.emptyMap();
-        }
-
-        List<InventoryItem> inventoryItems = inventoryItemRepository.findByProductIdIn(ids);
-
-        return inventoryItems.stream()
-                .map(inventoryItemMapper::toSingleResponse)
-                .collect(Collectors.groupingBy(InventoryItemResponse::getProductId));
     }
 
     @Override

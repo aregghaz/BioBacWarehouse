@@ -1,13 +1,8 @@
 package com.biobac.warehouse.mapper;
 
-import com.biobac.warehouse.entity.ComponentBalance;
-import com.biobac.warehouse.entity.Ingredient;
-import com.biobac.warehouse.entity.InventoryItem;
-import com.biobac.warehouse.entity.Product;
-import com.biobac.warehouse.repository.InventoryItemRepository;
+import com.biobac.warehouse.entity.*;
 import com.biobac.warehouse.response.ComponentBalanceIngResponse;
 import com.biobac.warehouse.response.ComponentBalanceProdResponse;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
@@ -20,13 +15,7 @@ import java.util.Optional;
 @Component
 public class ComponentBalanceMapper {
 
-    @Autowired
-    private InventoryItemRepository inventoryItemRepository;
-
-    public ComponentBalanceIngResponse toIngResponse(ComponentBalance entity) {
-        if (entity.getIngredient() == null) {
-            return null;
-        }
+    public ComponentBalanceIngResponse toIngResponse(IngredientBalance entity) {
         ComponentBalanceIngResponse response = new ComponentBalanceIngResponse();
         response.setIngredientName(entity.getIngredient().getName());
         response.setWarehouseName(entity.getWarehouse() == null ? null : entity.getWarehouse().getName());
@@ -37,14 +26,11 @@ public class ComponentBalanceMapper {
                         .orElse(0.0)
         );
         response.setIngredientGroupName(entity.getIngredient().getIngredientGroup().getName());
-        response.setExpirationDate(getLastExpirationDate(entity));
+        response.setExpirationDate(getIngredientLastExpirationDate(entity));
         return response;
     }
 
-    public ComponentBalanceProdResponse toProdResponse(ComponentBalance entity) {
-        if (entity.getProduct() == null) {
-            return null;
-        }
+    public ComponentBalanceProdResponse toProdResponse(ProductBalance entity) {
         ComponentBalanceProdResponse response = new ComponentBalanceProdResponse();
         response.setProductName(entity.getProduct().getName());
         response.setBalance(entity.getBalance());
@@ -55,23 +41,31 @@ public class ComponentBalanceMapper {
                         .orElse(0.0)
         );
         response.setProductGroupName(entity.getProduct().getProductGroup().getName());
-        response.setExpirationDate(getLastExpirationDate(entity));
+        response.setExpirationDate(getProductLastExpirationDate(entity));
         return response;
     }
 
-    private LocalDate getLastExpirationDate(ComponentBalance componentBalance) {
-        List<InventoryItem> list;
-
-        if (componentBalance.getProduct() != null) {
-            list = inventoryItemRepository.findByProductId(componentBalance.getProduct().getId());
-        } else {
-            list = inventoryItemRepository.findByIngredientId(componentBalance.getIngredient().getId());
-        }
+    private LocalDate getProductLastExpirationDate(ProductBalance componentBalance) {
+        List<ProductDetail> details = componentBalance.getDetails();
 
         LocalDate today = LocalDate.now();
 
-        return list.stream()
-                .map(InventoryItem::getExpirationDate)
+        return details.stream()
+                .map(ProductDetail::getExpirationDate)
+                .filter(Objects::nonNull)
+                .min(Comparator.comparing(d ->
+                        Math.abs(ChronoUnit.DAYS.between(today, d))
+                ))
+                .orElse(null);
+    }
+
+    private LocalDate getIngredientLastExpirationDate(IngredientBalance componentBalance) {
+        List<IngredientDetail> details = componentBalance.getDetails();
+
+        LocalDate today = LocalDate.now();
+
+        return details.stream()
+                .map(IngredientDetail::getExpirationDate)
                 .filter(Objects::nonNull)
                 .min(Comparator.comparing(d ->
                         Math.abs(ChronoUnit.DAYS.between(today, d))

@@ -2,9 +2,7 @@ package com.biobac.warehouse.controller;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.request.FilterCriteria;
-import com.biobac.warehouse.response.ApiResponse;
-import com.biobac.warehouse.response.ComponentBalanceIngResponse;
-import com.biobac.warehouse.response.ComponentBalanceProdResponse;
+import com.biobac.warehouse.response.*;
 import com.biobac.warehouse.service.ComponentBalanceService;
 import com.biobac.warehouse.utils.ResponseUtil;
 import lombok.RequiredArgsConstructor;
@@ -37,6 +35,28 @@ public class ComponentBalanceController {
                                                                           @RequestParam(required = false, defaultValue = "asc") String sortDir,
                                                                           @RequestBody Map<String, FilterCriteria> filters) {
         Pair<List<ComponentBalanceProdResponse>, PaginationMetadata> result = componentBalanceService.getProdPagination(filters, page, size, sortBy, sortDir);
+        return ResponseUtil.success("Component Balances retrieved successfully", result.getFirst(), result.getSecond());
+    }
+
+    @PostMapping("/product-details/all")
+    public ApiResponse<List<ProductDetailResponse>> getAllByProductId(@RequestParam Long productId,
+                                                                      @RequestParam(required = false, defaultValue = "0") Integer page,
+                                                                      @RequestParam(required = false, defaultValue = "10") Integer size,
+                                                                      @RequestParam(required = false, defaultValue = "id") String sortBy,
+                                                                      @RequestParam(required = false, defaultValue = "asc") String sortDir,
+                                                                      @RequestBody Map<String, FilterCriteria> filters) {
+        Pair<List<ProductDetailResponse>, PaginationMetadata> result = componentBalanceService.getProductDetailsByProductId(productId, filters, page, size, sortBy, sortDir);
+        return ResponseUtil.success("Component Balances retrieved successfully", result.getFirst(), result.getSecond());
+    }
+
+    @PostMapping("/ingredient-details/all")
+    public ApiResponse<List<IngredientDetailResponse>> getAllByIngredientId(@RequestParam Long ingredientId,
+                                                                            @RequestParam(required = false, defaultValue = "0") Integer page,
+                                                                            @RequestParam(required = false, defaultValue = "10") Integer size,
+                                                                            @RequestParam(required = false, defaultValue = "id") String sortBy,
+                                                                            @RequestParam(required = false, defaultValue = "asc") String sortDir,
+                                                                            @RequestBody Map<String, FilterCriteria> filters) {
+        Pair<List<IngredientDetailResponse>, PaginationMetadata> result = componentBalanceService.getIngredientDetailsByProductId(ingredientId, filters, page, size, sortBy, sortDir);
         return ResponseUtil.success("Component Balances retrieved successfully", result.getFirst(), result.getSecond());
     }
 }
