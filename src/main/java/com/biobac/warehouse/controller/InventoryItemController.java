@@ -38,8 +38,8 @@ public class InventoryItemController {
     }
 
     @PostMapping("/ingredient")
-    public ApiResponse<InventoryItemResponse> createForIngredient(@RequestBody InventoryIngredientCreateRequest request) {
-        InventoryItemResponse response = inventoryItemService.createForIngredient(request);
+    public ApiResponse<List<InventoryItemResponse>> createForIngredient(@RequestBody List<InventoryIngredientCreateRequest> request) {
+        List<InventoryItemResponse> response = inventoryItemService.createForIngredient(request);
         return ResponseUtil.success("Inventory item created successfully", response);
     }
 

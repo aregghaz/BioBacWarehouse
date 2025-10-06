@@ -92,7 +92,11 @@ public class InventoryItemServiceImpl implements InventoryItemService {
 
     @Override
     @Transactional
-    public InventoryItemResponse createForIngredient(InventoryIngredientCreateRequest request) {
+    public List<InventoryItemResponse> createForIngredient(List<InventoryIngredientCreateRequest> request) {
+        return request.stream().map(this::createSingleInventoryItemIngredient).toList();
+    }
+
+    private InventoryItemResponse createSingleInventoryItemIngredient(InventoryIngredientCreateRequest request) {
         Ingredient ingredient = ingredientRepository.findById(request.getIngredientId())
                 .orElseThrow(() -> new NotFoundException("Ingredient not found"));
 

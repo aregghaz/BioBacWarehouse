@@ -16,7 +16,7 @@ public interface InventoryItemService {
     InventoryItemResponse createForProduct(InventoryProductCreateRequest request);
 
     @Transactional
-    InventoryItemResponse createForIngredient(InventoryIngredientCreateRequest request);
+    List<InventoryItemResponse> createForIngredient(List<InventoryIngredientCreateRequest> request);
 
     @Transactional(readOnly = true)
     Pair<List<InventoryItemResponse>, PaginationMetadata> getByProductId(Long productId, Map<String, FilterCriteria> filters,
