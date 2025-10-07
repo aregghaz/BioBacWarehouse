@@ -8,11 +8,11 @@ import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.function.Function;
 
 @Component
 public class ComponentBalanceMapper {
@@ -39,6 +39,7 @@ public class ComponentBalanceMapper {
     public ComponentBalanceProdResponse toProdResponse(ProductBalance entity) {
         ComponentBalanceProdResponse response = new ComponentBalanceProdResponse();
         response.setId(entity.getId());
+        response.setSelfWorthPrice(SelfWorthPriceUtil.calculateProductPrice(entity));
         response.setProductName(entity.getProduct().getName());
         response.setBalance(entity.getBalance());
         response.setWarehouseName(entity.getWarehouse() == null ? null : entity.getWarehouse().getName());
@@ -52,31 +53,28 @@ public class ComponentBalanceMapper {
         return response;
     }
 
-    private LocalDate getProductLastExpirationDate(ProductBalance componentBalance) {
-        List<ProductDetail> details = componentBalance.getDetails();
-
+    private <T> LocalDate getLastExpirationDate(List<T> details, Function<T, LocalDate> expirationMapper) {
         LocalDate today = LocalDate.now();
 
-        return details.stream()
-                .map(ProductDetail::getExpirationDate)
+        Optional<LocalDate> lastExpired = details.stream()
+                .map(expirationMapper)
                 .filter(Objects::nonNull)
-                .min(Comparator.comparing(d ->
-                        Math.abs(ChronoUnit.DAYS.between(today, d))
-                ))
-                .orElse(null);
+                .filter(d -> d.isBefore(today))
+                .max(Comparator.naturalOrder());
+
+        return lastExpired.orElseGet(() -> details.stream()
+                .map(expirationMapper)
+                .filter(Objects::nonNull)
+                .filter(d -> !d.isBefore(today))
+                .min(Comparator.naturalOrder())
+                .orElse(null));
     }
 
-    private LocalDate getIngredientLastExpirationDate(IngredientBalance componentBalance) {
-        List<IngredientDetail> details = componentBalance.getDetails();
+    private LocalDate getProductLastExpirationDate(ProductBalance componentBalance) {
+        return getLastExpirationDate(componentBalance.getDetails(), ProductDetail::getExpirationDate);
+    }
 
-        LocalDate today = LocalDate.now();
-
-        return details.stream()
-                .map(IngredientDetail::getExpirationDate)
-                .filter(Objects::nonNull)
-                .min(Comparator.comparing(d ->
-                        Math.abs(ChronoUnit.DAYS.between(today, d))
-                ))
-                .orElse(null);
+    private LocalDate getIngredientLastExpirationDate(IngredientBalance ingredientBalance) {
+        return getLastExpirationDate(ingredientBalance.getDetails(), IngredientDetail::getExpirationDate);
     }
 }
