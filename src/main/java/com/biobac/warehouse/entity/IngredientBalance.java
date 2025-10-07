@@ -24,6 +24,6 @@ public class IngredientBalance extends BaseAuditable {
 
     private Double balance;
 
-    @OneToMany(fetch = FetchType.LAZY)
+    @OneToMany(fetch = FetchType.EAGER, mappedBy = "ingredientBalance")
     private List<IngredientDetail> details;
 }

@@ -3,8 +3,10 @@ package com.biobac.warehouse.mapper;
 import com.biobac.warehouse.entity.*;
 import com.biobac.warehouse.response.ComponentBalanceIngResponse;
 import com.biobac.warehouse.response.ComponentBalanceProdResponse;
+import com.biobac.warehouse.utils.SelfWorthPriceUtil;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.temporal.ChronoUnit;
 import java.util.Comparator;
@@ -17,6 +19,10 @@ public class ComponentBalanceMapper {
 
     public ComponentBalanceIngResponse toIngResponse(IngredientBalance entity) {
         ComponentBalanceIngResponse response = new ComponentBalanceIngResponse();
+        BigDecimal selfWorth = SelfWorthPriceUtil.calculateIngredientPrice(entity);
+        response.setId(entity.getId());
+        response.setSelfWorthPrice(selfWorth);
+        response.setTotalPrice(selfWorth.multiply(BigDecimal.valueOf(entity.getBalance())));
         response.setIngredientName(entity.getIngredient().getName());
         response.setWarehouseName(entity.getWarehouse() == null ? null : entity.getWarehouse().getName());
         response.setBalance(entity.getBalance());
@@ -32,6 +38,7 @@ public class ComponentBalanceMapper {
 
     public ComponentBalanceProdResponse toProdResponse(ProductBalance entity) {
         ComponentBalanceProdResponse response = new ComponentBalanceProdResponse();
+        response.setId(entity.getId());
         response.setProductName(entity.getProduct().getName());
         response.setBalance(entity.getBalance());
         response.setWarehouseName(entity.getWarehouse() == null ? null : entity.getWarehouse().getName());

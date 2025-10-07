@@ -16,6 +16,7 @@ public class IngredientDetail {
     private Long id;
 
     @ManyToOne
+    @JoinColumn(name = "ingredient_balance_id")
     private IngredientBalance ingredientBalance;
 
     private LocalDate importDate;
