@@ -240,7 +240,6 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
             }
             ProductBalance cb = getOrCreateProductBalance(defWh, product);
             double before = cb.getBalance() != null ? cb.getBalance() : 0.0;
-            // Deduct from product batch details using FEFO (earliest expiration first)
             deductFromProductDetails(cb, requiredQty);
             double after = before - requiredQty;
             cb.setBalance(after);
