@@ -13,6 +13,7 @@ public class ManufactureProductResponse extends AuditableResponse {
     private Double quantity;
     private String warehouseName;
     private Long warehouseId;
+    private String unitName;
     private String productName;
     private Long productId;
     private LocalDate expirationDate;

@@ -138,6 +138,7 @@ public class ComponentBalanceServiceImpl implements ComponentBalanceService {
                 .stream()
                 .map(c -> {
                     ProductDetailResponse response = new ProductDetailResponse();
+                    response.setProductName(c.getProductBalance().getProduct().getName());
                     response.setExpirationDate(c.getExpirationDate());
                     response.setQuantity(c.getQuantity());
                     response.setManufacturingDate(c.getManufacturingDate());
@@ -173,6 +174,7 @@ public class ComponentBalanceServiceImpl implements ComponentBalanceService {
                 .stream()
                 .map(c -> {
                     IngredientDetailResponse response = new IngredientDetailResponse();
+                    response.setIngredientName(c.getIngredientBalance().getIngredient().getName());
                     response.setExpirationDate(c.getExpirationDate());
                     response.setQuantity(c.getQuantity());
                     response.setManufacturingDate(c.getManufacturingDate());

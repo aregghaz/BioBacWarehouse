@@ -24,6 +24,8 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
@@ -43,6 +45,7 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
     private final ManufactureProductMapper manufactureProductMapper;
     private final IngredientDetailRepository ingredientDetailRepository;
     private final ProductDetailRepository productDetailRepository;
+    private final ManufactureComponentRepository manufactureComponentRepository;
 
     @Override
     @Transactional
@@ -55,14 +58,6 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
 
         double totalCount = request.getQuantity();
 
-        if (product.getExtraComponents() != null && !product.getExtraComponents().isEmpty()) {
-            consumeExtraComponents(product.getExtraComponents(), totalCount);
-        }
-
-        if (product.getRecipeItem() != null) {
-            consumeRecipeItem(totalCount, product.getRecipeItem());
-        }
-
         ManufactureProduct manufactureProduct = new ManufactureProduct();
         manufactureProduct.setWarehouse(warehouse);
         manufactureProduct.setProduct(product);
@@ -70,20 +65,32 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
         manufactureProduct.setExpirationDate(request.getManufacturingDate().plusDays(product.getExpiration()));
         manufactureProduct.setQuantity(totalCount);
 
-        double totalBefore = product.getInventoryItems() != null
-                ? product.getInventoryItems().stream().mapToDouble(i -> i.getQuantity() != null ? i.getQuantity() : 0.0).sum()
-                : 0.0;
+        double totalBefore = getOrCreateProductBalance(warehouse, product).getBalance();
 
         ManufactureProduct saved = manufactureProductRepository.save(manufactureProduct);
 
+        BigDecimal totalCost = BigDecimal.ZERO;
+        if (product.getExtraComponents() != null && !product.getExtraComponents().isEmpty()) {
+            totalCost = totalCost.add(consumeExtraComponents(product.getExtraComponents(), totalCount, saved));
+        }
+        if (product.getRecipeItem() != null) {
+            totalCost = totalCost.add(consumeRecipeItem(totalCount, product.getRecipeItem(), saved));
+        }
+
         increaseBalanceForProduct(warehouse, product, totalCount);
-        
+
         ProductBalance pbForDetail = getOrCreateProductBalance(warehouse, product);
         ProductDetail productDetail = new ProductDetail();
         productDetail.setProductBalance(pbForDetail);
         productDetail.setManufacturingDate(request.getManufacturingDate());
         productDetail.setExpirationDate(request.getManufacturingDate().plusDays(product.getExpiration()));
         productDetail.setQuantity(totalCount);
+        if (totalCount > 0) {
+            BigDecimal unitCost = totalCost.divide(BigDecimal.valueOf(totalCount), 2, RoundingMode.HALF_UP);
+            productDetail.setPrice(unitCost);
+            saved.setPrice(unitCost);
+            manufactureProductRepository.save(saved);
+        }
         productDetailRepository.save(productDetail);
 
         if (totalCount > 0) {
@@ -181,8 +188,8 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
         productBalanceRepository.save(cb);
     }
 
-    private void consumeIngredientRecursive(Ingredient ingredient, double requiredQty, SelectionContext selectionContext, Set<Long> visitingIngredientIds, Set<Long> visitingProductIds, String reason) {
-        if (requiredQty <= 0) return;
+    private BigDecimal consumeIngredientRecursive(Ingredient ingredient, double requiredQty, Set<Long> visitingIngredientIds, Set<Long> visitingProductIds, String reason, ManufactureProduct manufactureProduct) {
+        if (requiredQty <= 0) return BigDecimal.ZERO;
         if (ingredient == null) {
             throw new InvalidDataException("Ingredient is null for consumption");
         }
@@ -202,7 +209,7 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
             IngredientBalance ingredientBalance = getOrCreateIngredientBalance(defWh, ingredient);
             double before = ingredientBalance.getBalance() != null ? ingredientBalance.getBalance() : 0.0;
 
-            deductFromIngredientDetails(ingredientBalance, requiredQty);
+            BigDecimal cost = deductFromIngredientDetails(ingredientBalance, requiredQty, manufactureProduct);
             double after = before - requiredQty;
             ingredientBalance.setBalance(after);
             ingredientBalanceRepository.save(ingredientBalance);
@@ -215,13 +222,14 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
                     "DECREASE",
                     (reason != null ? reason : "Consumed for recipe requirements") + where
             );
+            return cost;
         } finally {
             if (ingredientId != null) visitingIngredientIds.remove(ingredientId);
         }
     }
 
-    private void consumeProductRecursive(Product product, double requiredQty, SelectionContext selectionContext, Set<Long> visitingIngredientIds, Set<Long> visitingProductIds, String reason) {
-        if (requiredQty <= 0) return;
+    private BigDecimal consumeProductRecursive(Product product, double requiredQty, Set<Long> visitingIngredientIds, Set<Long> visitingProductIds, String reason, ManufactureProduct manufactureProduct) {
+        if (requiredQty <= 0) return BigDecimal.ZERO;
         if (product == null) {
             throw new InvalidDataException("Product is null for consumption");
         }
@@ -240,7 +248,7 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
             }
             ProductBalance cb = getOrCreateProductBalance(defWh, product);
             double before = cb.getBalance() != null ? cb.getBalance() : 0.0;
-            deductFromProductDetails(cb, requiredQty);
+            BigDecimal cost = deductFromProductDetails(cb, requiredQty, manufactureProduct);
             double after = before - requiredQty;
             cb.setBalance(after);
             productBalanceRepository.save(cb);
@@ -253,14 +261,15 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
                     "DECREASE",
                     (reason != null ? reason : "Consumed for recipe requirements") + where
             );
+            return cost;
         } finally {
             if (productId != null) visitingProductIds.remove(productId);
         }
     }
 
-    private void consumeExtraComponents(List<ProductComponent> components, double totalCount) {
-        if (components == null || components.isEmpty()) return;
-        SelectionContext sc = null;
+    private BigDecimal consumeExtraComponents(List<ProductComponent> components, double totalCount, ManufactureProduct manufactureProduct) {
+        if (components == null || components.isEmpty()) return BigDecimal.ZERO;
+        BigDecimal totalCost = BigDecimal.ZERO;
 
         for (ProductComponent pc : components) {
             Ingredient compIng = pc.getIngredient();
@@ -276,17 +285,18 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
             }
 
             if (compIng != null) {
-                consumeIngredientRecursive(compIng, required, sc, new HashSet<>(), new HashSet<>(), "Consumed for extra components");
+                totalCost = totalCost.add(consumeIngredientRecursive(compIng, required, new HashSet<>(), new HashSet<>(), "Consumed for extra components", manufactureProduct));
             } else {
-                consumeProductRecursive(compProd, required, sc, new HashSet<>(), new HashSet<>(), "Consumed for extra components");
+                totalCost = totalCost.add(consumeProductRecursive(compProd, required, new HashSet<>(), new HashSet<>(), "Consumed for extra components", manufactureProduct));
             }
         }
+        return totalCost;
     }
 
-    private void consumeRecipeItem(double totalCount, RecipeItem recipeItem) {
+    private BigDecimal consumeRecipeItem(double totalCount, RecipeItem recipeItem, ManufactureProduct manufactureProduct) {
+        BigDecimal totalCost = BigDecimal.ZERO;
         if (totalCount > 0) {
             if (recipeItem != null && recipeItem.getComponents() != null && !recipeItem.getComponents().isEmpty()) {
-                SelectionContext selectionContext = null;
                 for (RecipeComponent component : recipeItem.getComponents()) {
                     double perUnit = component.getQuantity() != null ? component.getQuantity() : 0.0;
                     double required = perUnit * totalCount;
@@ -295,75 +305,87 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
                     Ingredient compIng = component.getIngredient();
                     Product compProd = component.getProduct();
                     if (compIng != null && compProd == null) {
-                        consumeIngredientRecursive(compIng, required, selectionContext, new HashSet<>(), new HashSet<>(), "Consumed for recipe requirements");
+                        totalCost = totalCost.add(consumeIngredientRecursive(compIng, required, new HashSet<>(), new HashSet<>(), "Consumed for recipe requirements", manufactureProduct));
                     } else if (compProd != null && compIng == null) {
-                        consumeProductRecursive(compProd, required, selectionContext, new HashSet<>(), new HashSet<>(), "Consumed for recipe requirements");
+                        totalCost = totalCost.add(consumeProductRecursive(compProd, required, new HashSet<>(), new HashSet<>(), "Consumed for recipe requirements", manufactureProduct));
                     } else {
                         throw new InvalidDataException("Recipe component must be either ingredient or product");
                     }
                 }
             }
         }
+        return totalCost;
     }
 
-    private void deductFromIngredientDetails(IngredientBalance ingredientBalance, double requiredQty) {
-        if (requiredQty <= 0) return;
+    private BigDecimal deductFromIngredientDetails(IngredientBalance ingredientBalance, double requiredQty, ManufactureProduct manufactureProduct) {
+        if (requiredQty <= 0) return BigDecimal.ZERO;
         if (ingredientBalance == null || ingredientBalance.getId() == null) {
             throw new InvalidDataException("Ingredient balance is not persisted");
         }
         List<IngredientDetail> batches = ingredientDetailRepository
                 .findByIngredientBalanceIdOrderByExpirationDateAsc(ingredientBalance.getId());
         double remaining = requiredQty;
+        BigDecimal cost = BigDecimal.ZERO;
         for (IngredientDetail d : batches) {
             if (remaining <= 0) break;
             double qty = d.getQuantity() != null ? d.getQuantity() : 0.0;
             if (qty <= 0) continue;
             double take = Math.min(qty, remaining);
-            d.setQuantity(qty - take);
-            ingredientDetailRepository.save(d);
+            BigDecimal unitPrice = d.getPrice() != null ? d.getPrice() : BigDecimal.ZERO;
+            double newQty = qty - take;
+            if (newQty <= 0) {
+                ingredientDetailRepository.delete(d);
+            } else {
+                d.setQuantity(newQty);
+                ingredientDetailRepository.save(d);
+            }
             remaining -= take;
+
+            cost = cost.add(unitPrice.multiply(BigDecimal.valueOf(take)));
+
+            ManufactureComponent mc = new ManufactureComponent();
+            mc.setManufactureProduct(manufactureProduct);
+            mc.setIngredient(ingredientBalance.getIngredient());
+            mc.setQuantity(take);
+            mc.setUnitPrice(unitPrice);
+            manufactureComponentRepository.save(mc);
         }
+        return cost;
     }
 
-    private void deductFromProductDetails(ProductBalance productBalance, double requiredQty) {
-        if (requiredQty <= 0) return;
+    private BigDecimal deductFromProductDetails(ProductBalance productBalance, double requiredQty, ManufactureProduct manufactureProduct) {
+        if (requiredQty <= 0) return BigDecimal.ZERO;
         if (productBalance == null || productBalance.getId() == null) {
             throw new InvalidDataException("Product balance is not persisted");
         }
         List<ProductDetail> batches = productDetailRepository
                 .findByProductBalanceIdOrderByExpirationDateAsc(productBalance.getId());
         double remaining = requiredQty;
+        BigDecimal cost = BigDecimal.ZERO;
         for (ProductDetail d : batches) {
             if (remaining <= 0) break;
             double qty = d.getQuantity() != null ? d.getQuantity() : 0.0;
             if (qty <= 0) continue;
             double take = Math.min(qty, remaining);
-            d.setQuantity(qty - take);
-            productDetailRepository.save(d);
+            BigDecimal unitPrice = d.getPrice() != null ? d.getPrice() : BigDecimal.ZERO;
+            double newQty = qty - take;
+            if (newQty <= 0) {
+                productDetailRepository.delete(d);
+            } else {
+                d.setQuantity(newQty);
+                productDetailRepository.save(d);
+            }
             remaining -= take;
-        }
-    }
 
-    private record SelectionContext(Map<Long, Long> ingredientMap, Map<Long, Long> productMap) {
-        private SelectionContext(Map<Long, Long> ingredientMap, Map<Long, Long> productMap) {
-            this.ingredientMap = ingredientMap != null ? ingredientMap : Map.of();
-            this.productMap = productMap != null ? productMap : Map.of();
-        }
+            cost = cost.add(unitPrice.multiply(BigDecimal.valueOf(take)));
 
-        boolean hasIngredientSelection(Long id) {
-            return id != null && ingredientMap.containsKey(id);
+            ManufactureComponent mc = new ManufactureComponent();
+            mc.setManufactureProduct(manufactureProduct);
+            mc.setProduct(productBalance.getProduct());
+            mc.setQuantity(take);
+            mc.setUnitPrice(unitPrice);
+            manufactureComponentRepository.save(mc);
         }
-
-        boolean hasProductSelection(Long id) {
-            return id != null && productMap.containsKey(id);
-        }
-
-        Long getIngredientSelectedId(Long id) {
-            return ingredientMap.get(id);
-        }
-
-        Long getProductSelectedId(Long id) {
-            return productMap.get(id);
-        }
+        return cost;
     }
 }

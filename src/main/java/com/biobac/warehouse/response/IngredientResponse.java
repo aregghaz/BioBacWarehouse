@@ -28,7 +28,6 @@ public class IngredientResponse {
     private Double minimalBalance;
     private Long defaultWarehouseId;
     private String defaultWarehouseName;
-    private List<InventoryItemResponse> inventoryItems;
     private List<UnitTypeConfigResponse> unitTypeConfigs;
     private List<AttributeResponse> attributes;
     private LocalDateTime createdAt;

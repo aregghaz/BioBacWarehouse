@@ -30,9 +30,6 @@ public class Ingredient extends BaseAuditable {
 
     private BigDecimal price;
 
-    @OneToMany(mappedBy = "ingredient")
-    private List<InventoryItem> inventoryItems = new ArrayList<>();
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "unit_id")
     private Unit unit;

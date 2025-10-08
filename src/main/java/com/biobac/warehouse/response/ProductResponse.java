@@ -26,7 +26,6 @@ public class ProductResponse {
     private String defaultWarehouseName;
     private List<Long> attributeGroupIds;
     private String productGroupName;
-    private List<InventoryItemResponse> inventoryItems;
     private List<UnitTypeConfigResponse> unitTypeConfigs;
     private List<AttributeResponse> attributes;
     private LocalDateTime createdAt;

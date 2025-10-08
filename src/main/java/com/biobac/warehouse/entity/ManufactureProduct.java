@@ -4,7 +4,9 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 @Entity
 @Getter
@@ -25,4 +27,9 @@ public class ManufactureProduct extends BaseAuditable {
     private LocalDate manufacturingDate;
 
     private Double quantity;
+
+    private BigDecimal price;
+
+    @OneToMany(mappedBy = "manufactureProduct")
+    private List<ManufactureComponent> manufactureComponents;
 }

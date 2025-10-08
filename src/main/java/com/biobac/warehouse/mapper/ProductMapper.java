@@ -104,16 +104,8 @@ public class ProductMapper {
             response.setProductGroupName(product.getProductGroup().getName());
         }
 
-        double totalQuantity = product.getInventoryItems()
-                .stream()
-                .mapToDouble(i -> i.getQuantity() != null ? i.getQuantity() : 0.0)
-                .sum();
-
-        List<InventoryItemResponse> inventoryResponses = product.getInventoryItems().stream()
-                .map(item -> mapInventoryItem(item, null, product.getName()))
-                .toList();
-        response.setTotalQuantity(totalQuantity);
-        response.setInventoryItems(inventoryResponses);
+        // Inventory items removed; totalQuantity will be computed via balances elsewhere
+        response.setTotalQuantity(null);
 
         if (product.getUnitTypeConfigs() != null) {
             List<UnitTypeConfigResponse> cfgs = product.getUnitTypeConfigs().stream().map(cfg -> {
@@ -185,31 +177,4 @@ public class ProductMapper {
                 .toList();
     }
 
-    private InventoryItemResponse mapInventoryItem(InventoryItem item, String ingredientName, String productName) {
-        InventoryItemResponse ir = new InventoryItemResponse();
-        ir.setId(item.getId());
-        ir.setQuantity(item.getQuantity());
-        if (item.getWarehouse() != null) {
-            ir.setWarehouseId(item.getWarehouse().getId());
-            ir.setWarehouseName(item.getWarehouse().getName());
-        }
-        ir.setIngredientName(ingredientName);
-        ir.setProductName(productName);
-        Long cid = item.getCompanyId();
-        ir.setCompanyId(cid);
-        if (cid != null) {
-            try {
-                ApiResponse<String> resp = companyClient.getCompanyName(cid);
-                if (resp != null && Boolean.TRUE.equals(resp.getSuccess())) {
-                    ir.setCompanyName(resp.getData());
-                } else if (resp != null && resp.getData() != null) {
-                    ir.setCompanyName(resp.getData());
-                }
-            } catch (Exception ignored) {
-            }
-        }
-        ir.setCreatedAt(item.getCreatedAt());
-        ir.setUpdatedAt(item.getUpdatedAt());
-        return ir;
-    }
 }

@@ -23,9 +23,10 @@ public class ComponentBalanceMapper {
         response.setId(entity.getId());
         response.setSelfWorthPrice(selfWorth);
         response.setTotalPrice(selfWorth.multiply(BigDecimal.valueOf(entity.getBalance())));
-        response.setIngredientName(entity.getIngredient().getName());
+        response.setIngredientName(entity.getIngredient() == null ? null : entity.getIngredient().getName());
         response.setWarehouseName(entity.getWarehouse() == null ? null : entity.getWarehouse().getName());
         response.setBalance(entity.getBalance());
+        assert entity.getIngredient() != null;
         response.setMinimalBalance(
                 Optional.of(entity.getIngredient())
                         .map(Ingredient::getMinimalBalance)
@@ -38,11 +39,15 @@ public class ComponentBalanceMapper {
 
     public ComponentBalanceProdResponse toProdResponse(ProductBalance entity) {
         ComponentBalanceProdResponse response = new ComponentBalanceProdResponse();
+        BigDecimal selfWorth = SelfWorthPriceUtil.calculateProductPrice(entity);
         response.setId(entity.getId());
-        response.setSelfWorthPrice(SelfWorthPriceUtil.calculateProductPrice(entity));
-        response.setProductName(entity.getProduct().getName());
+        response.setSelfWorthPrice(selfWorth);
+        response.setTotalPrice(selfWorth.multiply(BigDecimal.valueOf(entity.getBalance())));
         response.setBalance(entity.getBalance());
         response.setWarehouseName(entity.getWarehouse() == null ? null : entity.getWarehouse().getName());
+        response.setProductName(entity.getProduct() == null ? null : entity.getProduct().getName());
+
+        assert entity.getProduct() != null;
         response.setMinimalBalance(
                 Optional.of(entity.getProduct())
                         .map(Product::getMinimalBalance)

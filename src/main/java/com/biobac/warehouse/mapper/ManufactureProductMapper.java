@@ -11,5 +11,6 @@ public interface ManufactureProductMapper {
     @Mapping(source = "warehouse.id", target = "warehouseId")
     @Mapping(source = "product.name", target = "productName")
     @Mapping(source = "product.id", target = "productId")
+    @Mapping(source = "product.unit.name", target = "unitName")
     ManufactureProductResponse toSingleResponse(ManufactureProduct entity);
 }

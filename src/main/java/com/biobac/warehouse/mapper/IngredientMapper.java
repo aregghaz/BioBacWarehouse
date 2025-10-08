@@ -5,7 +5,6 @@ import com.biobac.warehouse.client.CompanyClient;
 import com.biobac.warehouse.entity.AttributeTargetType;
 import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.entity.IngredientHistory;
-import com.biobac.warehouse.entity.InventoryItem;
 import com.biobac.warehouse.response.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -79,16 +78,8 @@ public class IngredientMapper {
             response.setUnitName(ingredient.getUnit().getName());
         }
 
-        double totalQuantity = ingredient.getInventoryItems()
-                .stream()
-                .mapToDouble(i -> i.getQuantity() != null ? i.getQuantity() : 0.0)
-                .sum();
-
-        List<InventoryItemResponse> inventoryResponses = ingredient.getInventoryItems().stream()
-                .map(item -> mapInventoryItem(item, ingredient.getName(), null))
-                .toList();
-        response.setTotalQuantity(totalQuantity);
-        response.setInventoryItems(inventoryResponses);
+        // Inventory items have been removed; totalQuantity now derived elsewhere (e.g., balances)
+        response.setTotalQuantity(null);
 
         if (ingredient.getUnitTypeConfigs() != null) {
             List<UnitTypeConfigResponse> cfgs = ingredient.getUnitTypeConfigs().stream().map(cfg -> {
@@ -110,31 +101,4 @@ public class IngredientMapper {
         return response;
     }
 
-    private InventoryItemResponse mapInventoryItem(InventoryItem item, String ingredientName, String productName) {
-        InventoryItemResponse ir = new InventoryItemResponse();
-        ir.setId(item.getId());
-        ir.setQuantity(item.getQuantity());
-        if (item.getWarehouse() != null) {
-            ir.setWarehouseId(item.getWarehouse().getId());
-            ir.setWarehouseName(item.getWarehouse().getName());
-        }
-        ir.setIngredientName(ingredientName);
-        ir.setProductName(productName);
-        Long cid = item.getCompanyId();
-        ir.setCompanyId(cid);
-        if (cid != null) {
-            try {
-                ApiResponse<String> resp = companyClient.getCompanyName(cid);
-                if (resp != null && Boolean.TRUE.equals(resp.getSuccess())) {
-                    ir.setCompanyName(resp.getData());
-                } else if (resp != null && resp.getData() != null) {
-                    ir.setCompanyName(resp.getData());
-                }
-            } catch (Exception ignored) {
-            }
-        }
-        ir.setCreatedAt(item.getCreatedAt());
-        ir.setUpdatedAt(item.getUpdatedAt());
-        return ir;
-    }
 }

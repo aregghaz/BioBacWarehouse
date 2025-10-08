@@ -33,7 +33,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class IngredientServiceImpl implements IngredientService, UnitTypeCalculator {
     private final IngredientRepository ingredientRepository;
-    private final InventoryItemRepository inventoryItemRepository;
     private final IngredientGroupRepository ingredientGroupRepository;
     private final WarehouseRepository warehouseRepository;
     private final UnitRepository unitRepository;
@@ -311,19 +310,7 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
 
         attributeClient.deleteValues(id, AttributeTargetType.INGREDIENT.name());
 
-        double totalBefore = 0.0;
-        List<InventoryItem> beforeItems = ingredient.getInventoryItems();
-        if (beforeItems != null) {
-            totalBefore = beforeItems.stream()
-                    .mapToDouble(i -> i.getQuantity() != null ? i.getQuantity() : 0.0)
-                    .sum();
-        }
-
-        List<InventoryItem> items = ingredient.getInventoryItems();
-        if (items != null && !items.isEmpty()) {
-            inventoryItemRepository.deleteAll(items);
-            ingredient.getInventoryItems().clear();
-        }
+        double totalBefore = 0.0; // Inventory items removed; no aggregated quantity available here
 
         ingredient.setDeleted(true);
         ingredientRepository.save(ingredient);

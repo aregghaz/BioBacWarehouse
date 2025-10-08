@@ -66,9 +66,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
         receiveIngredient.setExpirationDate(request.getManufacturingDate().plusDays(ingredient.getExpiration()));
         receiveIngredient.setQuantity(totalCount);
 
-        double totalBefore = ingredient.getInventoryItems() != null
-                ? ingredient.getInventoryItems().stream().mapToDouble(i -> i.getQuantity() != null ? i.getQuantity() : 0.0).sum()
-                : 0.0;
+        double totalBefore = getOrCreateIngredientBalance(warehouse, ingredient).getBalance();
 
         ReceiveIngredient saved = receiveIngredientRepository.save(receiveIngredient);
 

@@ -36,7 +36,6 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
     private final ProductComponentRepository productComponentRepository;
     private final IngredientRepository ingredientRepository;
     private final ProductRepository productRepository;
-    private final InventoryItemRepository inventoryItemRepository;
     private final RecipeItemRepository recipeItemRepository;
     private final RecipeComponentRepository recipeComponentRepository;
     private final ProductHistoryService productHistoryService;
@@ -384,13 +383,7 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
 
         attributeClient.deleteValues(id, AttributeTargetType.PRODUCT.name());
 
-        double totalBefore = 0.0;
-        List<InventoryItem> beforeItems = product.getInventoryItems();
-        if (beforeItems != null) {
-            totalBefore = beforeItems.stream()
-                    .mapToDouble(i -> i.getQuantity() != null ? i.getQuantity() : 0.0)
-                    .sum();
-        }
+        double totalBefore = 0.0; // Inventory items removed; no aggregated quantity available here
 
         RecipeItem recipeItem = product.getRecipeItem();
         if (recipeItem != null) {
@@ -407,12 +400,6 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
                 rc.setProduct(null);
             }
             recipeComponentRepository.saveAll(productComponents);
-        }
-
-        List<InventoryItem> items = product.getInventoryItems();
-        if (items != null && !items.isEmpty()) {
-            inventoryItemRepository.deleteAll(items);
-            product.getInventoryItems().clear();
         }
 
         product.setDeleted(true);

@@ -16,6 +16,7 @@ public class ProductDetail {
     private Long id;
 
     @ManyToOne
+    @JoinColumn(name = "product_balance_id")
     private ProductBalance productBalance;
 
     private LocalDate expirationDate;

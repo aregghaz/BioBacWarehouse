@@ -79,6 +79,10 @@ public class ComponentBalanceSpecification {
                 for (Map.Entry<String, FilterCriteria> entry : filters.entrySet()) {
                     String field = entry.getKey();
                     FilterCriteria criteria = entry.getValue();
+                    // inventoryItems removed: skip expiration-date based filters tied to inventory batches
+                    if ("expirationDate".equals(field) || "localDate".equals(field)) {
+                        continue;
+                    }
                     Path<?> path = null;
                     Object effectiveValue = criteria.getValue();
 

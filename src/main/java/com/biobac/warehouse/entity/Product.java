@@ -32,9 +32,6 @@ public class Product extends BaseAuditable {
     private List<Long> attributeGroupIds;
 
     @OneToMany(mappedBy = "product")
-    private List<InventoryItem> inventoryItems = new ArrayList<>();
-
-    @OneToMany(mappedBy = "product")
     private List<ProductComponent> extraComponents = new ArrayList<>();
 
     @ManyToOne(fetch = FetchType.LAZY)

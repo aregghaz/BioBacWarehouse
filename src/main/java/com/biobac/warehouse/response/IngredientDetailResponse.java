@@ -9,6 +9,8 @@ import java.time.LocalDate;
 @Getter
 @Setter
 public class IngredientDetailResponse {
+    private String ingredientName;
+
     private LocalDate importDate;
 
     private LocalDate expirationDate;
