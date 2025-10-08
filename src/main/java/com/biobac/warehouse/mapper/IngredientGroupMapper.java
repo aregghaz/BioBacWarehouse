@@ -8,10 +8,8 @@ import org.mapstruct.Mapper;
 @Mapper(componentModel = "spring")
 public interface IngredientGroupMapper {
 
-    // Legacy name retained for backwards compatibility
     IngredientGroupResponse toDto(IngredientGroup entity);
 
-    // Preferred naming
     IngredientGroupResponse toResponse(IngredientGroup entity);
 
     IngredientGroup toEntity(IngredientGroupDto dto);

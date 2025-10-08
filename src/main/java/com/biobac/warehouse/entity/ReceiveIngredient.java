@@ -6,6 +6,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 @Entity
 @Getter
@@ -32,4 +33,7 @@ public class ReceiveIngredient extends BaseAuditable {
     private BigDecimal price;
 
     private Double quantity;
+
+    @OneToMany(mappedBy = "receiveIngredient")
+    private List<ReceiveExpense> expenses;
 }
