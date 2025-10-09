@@ -141,6 +141,7 @@ public class ComponentBalanceServiceImpl implements ComponentBalanceService {
                     response.setProductName(c.getProductBalance().getProduct().getName());
                     response.setExpirationDate(c.getExpirationDate());
                     response.setQuantity(c.getQuantity());
+                    response.setUnitName(c.getProductBalance().getProduct().getUnit().getName());
                     response.setManufacturingDate(c.getManufacturingDate());
                     response.setPrice(c.getPrice());
                     return response;
@@ -176,6 +177,7 @@ public class ComponentBalanceServiceImpl implements ComponentBalanceService {
                     IngredientDetailResponse response = new IngredientDetailResponse();
                     response.setIngredientName(c.getIngredientBalance().getIngredient().getName());
                     response.setExpirationDate(c.getExpirationDate());
+                    response.setUnitName(c.getIngredientBalance().getIngredient().getUnit().getName());
                     response.setQuantity(c.getQuantity());
                     response.setManufacturingDate(c.getManufacturingDate());
                     response.setPrice(c.getPrice());

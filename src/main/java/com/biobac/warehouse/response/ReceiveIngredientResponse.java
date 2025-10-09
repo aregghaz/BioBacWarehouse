@@ -5,6 +5,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -22,4 +23,6 @@ public class ReceiveIngredientResponse extends AuditableResponse {
     private Long companyId;
     private String companyName;
     private BigDecimal price;
+    private Long groupId;
+    private boolean deleted;
 }

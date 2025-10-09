@@ -1,4 +1,4 @@
-package com.biobac.warehouse.response;
+package com.biobac.warehouse.request;
 
 import lombok.Getter;
 import lombok.Setter;
@@ -8,12 +8,13 @@ import java.time.LocalDate;
 
 @Getter
 @Setter
-public class IngredientDetailResponse {
-    private String ingredientName;
+public class ReceiveIngredientUpdateRequest {
+    private Long id;
+    private Long warehouseId;
+    private Long ingredientId;
+    private Long companyId;
+    private BigDecimal price;
     private LocalDate importDate;
-    private LocalDate expirationDate;
     private LocalDate manufacturingDate;
     private Double quantity;
-    private BigDecimal price;
-    private String unitName;
 }

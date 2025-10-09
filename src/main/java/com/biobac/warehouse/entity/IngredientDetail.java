@@ -28,4 +28,8 @@ public class IngredientDetail {
     private Double quantity;
 
     private BigDecimal price;
+
+    @OneToOne
+    @JoinColumn(name = "receive_ingredient_id", unique = true)
+    private ReceiveIngredient receiveIngredient;
 }

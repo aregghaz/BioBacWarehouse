@@ -18,4 +18,5 @@ public class ComponentBalanceProdResponse {
     private Double minimalBalance;
     private Double balance;
     private LocalDate expirationDate;
+    private String unitName;
 }

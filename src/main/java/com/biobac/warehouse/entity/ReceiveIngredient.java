@@ -34,6 +34,13 @@ public class ReceiveIngredient extends BaseAuditable {
 
     private Double quantity;
 
+    private Long groupId;
+
+    private boolean deleted = false;
+
+    @OneToOne(mappedBy = "receiveIngredient")
+    private IngredientDetail detail;
+
     @OneToMany(mappedBy = "receiveIngredient")
     private List<ReceiveExpense> expenses;
 }

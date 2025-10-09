@@ -10,12 +10,9 @@ import java.time.LocalDate;
 @Setter
 public class ProductDetailResponse {
     private String productName;
-
     private LocalDate expirationDate;
-
     private LocalDate manufacturingDate;
-
     private Double quantity;
-
     private BigDecimal price;
+    private String unitName;
 }

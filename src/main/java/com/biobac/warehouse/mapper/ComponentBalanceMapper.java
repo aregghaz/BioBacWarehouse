@@ -22,6 +22,7 @@ public class ComponentBalanceMapper {
         BigDecimal selfWorth = SelfWorthPriceUtil.calculateIngredientPrice(entity);
         response.setId(entity.getId());
         response.setSelfWorthPrice(selfWorth);
+        response.setUnitName(entity.getIngredient().getUnit().getName());
         response.setTotalPrice(selfWorth.multiply(BigDecimal.valueOf(entity.getBalance())));
         response.setIngredientName(entity.getIngredient() == null ? null : entity.getIngredient().getName());
         response.setWarehouseName(entity.getWarehouse() == null ? null : entity.getWarehouse().getName());
@@ -41,6 +42,7 @@ public class ComponentBalanceMapper {
         ComponentBalanceProdResponse response = new ComponentBalanceProdResponse();
         BigDecimal selfWorth = SelfWorthPriceUtil.calculateProductPrice(entity);
         response.setId(entity.getId());
+        response.setUnitName(entity.getProduct().getUnit().getName());
         response.setSelfWorthPrice(selfWorth);
         response.setTotalPrice(selfWorth.multiply(BigDecimal.valueOf(entity.getBalance())));
         response.setBalance(entity.getBalance());

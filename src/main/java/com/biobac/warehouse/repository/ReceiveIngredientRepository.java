@@ -8,4 +8,5 @@ import java.util.List;
 
 public interface ReceiveIngredientRepository extends JpaRepository<ReceiveIngredient, Long>, JpaSpecificationExecutor<ReceiveIngredient> {
     List<ReceiveIngredient> findByIngredientIdIn(List<Long> ids);
+    List<ReceiveIngredient> findByGroupId(Long groupId);
 }
