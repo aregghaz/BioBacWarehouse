@@ -8,6 +8,7 @@ import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.ReceiveIngredientMapper;
 import com.biobac.warehouse.repository.*;
 import com.biobac.warehouse.request.FilterCriteria;
+import com.biobac.warehouse.request.IngredientExpenseRequest;
 import com.biobac.warehouse.request.ReceiveIngredientRequest;
 import com.biobac.warehouse.response.ApiResponse;
 import com.biobac.warehouse.response.ReceiveIngredientResponse;
@@ -25,8 +26,12 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,14 +45,53 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
     private final CompanyClient companyClient;
     private final IngredientBalanceRepository ingredientBalanceRepository;
     private final IngredientDetailRepository ingredientDetailRepository;
+    private final ExpenseTypeRepository expenseTypeRepository;
+    private final ReceiveExpenseRepository receiveExpenseRepository;
 
     @Override
     @Transactional
-    public List<ReceiveIngredientResponse> createForIngredient(List<ReceiveIngredientRequest> request) {
-        return request.stream().map(this::createSingleInventoryItemIngredient).toList();
+    public List<ReceiveIngredientResponse> createForIngredient(
+            List<ReceiveIngredientRequest> requests,
+            List<IngredientExpenseRequest> expenseRequests) {
+
+        BigDecimal additionalExpense = expenseRequests.stream()
+                .map(IngredientExpenseRequest::getAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal receivedExpense = requests.stream()
+                .map(r -> r.getPrice().multiply(BigDecimal.valueOf(r.getQuantity())))
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<ReceiveIngredientResponse> responses = new ArrayList<>();
+
+        for (ReceiveIngredientRequest req : requests) {
+            ReceiveIngredient receiveIngredient =
+                    createSingleInventoryItemIngredient(req, additionalExpense, receivedExpense);
+
+            for (IngredientExpenseRequest expReq : expenseRequests) {
+                ExpenseType expenseType = expenseTypeRepository.findById(expReq.getExpenseTypeId())
+                        .orElseThrow(() -> new NotFoundException("Expense type not found"));
+
+                ReceiveExpense receiveExpense = new ReceiveExpense();
+                receiveExpense.setReceiveIngredient(receiveIngredient);
+                receiveExpense.setExpenseType(expenseType);
+                receiveExpense.setAmount(expReq.getAmount());
+
+                receiveExpenseRepository.save(receiveExpense);
+            }
+
+            responses.add(toReceiveIngredientResponse(receiveIngredient));
+        }
+
+        return responses;
     }
 
-    private ReceiveIngredientResponse createSingleInventoryItemIngredient(ReceiveIngredientRequest request) {
+    private ReceiveIngredient createSingleInventoryItemIngredient(
+            ReceiveIngredientRequest request,
+            BigDecimal additionalExpense,
+            BigDecimal receivedExpense) {
+
         Ingredient ingredient = ingredientRepository.findById(request.getIngredientId())
                 .orElseThrow(() -> new NotFoundException("Ingredient not found"));
 
@@ -56,11 +100,24 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
 
         double totalCount = request.getQuantity();
 
+        BigDecimal ingredientTotal = request.getPrice().multiply(BigDecimal.valueOf(totalCount));
+
+        BigDecimal proportionalExpense = BigDecimal.ZERO;
+        if (receivedExpense.compareTo(BigDecimal.ZERO) > 0) {
+            proportionalExpense = ingredientTotal
+                    .divide(receivedExpense, 3, RoundingMode.HALF_UP)
+                    .multiply(additionalExpense);
+        }
+
+        BigDecimal selfWorthPrice = request.getPrice().add(
+                proportionalExpense.divide(BigDecimal.valueOf(100), 3, RoundingMode.HALF_UP)
+        );
+
         ReceiveIngredient receiveIngredient = new ReceiveIngredient();
         receiveIngredient.setWarehouse(warehouse);
         receiveIngredient.setIngredient(ingredient);
         receiveIngredient.setCompanyId(request.getCompanyId());
-        receiveIngredient.setPrice(request.getPrice());
+        receiveIngredient.setPrice(selfWorthPrice);
         receiveIngredient.setImportDate(request.getImportDate());
         receiveIngredient.setManufacturingDate(request.getManufacturingDate());
         receiveIngredient.setExpirationDate(request.getManufacturingDate().plusDays(ingredient.getExpiration()));
@@ -73,30 +130,30 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
         IngredientBalance balance = increaseBalanceForIngredient(warehouse, ingredient, totalCount);
 
         IngredientDetail detail = new IngredientDetail();
-        detail.setPrice(request.getPrice());
+        detail.setPrice(selfWorthPrice);
         detail.setImportDate(request.getImportDate());
         detail.setManufacturingDate(request.getManufacturingDate());
         detail.setExpirationDate(request.getManufacturingDate().plusDays(ingredient.getExpiration()));
         detail.setQuantity(totalCount);
         detail.setIngredientBalance(balance);
-
         ingredientDetailRepository.save(detail);
 
         if (totalCount > 0) {
             String warehouseNote = saved.getWarehouse() != null && saved.getWarehouse().getId() != null
-                    ? " to warehouse id=" + saved.getWarehouse().getId() : "";
+                    ? " to warehouse id=" + saved.getWarehouse().getId()
+                    : "";
             ingredientHistoryService.recordQuantityChange(
                     ingredient,
                     totalBefore,
                     totalBefore + totalCount,
                     "INCREASE",
                     "Added new inventory item" + warehouseNote,
-                    request.getPrice(),
+                    selfWorthPrice,
                     request.getCompanyId()
             );
         }
 
-        return toReceiveIngredientResponse(saved);
+        return saved;
     }
 
     private ReceiveIngredientResponse toReceiveIngredientResponse(ReceiveIngredient item) {
@@ -137,10 +194,10 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
     @Override
     @Transactional(readOnly = true)
     public Pair<List<ReceiveIngredientResponse>, PaginationMetadata> getByIngredientId(Long ingredientId, Map<String, FilterCriteria> filters,
-                                                                                   Integer page,
-                                                                                   Integer size,
-                                                                                   String sortBy,
-                                                                                   String sortDir) {
+                                                                                       Integer page,
+                                                                                       Integer size,
+                                                                                       String sortBy,
+                                                                                       String sortDir) {
         ingredientRepository.findById(ingredientId).orElseThrow(() -> new NotFoundException("Ingredient not found"));
 
         Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();

@@ -2,7 +2,9 @@ package com.biobac.warehouse.controller;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.request.FilterCriteria;
+import com.biobac.warehouse.request.IngredientExpenseRequest;
 import com.biobac.warehouse.request.ReceiveIngredientRequest;
+import com.biobac.warehouse.request.ReceiveIngredientWrapper;
 import com.biobac.warehouse.response.ApiResponse;
 import com.biobac.warehouse.response.ReceiveIngredientResponse;
 import com.biobac.warehouse.service.ReceiveIngredientService;
@@ -21,8 +23,14 @@ public class ReceiveIngredientController {
     private final ReceiveIngredientService receiveIngredientService;
 
     @PostMapping
-    public ApiResponse<List<ReceiveIngredientResponse>> createForIngredient(@RequestBody List<ReceiveIngredientRequest> request) {
-        List<ReceiveIngredientResponse> response = receiveIngredientService.createForIngredient(request);
+    public ApiResponse<List<ReceiveIngredientResponse>> createForIngredient(
+            @RequestBody ReceiveIngredientWrapper wrapper) {
+
+        List<ReceiveIngredientResponse> response = receiveIngredientService.createForIngredient(
+                wrapper.getRequests(),
+                wrapper.getExpenseRequests()
+        );
+
         return ResponseUtil.success("Ingredients received successfully", response);
     }
 
