@@ -70,19 +70,21 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
             ReceiveIngredient receiveIngredient =
                     createSingleReceiveItem(req, additionalExpense, receivedExpense, groupId);
 
+            responses.add(receiveIngredientMapper.toSingleResponse(receiveIngredient));
+        }
+
+        if (expenseRequests != null) {
             for (IngredientExpenseRequest expReq : expenseRequests) {
                 ExpenseType expenseType = expenseTypeRepository.findById(expReq.getExpenseTypeId())
                         .orElseThrow(() -> new NotFoundException("Expense type not found"));
 
                 ReceiveExpense receiveExpense = new ReceiveExpense();
-                receiveExpense.setReceiveIngredient(receiveIngredient);
+                receiveExpense.setGroupId(groupId);
                 receiveExpense.setExpenseType(expenseType);
                 receiveExpense.setAmount(expReq.getAmount());
 
                 receiveExpenseRepository.save(receiveExpense);
             }
-
-            responses.add(receiveIngredientMapper.toSingleResponse(receiveIngredient));
         }
 
         return responses;
@@ -208,22 +210,18 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                 .map(receiveIngredientMapper::toSingleResponse)
                 .collect(Collectors.toList());
 
+        List<ReceiveExpense> groupExpenses = receiveExpenseRepository.findByGroupId(groupId);
         List<ReceiveExpenseResponse> expenseResponses = new ArrayList<>();
-        for (ReceiveIngredient item : items) {
-            if (item.getExpenses() != null) {
-                for (ReceiveExpense exp : item.getExpenses()) {
-                    ReceiveExpenseResponse er = new ReceiveExpenseResponse();
-                    er.setId(exp.getId());
-                    er.setReceiveIngredientId(item.getId());
-                    ExpenseType et = exp.getExpenseType();
-                    if (et != null) {
-                        er.setExpenseTypeId(et.getId());
-                        er.setExpenseTypeName(et.getName());
-                    }
-                    er.setAmount(exp.getAmount());
-                    expenseResponses.add(er);
-                }
+        for (ReceiveExpense exp : groupExpenses) {
+            ReceiveExpenseResponse er = new ReceiveExpenseResponse();
+            er.setId(exp.getId());
+            ExpenseType et = exp.getExpenseType();
+            if (et != null) {
+                er.setExpenseTypeId(et.getId());
+                er.setExpenseTypeName(et.getName());
             }
+            er.setAmount(exp.getAmount());
+            expenseResponses.add(er);
         }
 
         ReceiveIngredientGroupResponse response = new ReceiveIngredientGroupResponse();
@@ -409,23 +407,20 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
 
             ReceiveIngredient saved = receiveIngredientRepository.save(item);
 
-            if (saved.getExpenses() != null && !saved.getExpenses().isEmpty()) {
-                receiveExpenseRepository.deleteAll(saved.getExpenses());
-                saved.getExpenses().clear();
-            }
-            if (expenseRequests != null) {
-                for (IngredientExpenseRequest expReq : expenseRequests) {
-                    ExpenseType expenseType = expenseTypeRepository.findById(expReq.getExpenseTypeId())
-                            .orElseThrow(() -> new NotFoundException("Expense type not found"));
-                    ReceiveExpense receiveExpense = new ReceiveExpense();
-                    receiveExpense.setReceiveIngredient(saved);
-                    receiveExpense.setExpenseType(expenseType);
-                    receiveExpense.setAmount(expReq.getAmount());
-                    receiveExpenseRepository.save(receiveExpense);
-                }
-            }
-
             responses.add(receiveIngredientMapper.toSingleResponse(saved));
+        }
+
+        if (expenseRequests != null) {
+            receiveExpenseRepository.deleteByGroupId(groupId);
+            for (IngredientExpenseRequest expReq : expenseRequests) {
+                ExpenseType expenseType = expenseTypeRepository.findById(expReq.getExpenseTypeId())
+                        .orElseThrow(() -> new NotFoundException("Expense type not found"));
+                ReceiveExpense receiveExpense = new ReceiveExpense();
+                receiveExpense.setGroupId(groupId);
+                receiveExpense.setExpenseType(expenseType);
+                receiveExpense.setAmount(expReq.getAmount());
+                receiveExpenseRepository.save(receiveExpense);
+            }
         }
 
         return responses;
@@ -438,6 +433,9 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
         if (items == null || items.isEmpty()) {
             throw new NotFoundException("Receive group not found");
         }
+
+        // Delete group-level expenses
+        receiveExpenseRepository.deleteByGroupId(groupId);
 
         for (ReceiveIngredient item : items) {
             item.setDeleted(true);

@@ -78,7 +78,6 @@ public class IngredientMapper {
             response.setUnitName(ingredient.getUnit().getName());
         }
 
-        // Inventory items have been removed; totalQuantity now derived elsewhere (e.g., balances)
         response.setTotalQuantity(null);
 
         if (ingredient.getUnitTypeConfigs() != null) {

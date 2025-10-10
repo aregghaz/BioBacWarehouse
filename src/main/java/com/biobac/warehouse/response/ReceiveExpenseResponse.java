@@ -9,7 +9,6 @@ import java.math.BigDecimal;
 @Setter
 public class ReceiveExpenseResponse {
     private Long id;
-    private Long receiveIngredientId;
     private Long expenseTypeId;
     private String expenseTypeName;
     private BigDecimal amount;
