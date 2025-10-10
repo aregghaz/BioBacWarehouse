@@ -10,4 +10,5 @@ import lombok.NoArgsConstructor;
 public class HistoryMetadata {
     private PaginationMetadata pagination;
     private Double total;
+    private String unitName;
 }

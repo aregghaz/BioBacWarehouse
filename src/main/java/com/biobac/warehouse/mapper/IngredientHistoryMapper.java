@@ -10,5 +10,6 @@ public interface IngredientHistoryMapper {
 
     @Mapping(source = "ingredient.id", target = "ingredientId")
     @Mapping(source = "ingredient.name", target = "ingredientName")
+    @Mapping(source = "ingredient.unit.name", target = "unitName")
     IngredientHistoryResponse toResponse(IngredientHistory entity);
 }

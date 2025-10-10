@@ -28,7 +28,6 @@ public class SelfWorthPriceUtil {
     }
 
     public static BigDecimal calculateIngredientPrice(IngredientBalance balance) {
-        // todo add additional expenses for calculating
         List<IngredientDetail> details = balance.getDetails();
         if (details == null || details.isEmpty()) {
             return balance.getIngredient().getPrice();

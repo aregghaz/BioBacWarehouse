@@ -11,6 +11,7 @@ public class IngredientHistoryResponse {
     private Long id;
     private Long ingredientId;
     private String ingredientName;
+    private String unitName;
     private boolean increase;
     private Double quantityChange;
     private Double quantityResult;
