@@ -19,11 +19,11 @@ public class IngredientHistory extends BaseAuditable {
     @JoinColumn(name = "ingredient_id", nullable = false)
     private Ingredient ingredient;
 
-    private String action;
+    private boolean increase;
 
-    private Double quantityBefore;
+    private Double quantityResult;
 
-    private Double quantityAfter;
+    private Double quantityChange;
 
     private String notes;
 

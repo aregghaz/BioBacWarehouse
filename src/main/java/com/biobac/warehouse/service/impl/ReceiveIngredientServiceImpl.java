@@ -144,15 +144,12 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
         saved.setDetail(detail);
 
         if (totalCount > 0) {
-            String warehouseNote = saved.getWarehouse() != null && saved.getWarehouse().getId() != null
-                    ? " to warehouse id=" + saved.getWarehouse().getId()
-                    : "";
+            String warehouseName = saved.getWarehouse() != null ? saved.getWarehouse().getName() : "";
             ingredientHistoryService.recordQuantityChange(
                     ingredient,
                     totalBefore,
                     totalBefore + totalCount,
-                    "INCREASE",
-                    "Added new inventory item" + warehouseNote,
+                    String.format("Received +%s to warehouse %s", totalCount, warehouseName),
                     selfWorthPrice,
                     request.getCompanyId()
             );
@@ -334,8 +331,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                             oldIngredient,
                             before,
                             before - oldQty,
-                            "DECREASE",
-                            "Moved inventory from warehouse id=" + oldWarehouse.getId(),
+                            String.format("Moved -%s from warehouse %s", oldQty, oldWarehouse != null ? oldWarehouse.getName() : ""),
                             item.getPrice(),
                             item.getCompanyId()
                     );
@@ -349,8 +345,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                         newIngredient,
                         beforeNew,
                         beforeNew + newQty,
-                        "INCREASE",
-                        "Moved inventory to warehouse id=" + newWarehouse.getId(),
+                        String.format("Moved +%s to warehouse %s", newQty, newWarehouse != null ? newWarehouse.getName() : ""),
                         selfWorthPrice,
                         item.getCompanyId()
                 );
@@ -385,8 +380,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                             newIngredient,
                             before,
                             after,
-                            delta > 0 ? "INCREASE" : "DECREASE",
-                            (delta > 0 ? "Increased" : "Decreased") + " inventory in warehouse id=" + newWarehouse.getId(),
+                            String.format("Adjusted in warehouse %s: %s%s", newWarehouse.getName(), (delta > 0 ? "+" : "-"), Math.abs(delta)),
                             selfWorthPrice,
                             item.getCompanyId()
                     );

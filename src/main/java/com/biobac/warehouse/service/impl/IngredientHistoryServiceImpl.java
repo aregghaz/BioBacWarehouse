@@ -1,12 +1,13 @@
 package com.biobac.warehouse.service.impl;
 
-import com.biobac.warehouse.dto.IngredientHistoryDto;
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.entity.IngredientHistory;
 import com.biobac.warehouse.mapper.IngredientHistoryMapper;
+import com.biobac.warehouse.repository.IngredientBalanceRepository;
 import com.biobac.warehouse.repository.IngredientHistoryRepository;
 import com.biobac.warehouse.request.FilterCriteria;
+import com.biobac.warehouse.response.IngredientHistoryResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.utils.specifications.IngredientHistorySpecification;
 import jakarta.persistence.criteria.JoinType;
@@ -31,40 +32,31 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
 
     private final IngredientHistoryRepository ingredientHistoryRepository;
     private final IngredientHistoryMapper ingredientHistoryMapper;
+    private final IngredientBalanceRepository ingredientBalanceRepository;
 
     @Override
     @Transactional
-    public IngredientHistoryDto recordQuantityChange(Ingredient ingredient, Double quantityBefore,
-                                                     Double quantityAfter, String action, String notes, BigDecimal lastPrice, Long lastCompanyId) {
+    public IngredientHistoryResponse recordQuantityChange(Ingredient ingredient, Double quantityBefore,
+                                                     Double quantityAfter, String notes, BigDecimal lastPrice, Long lastCompanyId) {
         IngredientHistory history = new IngredientHistory();
         history.setIngredient(ingredient);
-        history.setAction(action);
-        history.setQuantityBefore(quantityBefore);
-        history.setQuantityAfter(quantityAfter);
+        boolean increase = (quantityAfter != null ? quantityAfter : 0.0) - (quantityBefore != null ? quantityBefore : 0.0) > 0;
+        Double change = (quantityAfter != null ? quantityAfter : 0.0) - (quantityBefore != null ? quantityBefore : 0.0);
+        history.setIncrease(increase);
+        history.setQuantityChange(change);
+        Double total = ingredientBalanceRepository.sumBalanceByIngredientId(ingredient.getId());
+        history.setQuantityResult(total != null ? total : 0.0);
         history.setNotes(notes);
         history.setCompanyId(lastCompanyId);
         history.setLastPrice(lastPrice);
 
         IngredientHistory savedHistory = ingredientHistoryRepository.save(history);
-        return ingredientHistoryMapper.toDto(savedHistory);
-    }
-
-    @Override
-    public IngredientHistoryDto recordQuantityChange(Ingredient ingredient, Double quantityBefore, Double quantityAfter, String action, String notes) {
-        IngredientHistory history = new IngredientHistory();
-        history.setIngredient(ingredient);
-        history.setAction(action);
-        history.setQuantityBefore(quantityBefore);
-        history.setQuantityAfter(quantityAfter);
-        history.setNotes(notes);
-
-        IngredientHistory savedHistory = ingredientHistoryRepository.save(history);
-        return ingredientHistoryMapper.toDto(savedHistory);
+        return ingredientHistoryMapper.toResponse(savedHistory);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Pair<List<IngredientHistoryDto>, PaginationMetadata> getHistoryForIngredient(Long ingredientId, Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
+    public Pair<List<IngredientHistoryResponse>, PaginationMetadata> getHistoryForIngredient(Long ingredientId, Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
         int safePage = (page == null || page < 0) ? 0 : page;
         int safeSize = (size == null || size <= 0) ? 20 : size;
         String safeSortBy = (sortBy == null || sortBy.isBlank()) ? "id" : sortBy;
@@ -78,9 +70,9 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
 
         Page<IngredientHistory> ingredientHistoryPage = ingredientHistoryRepository.findAll(spec, pageable);
 
-        List<IngredientHistoryDto> content = ingredientHistoryPage.getContent()
+        List<IngredientHistoryResponse> content = ingredientHistoryPage.getContent()
                 .stream()
-                .map(ingredientHistoryMapper::toDto)
+                .map(ingredientHistoryMapper::toResponse)
                 .collect(Collectors.toList());
 
         String metaSortDir = pageable.getSort().toString().contains("ASC") ? "asc" : "desc";
@@ -103,7 +95,7 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
 
     @Override
     @Transactional(readOnly = true)
-    public Pair<List<IngredientHistoryDto>, PaginationMetadata> getHistory(Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
+    public Pair<List<IngredientHistoryResponse>, PaginationMetadata> getHistory(Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
         int safePage = (page == null || page < 0) ? 0 : page;
         int safeSize = (size == null || size <= 0) ? 20 : size;
         String safeSortBy = (sortBy == null || sortBy.isBlank()) ? "id" : sortBy;
@@ -115,9 +107,9 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
         Specification<IngredientHistory> spec = IngredientHistorySpecification.buildSpecification(filters);
         Page<IngredientHistory> ingredientHistoryPage = ingredientHistoryRepository.findAll(spec, pageable);
 
-        List<IngredientHistoryDto> content = ingredientHistoryPage.getContent()
+        List<IngredientHistoryResponse> content = ingredientHistoryPage.getContent()
                 .stream()
-                .map(ingredientHistoryMapper::toDto)
+                .map(ingredientHistoryMapper::toResponse)
                 .collect(Collectors.toList());
 
         String metaSortDir = pageable.getSort().toString().contains("ASC") ? "asc" : "desc";
@@ -136,5 +128,26 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
         );
 
         return Pair.of(content, metadata);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Double getTotalForIngredient(Long ingredientId, Map<String, FilterCriteria> filters) {
+        boolean hasDateFilter = filters != null && filters.containsKey("createdAt");
+        if (hasDateFilter) {
+            Specification<IngredientHistory> spec = IngredientHistorySpecification.buildSpecification(filters)
+                    .and((root, query, cb) -> cb.equal(root.join("ingredient", JoinType.LEFT).get("id"), ingredientId));
+            Page<IngredientHistory> page = ingredientHistoryRepository.findAll(
+                    spec,
+                    PageRequest.of(0, 1, Sort.by("createdAt").descending().and(Sort.by("id").descending()))
+            );
+            if (!page.isEmpty()) {
+                IngredientHistory last = page.getContent().get(0);
+                return last.getQuantityResult() != null ? last.getQuantityResult() : 0.0;
+            }
+            return 0.0;
+        }
+        Double total = ingredientBalanceRepository.sumBalanceByIngredientId(ingredientId);
+        return total != null ? total : 0.0;
     }
 }

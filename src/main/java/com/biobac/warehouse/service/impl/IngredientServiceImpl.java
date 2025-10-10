@@ -135,12 +135,8 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
 
         Ingredient saved = ingredientRepository.save(ingredient);
 
-        ingredientHistoryService.recordQuantityChange(saved, 0.0, 0.0, "INCREASE", "Added new ingredient to system");
-
-
         if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
             attributeClient.createValues(saved.getId(), AttributeTargetType.INGREDIENT.name(), request.getAttributes());
-
         }
 
         if (request.getAttributeGroupIds() != null && !request.getAttributeGroupIds().isEmpty()) {
@@ -310,12 +306,12 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
 
         attributeClient.deleteValues(id, AttributeTargetType.INGREDIENT.name());
 
-        double totalBefore = 0.0; // Inventory items removed; no aggregated quantity available here
+        double totalBefore = 0.0;
 
         ingredient.setDeleted(true);
         ingredientRepository.save(ingredient);
 
-        ingredientHistoryService.recordQuantityChange(ingredient, totalBefore, 0.0, "DELETE", "Soft deleted");
+        ingredientHistoryService.recordQuantityChange(ingredient, totalBefore, 0.0, "ingredient deleted", null, null);
     }
 
     @Override

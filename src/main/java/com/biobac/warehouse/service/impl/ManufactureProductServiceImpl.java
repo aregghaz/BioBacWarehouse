@@ -219,8 +219,9 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
                     ingredient,
                     before,
                     after,
-                    "DECREASE",
-                    (reason != null ? reason : "Consumed for recipe requirements") + where
+                    String.format("Consumed -%s%s", requiredQty, where),
+                    null,
+                    null
             );
             return cost;
         } finally {
