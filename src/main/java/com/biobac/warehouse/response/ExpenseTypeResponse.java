@@ -5,7 +5,7 @@ import lombok.Setter;
 
 @Getter
 @Setter
-public class ExpenseTypeResponse {
+public class ExpenseTypeResponse extends AuditableResponse {
     private Long Id;
     private String name;
 }

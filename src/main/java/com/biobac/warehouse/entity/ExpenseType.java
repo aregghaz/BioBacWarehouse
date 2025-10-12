@@ -7,7 +7,7 @@ import lombok.Setter;
 @Entity
 @Getter
 @Setter
-public class ExpenseType {
+public class ExpenseType extends BaseAuditable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

@@ -12,7 +12,7 @@ import lombok.*;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class WarehouseType {
+public class WarehouseType extends BaseAuditable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
