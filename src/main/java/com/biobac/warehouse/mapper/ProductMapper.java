@@ -3,7 +3,6 @@ package com.biobac.warehouse.mapper;
 import com.biobac.warehouse.client.AttributeClient;
 import com.biobac.warehouse.client.CompanyClient;
 import com.biobac.warehouse.entity.AttributeTargetType;
-import com.biobac.warehouse.entity.InventoryItem;
 import com.biobac.warehouse.entity.Product;
 import com.biobac.warehouse.response.*;
 import org.springframework.beans.factory.annotation.Autowired;

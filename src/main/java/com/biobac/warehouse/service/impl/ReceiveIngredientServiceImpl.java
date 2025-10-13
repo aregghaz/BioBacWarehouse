@@ -340,11 +340,11 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
             BigDecimal proportionalExpense = BigDecimal.ZERO;
             if (receivedExpense.compareTo(BigDecimal.ZERO) > 0) {
                 proportionalExpense = ingredientTotal
-                        .divide(receivedExpense, 3, RoundingMode.HALF_UP)
+                        .divide(receivedExpense, 8, RoundingMode.HALF_UP)
                         .multiply(additionalExpense);
             }
             BigDecimal selfWorthPrice = basePrice.add(
-                    proportionalExpense.divide(BigDecimal.valueOf(100), 3, RoundingMode.HALF_UP)
+                    proportionalExpense.divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
             );
 
             if (r.getImportDate() != null) {
