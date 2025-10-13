@@ -2,11 +2,12 @@ package com.biobac.warehouse.controller;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.request.FilterCriteria;
+import com.biobac.warehouse.request.ReceiveIngredientFinalizeRequest;
 import com.biobac.warehouse.request.ReceiveIngredientUpdateWrapper;
 import com.biobac.warehouse.request.ReceiveIngredientWrapper;
 import com.biobac.warehouse.response.ApiResponse;
-import com.biobac.warehouse.response.ReceiveIngredientResponse;
 import com.biobac.warehouse.response.ReceiveIngredientGroupResponse;
+import com.biobac.warehouse.response.ReceiveIngredientResponse;
 import com.biobac.warehouse.service.ReceiveIngredientService;
 import com.biobac.warehouse.utils.ResponseUtil;
 import lombok.RequiredArgsConstructor;
@@ -45,10 +46,37 @@ public class ReceiveIngredientController {
         return ResponseUtil.success("Received ingredients retrieved successfully", result.getFirst(), result.getSecond());
     }
 
+    @PostMapping("/succeeded")
+    public ApiResponse<List<ReceiveIngredientResponse>> getSucceeded(@RequestParam(required = false, defaultValue = "0") Integer page,
+                                                                     @RequestParam(required = false, defaultValue = "10") Integer size,
+                                                                     @RequestParam(required = false, defaultValue = "id") String sortBy,
+                                                                     @RequestParam(required = false, defaultValue = "asc") String sortDir,
+                                                                     @RequestBody(required = false) Map<String, FilterCriteria> filters) {
+        Pair<List<ReceiveIngredientResponse>, PaginationMetadata> result = receiveIngredientService.getSucceeded(filters, page, size, sortBy, sortDir);
+        return ResponseUtil.success("Succeeded received ingredients retrieved successfully", result.getFirst(), result.getSecond());
+    }
+
+    @PostMapping("/pending")
+    public ApiResponse<List<ReceiveIngredientResponse>> getPending(@RequestParam(required = false, defaultValue = "0") Integer page,
+                                                                   @RequestParam(required = false, defaultValue = "10") Integer size,
+                                                                   @RequestParam(required = false, defaultValue = "id") String sortBy,
+                                                                   @RequestParam(required = false, defaultValue = "asc") String sortDir,
+                                                                   @RequestBody(required = false) Map<String, FilterCriteria> filters) {
+        Pair<List<ReceiveIngredientResponse>, PaginationMetadata> result = receiveIngredientService.getPending(filters, page, size, sortBy, sortDir);
+        return ResponseUtil.success("Pending received ingredients retrieved successfully", result.getFirst(), result.getSecond());
+    }
+
     @GetMapping("/{groupId}")
     public ApiResponse<ReceiveIngredientGroupResponse> getByGroupId(@PathVariable Long groupId) {
         ReceiveIngredientGroupResponse response = receiveIngredientService.getByGroupId(groupId);
         return ResponseUtil.success("Receive group retrieved successfully", response);
+    }
+
+
+    @PatchMapping("/finalize/{groupId}")
+    public ApiResponse<List<ReceiveIngredientResponse>> finalizeReceive(@PathVariable Long groupId, @RequestBody List<ReceiveIngredientFinalizeRequest> request) {
+        List<ReceiveIngredientResponse> response = receiveIngredientService.finalizeReceive(groupId, request);
+        return ResponseUtil.success("Ingredients receive finalized successfully", response);
     }
 
     @PutMapping("/{groupId}")

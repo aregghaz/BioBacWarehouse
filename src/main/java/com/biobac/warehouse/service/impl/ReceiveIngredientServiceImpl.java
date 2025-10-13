@@ -6,10 +6,7 @@ import com.biobac.warehouse.exception.InvalidDataException;
 import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.ReceiveIngredientMapper;
 import com.biobac.warehouse.repository.*;
-import com.biobac.warehouse.request.FilterCriteria;
-import com.biobac.warehouse.request.IngredientExpenseRequest;
-import com.biobac.warehouse.request.ReceiveIngredientRequest;
-import com.biobac.warehouse.request.ReceiveIngredientUpdateRequest;
+import com.biobac.warehouse.request.*;
 import com.biobac.warehouse.response.ReceiveExpenseResponse;
 import com.biobac.warehouse.response.ReceiveIngredientGroupResponse;
 import com.biobac.warehouse.response.ReceiveIngredientResponse;
@@ -73,18 +70,46 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
             responses.add(receiveIngredientMapper.toSingleResponse(receiveIngredient));
         }
 
-        if (expenseRequests != null) {
-            for (IngredientExpenseRequest expReq : expenseRequests) {
-                ExpenseType expenseType = expenseTypeRepository.findById(expReq.getExpenseTypeId())
-                        .orElseThrow(() -> new NotFoundException("Expense type not found"));
+        for (IngredientExpenseRequest expReq : expenseRequests) {
+            ExpenseType expenseType = expenseTypeRepository.findById(expReq.getExpenseTypeId())
+                    .orElseThrow(() -> new NotFoundException("Expense type not found"));
 
-                ReceiveExpense receiveExpense = new ReceiveExpense();
-                receiveExpense.setGroupId(groupId);
-                receiveExpense.setExpenseType(expenseType);
-                receiveExpense.setAmount(expReq.getAmount());
+            ReceiveExpense receiveExpense = new ReceiveExpense();
+            receiveExpense.setGroupId(groupId);
+            receiveExpense.setExpenseType(expenseType);
+            receiveExpense.setAmount(expReq.getAmount());
 
-                receiveExpenseRepository.save(receiveExpense);
-            }
+            receiveExpenseRepository.save(receiveExpense);
+        }
+
+        return responses;
+    }
+
+    @Override
+    @Transactional
+    public List<ReceiveIngredientResponse> finalizeReceive(Long groupId, List<ReceiveIngredientFinalizeRequest> request) {
+        List<ReceiveIngredient> existingGroupItems = receiveIngredientRepository.findByGroupId(groupId);
+        if (existingGroupItems == null || existingGroupItems.isEmpty()) {
+            throw new NotFoundException("Receive group not found");
+        }
+        if (request == null || request.isEmpty()) {
+            throw new InvalidDataException("Update request cannot be empty");
+        }
+
+        Map<Long, ReceiveIngredient> byId = existingGroupItems.stream()
+                .collect(Collectors.toMap(ReceiveIngredient::getId, it -> it));
+
+        List<ReceiveIngredientResponse> responses = new ArrayList<>();
+
+        for (ReceiveIngredientFinalizeRequest r : request) {
+            ReceiveIngredient current = byId.get(r.getId());
+            Ingredient ingredient = current.getIngredient();
+            current.setImportDate(r.getImportDate());
+            current.setManufacturingDate(r.getManufacturingDate());
+            current.setExpirationDate(current.getManufacturingDate().plusDays(ingredient.getExpiration()));
+            current.setSucceed(true);
+            ReceiveIngredient saved = receiveIngredientRepository.save(current);
+            responses.add(receiveIngredientMapper.toSingleResponse(saved));
         }
 
         return responses;
@@ -109,12 +134,12 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
         BigDecimal proportionalExpense = BigDecimal.ZERO;
         if (receivedExpense.compareTo(BigDecimal.ZERO) > 0) {
             proportionalExpense = ingredientTotal
-                    .divide(receivedExpense, 3, RoundingMode.HALF_UP)
+                    .divide(receivedExpense, 8, RoundingMode.HALF_EVEN)
                     .multiply(additionalExpense);
         }
 
         BigDecimal selfWorthPrice = request.getPrice().add(
-                proportionalExpense.divide(BigDecimal.valueOf(100), 3, RoundingMode.HALF_UP)
+                proportionalExpense.divide(BigDecimal.valueOf(totalCount), 2, RoundingMode.HALF_EVEN)
         );
 
         ReceiveIngredient receiveIngredient = new ReceiveIngredient();
@@ -123,41 +148,13 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
         receiveIngredient.setCompanyId(request.getCompanyId());
         receiveIngredient.setGroupId(groupId);
         receiveIngredient.setPrice(selfWorthPrice);
-        receiveIngredient.setImportDate(request.getImportDate());
-        receiveIngredient.setManufacturingDate(request.getManufacturingDate());
-        receiveIngredient.setExpirationDate(request.getManufacturingDate().plusDays(ingredient.getExpiration()));
+        receiveIngredient.setImportDate(null);
+        receiveIngredient.setManufacturingDate(null);
+        receiveIngredient.setExpirationDate(null);
         receiveIngredient.setQuantity(totalCount);
+        receiveIngredient.setSucceed(false);
 
-        double totalBefore = getOrCreateIngredientBalance(warehouse, ingredient).getBalance();
-
-        ReceiveIngredient saved = receiveIngredientRepository.save(receiveIngredient);
-
-        IngredientBalance balance = increaseBalanceForIngredient(warehouse, ingredient, totalCount);
-
-        IngredientDetail detail = new IngredientDetail();
-        detail.setPrice(selfWorthPrice);
-        detail.setImportDate(request.getImportDate());
-        detail.setManufacturingDate(request.getManufacturingDate());
-        detail.setExpirationDate(request.getManufacturingDate().plusDays(ingredient.getExpiration()));
-        detail.setQuantity(totalCount);
-        detail.setIngredientBalance(balance);
-        detail.setReceiveIngredient(saved);
-        ingredientDetailRepository.save(detail);
-        saved.setDetail(detail);
-
-        if (totalCount > 0) {
-            String warehouseName = saved.getWarehouse() != null ? saved.getWarehouse().getName() : "";
-            ingredientHistoryService.recordQuantityChange(
-                    ingredient,
-                    totalBefore,
-                    totalBefore + totalCount,
-                    String.format("Received +%s to warehouse %s", totalCount, warehouseName),
-                    selfWorthPrice,
-                    request.getCompanyId()
-            );
-        }
-
-        return saved;
+        return receiveIngredientRepository.save(receiveIngredient);
     }
 
 
@@ -175,6 +172,60 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
 
         Specification<ReceiveIngredient> spec = ReceiveIngredientSpecification.buildSpecification(filters)
                 .and((root, query, cb) -> root.join("ingredient", JoinType.LEFT).get("id").in(ingredientId));
+
+        Page<ReceiveIngredient> pageResult = receiveIngredientRepository.findAll(spec, pageable);
+
+        List<ReceiveIngredientResponse> content = pageResult.getContent()
+                .stream()
+                .map(receiveIngredientMapper::toSingleResponse)
+                .collect(Collectors.toList());
+
+        PaginationMetadata metadata = new PaginationMetadata(
+                pageResult.getNumber(),
+                pageResult.getSize(),
+                pageResult.getTotalElements(),
+                pageResult.getTotalPages(),
+                pageResult.isLast(),
+                filters,
+                sortDir,
+                sortBy,
+                "receiveIngredientTable"
+        );
+
+        return Pair.of(content, metadata);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Pair<List<ReceiveIngredientResponse>, PaginationMetadata> getSucceeded(Map<String, FilterCriteria> filters,
+                                                                                  Integer page,
+                                                                                  Integer size,
+                                                                                  String sortBy,
+                                                                                  String sortDir) {
+        return getBySucceed(true, filters, page, size, sortBy, sortDir);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Pair<List<ReceiveIngredientResponse>, PaginationMetadata> getPending(Map<String, FilterCriteria> filters,
+                                                                                Integer page,
+                                                                                Integer size,
+                                                                                String sortBy,
+                                                                                String sortDir) {
+        return getBySucceed(false, filters, page, size, sortBy, sortDir);
+    }
+
+    private Pair<List<ReceiveIngredientResponse>, PaginationMetadata> getBySucceed(boolean succeed,
+                                                                                   Map<String, FilterCriteria> filters,
+                                                                                   Integer page,
+                                                                                   Integer size,
+                                                                                   String sortBy,
+                                                                                   String sortDir) {
+        Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        Specification<ReceiveIngredient> spec = ReceiveIngredientSpecification.buildSpecification(filters)
+                .and((root, query, cb) -> cb.equal(root.get("succeed"), succeed));
 
         Page<ReceiveIngredient> pageResult = receiveIngredientRepository.findAll(spec, pageable);
 
@@ -316,6 +367,73 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
 
             Warehouse oldWarehouse = item.getWarehouse();
             Ingredient oldIngredient = item.getIngredient();
+
+            var newImportDate = r.getImportDate() != null ? r.getImportDate() : item.getImportDate();
+            var newManufacturingDate = r.getManufacturingDate() != null ? r.getManufacturingDate() : item.getManufacturingDate();
+
+            boolean readyToFinalize = !item.isSucceed() && newImportDate != null && newManufacturingDate != null;
+
+            if (!item.isSucceed() && !readyToFinalize) {
+                item.setIngredient(newIngredient);
+                item.setWarehouse(newWarehouse);
+                item.setQuantity(newQty);
+                item.setGroupId(groupId);
+                ReceiveIngredient saved = receiveIngredientRepository.save(item);
+                responses.add(receiveIngredientMapper.toSingleResponse(saved));
+                continue;
+            }
+
+            if (readyToFinalize) {
+                item.setIngredient(newIngredient);
+                item.setWarehouse(newWarehouse);
+                item.setQuantity(newQty);
+                item.setImportDate(newImportDate);
+                item.setManufacturingDate(newManufacturingDate);
+                if (newManufacturingDate != null && newIngredient != null && newIngredient.getExpiration() != null) {
+                    item.setExpirationDate(newManufacturingDate.plusDays(newIngredient.getExpiration()));
+                }
+
+                IngredientBalance balance = getOrCreateIngredientBalance(newWarehouse, newIngredient);
+                double before = balance.getBalance() != null ? balance.getBalance() : 0.0;
+                double after = before + (newQty != null ? newQty : 0.0);
+                balance.setBalance(after);
+                ingredientBalanceRepository.save(balance);
+
+                IngredientDetail detail = item.getDetail();
+                if (detail == null) {
+                    detail = new IngredientDetail();
+                    detail.setReceiveIngredient(item);
+                }
+                detail.setIngredientBalance(balance);
+                detail.setPrice(selfWorthPrice);
+                detail.setImportDate(item.getImportDate());
+                detail.setManufacturingDate(item.getManufacturingDate());
+                if (item.getManufacturingDate() != null && newIngredient != null && newIngredient.getExpiration() != null) {
+                    detail.setExpirationDate(item.getManufacturingDate().plusDays(newIngredient.getExpiration()));
+                }
+                detail.setQuantity(newQty);
+                ingredientDetailRepository.save(detail);
+                item.setDetail(detail);
+
+                if (newQty != null && newQty > 0) {
+                    String warehouseName = newWarehouse != null ? newWarehouse.getName() : "";
+                    ingredientHistoryService.recordQuantityChange(
+                            newIngredient,
+                            before,
+                            after,
+                            String.format("Received +%s to warehouse %s", newQty, warehouseName),
+                            selfWorthPrice,
+                            item.getCompanyId()
+                    );
+                }
+
+                item.setSucceed(true);
+                item.setGroupId(groupId);
+                ReceiveIngredient saved = receiveIngredientRepository.save(item);
+                responses.add(receiveIngredientMapper.toSingleResponse(saved));
+                continue;
+            }
+
             boolean locationChanged = (oldWarehouse == null || !Objects.equals(oldWarehouse.getId(), newWarehouse.getId()))
                     || (oldIngredient == null || !Objects.equals(oldIngredient.getId(), newIngredient.getId()));
 
@@ -434,7 +552,6 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
             throw new NotFoundException("Receive group not found");
         }
 
-        // Delete group-level expenses
         receiveExpenseRepository.deleteByGroupId(groupId);
 
         for (ReceiveIngredient item : items) {

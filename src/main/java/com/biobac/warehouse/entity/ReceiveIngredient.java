@@ -36,6 +36,8 @@ public class ReceiveIngredient extends BaseAuditable {
 
     private Long groupId;
 
+    private boolean succeed;
+
     private boolean deleted = false;
 
     @OneToOne(mappedBy = "receiveIngredient")
