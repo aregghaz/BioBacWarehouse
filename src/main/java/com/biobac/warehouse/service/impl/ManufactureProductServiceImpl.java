@@ -215,11 +215,21 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
             ingredientBalanceRepository.save(ingredientBalance);
 
             String where = " from warehouse " + defWh.getName();
+            String productInfo = "";
+            if (manufactureProduct != null && manufactureProduct.getProduct() != null) {
+                String prodName = manufactureProduct.getProduct().getName();
+                Long mId = manufactureProduct.getId();
+                productInfo = " for product " + (prodName != null ? prodName : "#" + (manufactureProduct.getProduct().getId() != null ? manufactureProduct.getProduct().getId() : "?"));
+                if (mId != null) {
+                    productInfo += " (manufacture #" + mId + ")";
+                }
+            }
+            String note = String.format("Consumed -%s%s%s", requiredQty, where, productInfo);
             ingredientHistoryService.recordQuantityChange(
                     ingredient,
                     before,
                     after,
-                    String.format("Consumed -%s%s", requiredQty, where),
+                    note,
                     null,
                     null
             );

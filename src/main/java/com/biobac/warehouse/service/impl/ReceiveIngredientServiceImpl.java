@@ -308,7 +308,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                 throw new InvalidDataException("Update request contains item that does not belong to the specified group");
             }
             BigDecimal price = r.getPrice() != null ? r.getPrice() : (current.getPrice() != null ? current.getPrice() : BigDecimal.ZERO);
-            Double qty = r.getQuantity() != null ? r.getQuantity() : (current.getQuantity() != null ? current.getQuantity() : 0.0);
+            double qty = r.getQuantity() != null ? r.getQuantity() : (current.getQuantity() != null ? current.getQuantity() : 0.0);
             receivedExpense = receivedExpense.add(price.multiply(BigDecimal.valueOf(qty)));
         }
 
@@ -332,7 +332,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                         .orElseThrow(() -> new NotFoundException("Warehouse not found"));
             }
 
-            Double oldQty = item.getQuantity() != null ? item.getQuantity() : 0.0;
+            double oldQty = item.getQuantity() != null ? item.getQuantity() : 0.0;
             Double newQty = r.getQuantity() != null ? r.getQuantity() : oldQty;
 
             BigDecimal basePrice = r.getPrice() != null ? r.getPrice() : (item.getPrice() != null ? item.getPrice() : BigDecimal.ZERO);
@@ -395,7 +395,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
 
                 IngredientBalance balance = getOrCreateIngredientBalance(newWarehouse, newIngredient);
                 double before = balance.getBalance() != null ? balance.getBalance() : 0.0;
-                double after = before + (newQty != null ? newQty : 0.0);
+                double after = before + newQty;
                 balance.setBalance(after);
                 ingredientBalanceRepository.save(balance);
 
@@ -415,8 +415,8 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                 ingredientDetailRepository.save(detail);
                 item.setDetail(detail);
 
-                if (newQty != null && newQty > 0) {
-                    String warehouseName = newWarehouse != null ? newWarehouse.getName() : "";
+                if (newQty > 0) {
+                    String warehouseName = newWarehouse.getName();
                     ingredientHistoryService.recordQuantityChange(
                             newIngredient,
                             before,
@@ -447,7 +447,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                             oldIngredient,
                             before,
                             before - oldQty,
-                            String.format("Moved -%s from warehouse %s", oldQty, oldWarehouse != null ? oldWarehouse.getName() : ""),
+                            String.format("Moved -%s from warehouse %s", oldQty, oldWarehouse.getName()),
                             item.getPrice(),
                             item.getCompanyId()
                     );
@@ -461,7 +461,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                         newIngredient,
                         beforeNew,
                         beforeNew + newQty,
-                        String.format("Moved +%s to warehouse %s", newQty, newWarehouse != null ? newWarehouse.getName() : ""),
+                        String.format("Moved +%s to warehouse %s", newQty, newWarehouse.getName()),
                         selfWorthPrice,
                         item.getCompanyId()
                 );
@@ -487,7 +487,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
             } else {
                 IngredientBalance balance = getOrCreateIngredientBalance(newWarehouse, newIngredient);
                 double before = balance.getBalance() != null ? balance.getBalance() : 0.0;
-                double delta = (newQty != null ? newQty : 0.0) - (oldQty != null ? oldQty : 0.0);
+                double delta = newQty - oldQty;
                 double after = before + delta;
                 balance.setBalance(after);
                 ingredientBalanceRepository.save(balance);
