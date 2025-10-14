@@ -62,8 +62,12 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
         manufactureProduct.setWarehouse(warehouse);
         manufactureProduct.setProduct(product);
         manufactureProduct.setManufacturingDate(request.getManufacturingDate());
-        manufactureProduct.setExpirationDate(request.getManufacturingDate().plusDays(product.getExpiration()));
         manufactureProduct.setQuantity(totalCount);
+        if (product.getExpiration() != null) {
+            manufactureProduct.setExpirationDate(request.getManufacturingDate().plusDays(product.getExpiration()));
+        } else {
+            manufactureProduct.setExpirationDate(null);
+        }
 
         double totalBefore = getOrCreateProductBalance(warehouse, product).getBalance();
 
@@ -83,7 +87,11 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
         ProductDetail productDetail = new ProductDetail();
         productDetail.setProductBalance(pbForDetail);
         productDetail.setManufacturingDate(request.getManufacturingDate());
-        productDetail.setExpirationDate(request.getManufacturingDate().plusDays(product.getExpiration()));
+        if (product.getExpiration() != null) {
+            productDetail.setExpirationDate(request.getManufacturingDate().plusDays(product.getExpiration()));
+        } else {
+            productDetail.setExpirationDate(null);
+        }
         productDetail.setQuantity(totalCount);
         if (totalCount > 0) {
             BigDecimal unitCost = totalCost.divide(BigDecimal.valueOf(totalCount), 2, RoundingMode.HALF_UP);
@@ -226,6 +234,7 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
             }
             String note = String.format("Consumed -%s%s%s", requiredQty, where, productInfo);
             ingredientHistoryService.recordQuantityChange(
+                    manufactureProduct.getManufacturingDate().atStartOfDay(),
                     ingredient,
                     before,
                     after,

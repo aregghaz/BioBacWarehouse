@@ -5,6 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "ingredient_history")
@@ -32,4 +33,6 @@ public class IngredientHistory extends BaseAuditable {
     private BigDecimal lastPrice;
 
     private Long userId;
+
+    private LocalDateTime timestamp;
 }

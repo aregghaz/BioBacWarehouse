@@ -17,5 +17,5 @@ public class IngredientHistoryResponse {
     private Double quantityResult;
     private String username;
     private String notes;
-    private LocalDateTime createdAt;
+    private LocalDateTime timestamp;
 }

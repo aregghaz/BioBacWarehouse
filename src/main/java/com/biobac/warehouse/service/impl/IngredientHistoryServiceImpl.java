@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -36,8 +37,8 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
 
     @Override
     @Transactional
-    public IngredientHistoryResponse recordQuantityChange(Ingredient ingredient, Double quantityBefore,
-                                                     Double quantityAfter, String notes, BigDecimal lastPrice, Long lastCompanyId) {
+    public IngredientHistoryResponse recordQuantityChange(LocalDateTime timestamp, Ingredient ingredient, Double quantityBefore,
+                                                          Double quantityAfter, String notes, BigDecimal lastPrice, Long lastCompanyId) {
         IngredientHistory history = new IngredientHistory();
         history.setIngredient(ingredient);
         boolean increase = (quantityAfter != null ? quantityAfter : 0.0) - (quantityBefore != null ? quantityBefore : 0.0) > 0;
@@ -49,6 +50,7 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
         history.setNotes(notes);
         history.setCompanyId(lastCompanyId);
         history.setLastPrice(lastPrice);
+        history.setTimestamp(timestamp);
 
         IngredientHistory savedHistory = ingredientHistoryRepository.save(history);
         return ingredientHistoryMapper.toResponse(savedHistory);
@@ -132,22 +134,45 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
 
     @Override
     @Transactional(readOnly = true)
-    public Double getTotalForIngredient(Long ingredientId, Map<String, FilterCriteria> filters) {
-        boolean hasDateFilter = filters != null && filters.containsKey("createdAt");
-        if (hasDateFilter) {
-            Specification<IngredientHistory> spec = IngredientHistorySpecification.buildSpecification(filters)
-                    .and((root, query, cb) -> cb.equal(root.join("ingredient", JoinType.LEFT).get("id"), ingredientId));
-            Page<IngredientHistory> page = ingredientHistoryRepository.findAll(
-                    spec,
-                    PageRequest.of(0, 1, Sort.by("createdAt").descending().and(Sort.by("id").descending()))
-            );
-            if (!page.isEmpty()) {
-                IngredientHistory last = page.getContent().get(0);
-                return last.getQuantityResult() != null ? last.getQuantityResult() : 0.0;
-            }
-            return 0.0;
-        }
+    public Double getTotalForIngredient(Long ingredientId) {
         Double total = ingredientBalanceRepository.sumBalanceByIngredientId(ingredientId);
         return total != null ? total : 0.0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Double getInitialForIngredient(Long ingredientId, Map<String, FilterCriteria> filters) {
+        Specification<IngredientHistory> spec = (root, query, cb) -> cb.equal(root.join("ingredient", JoinType.LEFT).get("id"), ingredientId);
+        if (filters != null && !filters.isEmpty()) {
+            spec = spec.and(IngredientHistorySpecification.buildSpecification(filters));
+        }
+
+        List<IngredientHistory> list = ingredientHistoryRepository.findAll(
+                spec, Sort.by("timestamp").ascending().and(Sort.by("id").ascending())
+        );
+        if (!list.isEmpty()) {
+            IngredientHistory first = list.get(0);
+            return first.getQuantityResult() != null ? first.getQuantityResult() : 0.0;
+        }
+        return 0.0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Double getEventualForIngredient(Long ingredientId, Map<String, FilterCriteria> filters) {
+        Specification<IngredientHistory> spec = (root, query, cb) -> cb.equal(root.join("ingredient", JoinType.LEFT).get("id"), ingredientId);
+        if (filters != null && !filters.isEmpty()) {
+            spec = spec.and(IngredientHistorySpecification.buildSpecification(filters));
+        }
+
+        List<IngredientHistory> list = ingredientHistoryRepository.findAll(
+                spec,
+                Sort.by("timestamp").descending().and(Sort.by("id").descending())
+        );
+        if (!list.isEmpty()) {
+            IngredientHistory last = list.get(0);
+            return last.getQuantityResult() != null ? last.getQuantityResult() : 0.0;
+        }
+        return 0.0;
     }
 }

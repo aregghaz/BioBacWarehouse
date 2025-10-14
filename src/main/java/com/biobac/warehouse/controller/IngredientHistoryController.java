@@ -29,15 +29,17 @@ public class IngredientHistoryController {
     public ApiResponse<List<IngredientHistoryResponse>> getHistoryForIngredient(@PathVariable Long ingredientId,
                                                                                 @RequestParam(required = false, defaultValue = "0") Integer page,
                                                                                 @RequestParam(required = false, defaultValue = "10") Integer size,
-                                                                                @RequestParam(required = false, defaultValue = "id") String sortBy,
-                                                                                @RequestParam(required = false, defaultValue = "asc") String sortDir,
+                                                                                @RequestParam(required = false, defaultValue = "timestamp") String sortBy,
+                                                                                @RequestParam(required = false, defaultValue = "desc") String sortDir,
                                                                                 @RequestBody Map<String, FilterCriteria> filters) {
         Pair<List<IngredientHistoryResponse>, PaginationMetadata> result = ingredientHistoryService.getHistoryForIngredient(ingredientId, filters, page, size, sortBy, sortDir);
-        Double total = ingredientHistoryService.getTotalForIngredient(ingredientId, filters);
+        Double total = ingredientHistoryService.getTotalForIngredient(ingredientId);
+        Double initial = ingredientHistoryService.getInitialForIngredient(ingredientId, filters);
+        Double eventual = ingredientHistoryService.getEventualForIngredient(ingredientId, filters);
         Ingredient ingredient = ingredientRepository.findById(ingredientId)
                 .orElseThrow(() -> new NotFoundException("Ingredient not found"));
         String unitName = ingredient.getUnit().getName();
-        HistoryMetadata metadata = new HistoryMetadata(result.getSecond(), total, unitName);
+        HistoryMetadata metadata = new HistoryMetadata(result.getSecond(), total, initial, eventual, unitName);
         return ResponseUtil.success("Ingredient history retrieved successfully", result.getFirst(), metadata);
     }
 

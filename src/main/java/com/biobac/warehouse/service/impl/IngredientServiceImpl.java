@@ -25,6 +25,7 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -311,7 +312,7 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
         ingredient.setDeleted(true);
         ingredientRepository.save(ingredient);
 
-        ingredientHistoryService.recordQuantityChange(ingredient, totalBefore, 0.0, "ingredient deleted", null, null);
+        ingredientHistoryService.recordQuantityChange(LocalDateTime.now() ,ingredient, totalBefore, 0.0, "ingredient deleted", null, null);
     }
 
     @Override

@@ -103,10 +103,55 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
 
         for (ReceiveIngredientFinalizeRequest r : request) {
             ReceiveIngredient current = byId.get(r.getId());
+            if (current == null) {
+                throw new InvalidDataException("Finalize request contains item that does not belong to the specified group");
+            }
+
             Ingredient ingredient = current.getIngredient();
+            Warehouse warehouse = current.getWarehouse();
+            double qty = current.getQuantity() != null ? current.getQuantity() : 0.0;
+            BigDecimal selfWorthPrice = current.getPrice() != null ? current.getPrice() : BigDecimal.ZERO;
+
             current.setImportDate(r.getImportDate());
             current.setManufacturingDate(r.getManufacturingDate());
-            current.setExpirationDate(current.getManufacturingDate().plusDays(ingredient.getExpiration()));
+            if (current.getManufacturingDate() != null && ingredient != null && ingredient.getExpiration() != null) {
+                current.setExpirationDate(current.getManufacturingDate().plusDays(ingredient.getExpiration()));
+            }
+
+            IngredientBalance balance = getOrCreateIngredientBalance(warehouse, ingredient);
+            double before = balance.getBalance() != null ? balance.getBalance() : 0.0;
+            double after = before + qty;
+            balance.setBalance(after);
+            ingredientBalanceRepository.save(balance);
+
+            IngredientDetail detail = current.getDetail();
+            if (detail == null) {
+                detail = new IngredientDetail();
+                detail.setReceiveIngredient(current);
+            }
+            detail.setIngredientBalance(balance);
+            detail.setPrice(selfWorthPrice);
+            detail.setImportDate(current.getImportDate());
+            detail.setManufacturingDate(current.getManufacturingDate());
+            if (current.getManufacturingDate() != null && ingredient != null && ingredient.getExpiration() != null) {
+                detail.setExpirationDate(current.getManufacturingDate().plusDays(ingredient.getExpiration()));
+            }
+            detail.setQuantity(qty);
+            ingredientDetailRepository.save(detail);
+            current.setDetail(detail);
+
+            if (qty > 0) {
+                ingredientHistoryService.recordQuantityChange(
+                        current.getImportDate().atStartOfDay(),
+                        ingredient,
+                        before,
+                        after,
+                        String.format("Received +%s to warehouse %s", qty, warehouse.getName()),
+                        selfWorthPrice,
+                        current.getCompanyId()
+                );
+            }
+
             current.setSucceed(true);
             ReceiveIngredient saved = receiveIngredientRepository.save(current);
             responses.add(receiveIngredientMapper.toSingleResponse(saved));
@@ -418,6 +463,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                 if (newQty > 0) {
                     String warehouseName = newWarehouse.getName();
                     ingredientHistoryService.recordQuantityChange(
+                            item.getImportDate().atStartOfDay(),
                             newIngredient,
                             before,
                             after,
@@ -444,6 +490,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                     oldBalance.setBalance(before - oldQty);
                     ingredientBalanceRepository.save(oldBalance);
                     ingredientHistoryService.recordQuantityChange(
+                            item.getImportDate().atStartOfDay(),
                             oldIngredient,
                             before,
                             before - oldQty,
@@ -458,6 +505,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                 newBalance.setBalance(beforeNew + newQty);
                 ingredientBalanceRepository.save(newBalance);
                 ingredientHistoryService.recordQuantityChange(
+                        item.getImportDate().atStartOfDay(),
                         newIngredient,
                         beforeNew,
                         beforeNew + newQty,
@@ -493,6 +541,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                 ingredientBalanceRepository.save(balance);
                 if (delta != 0.0) {
                     ingredientHistoryService.recordQuantityChange(
+                            item.getImportDate().atStartOfDay(),
                             newIngredient,
                             before,
                             after,
