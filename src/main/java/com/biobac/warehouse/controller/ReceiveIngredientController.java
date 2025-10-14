@@ -51,7 +51,7 @@ public class ReceiveIngredientController {
                                                                      @RequestParam(required = false, defaultValue = "10") Integer size,
                                                                      @RequestParam(required = false, defaultValue = "id") String sortBy,
                                                                      @RequestParam(required = false, defaultValue = "asc") String sortDir,
-                                                                     @RequestBody(required = false) Map<String, FilterCriteria> filters) {
+                                                                     @RequestBody Map<String, FilterCriteria> filters) {
         Pair<List<ReceiveIngredientResponse>, PaginationMetadata> result = receiveIngredientService.getSucceeded(filters, page, size, sortBy, sortDir);
         return ResponseUtil.success("Succeeded received ingredients retrieved successfully", result.getFirst(), result.getSecond());
     }
@@ -61,7 +61,7 @@ public class ReceiveIngredientController {
                                                                    @RequestParam(required = false, defaultValue = "10") Integer size,
                                                                    @RequestParam(required = false, defaultValue = "id") String sortBy,
                                                                    @RequestParam(required = false, defaultValue = "asc") String sortDir,
-                                                                   @RequestBody(required = false) Map<String, FilterCriteria> filters) {
+                                                                   @RequestBody Map<String, FilterCriteria> filters) {
         Pair<List<ReceiveIngredientResponse>, PaginationMetadata> result = receiveIngredientService.getPending(filters, page, size, sortBy, sortDir);
         return ResponseUtil.success("Pending received ingredients retrieved successfully", result.getFirst(), result.getSecond());
     }

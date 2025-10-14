@@ -66,6 +66,9 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
         for (ReceiveIngredientRequest req : requests) {
             ReceiveIngredient receiveIngredient =
                     createSingleReceiveItem(req, additionalExpense, receivedExpense, groupId);
+            Ingredient currentIngredient = receiveIngredient.getIngredient();
+            currentIngredient.setPrice(req.getPrice());
+            ingredientRepository.save(currentIngredient);
 
             responses.add(receiveIngredientMapper.toSingleResponse(receiveIngredient));
         }
@@ -147,7 +150,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                         before,
                         after,
                         String.format("Received +%s to warehouse %s", qty, warehouse.getName()),
-                        selfWorthPrice,
+                        ingredient.getPrice(),
                         current.getCompanyId()
                 );
             }
@@ -352,6 +355,9 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
             if (current == null) {
                 throw new InvalidDataException("Update request contains item that does not belong to the specified group");
             }
+            if (current.isSucceed()) {
+                throw new InvalidDataException("Only pending receive ingredients can be updated");
+            }
             BigDecimal price = r.getPrice() != null ? r.getPrice() : (current.getPrice() != null ? current.getPrice() : BigDecimal.ZERO);
             double qty = r.getQuantity() != null ? r.getQuantity() : (current.getQuantity() != null ? current.getQuantity() : 0.0);
             receivedExpense = receivedExpense.add(price.multiply(BigDecimal.valueOf(qty)));
@@ -365,6 +371,9 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
             }
 
             ReceiveIngredient item = byId.get(r.getId());
+            if (item.isSucceed()) {
+                throw new InvalidDataException("Only pending receive ingredients can be updated");
+            }
 
             Ingredient newIngredient = item.getIngredient();
             if (r.getIngredientId() != null && !Objects.equals(r.getIngredientId(), newIngredient != null ? newIngredient.getId() : null)) {
@@ -378,7 +387,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
             }
 
             double oldQty = item.getQuantity() != null ? item.getQuantity() : 0.0;
-            Double newQty = r.getQuantity() != null ? r.getQuantity() : oldQty;
+            double newQty = r.getQuantity() != null ? r.getQuantity() : oldQty;
 
             BigDecimal basePrice = r.getPrice() != null ? r.getPrice() : (item.getPrice() != null ? item.getPrice() : BigDecimal.ZERO);
             BigDecimal ingredientTotal = basePrice.multiply(BigDecimal.valueOf(newQty));
@@ -409,171 +418,12 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
             }
 
             item.setPrice(selfWorthPrice);
-
-            Warehouse oldWarehouse = item.getWarehouse();
-            Ingredient oldIngredient = item.getIngredient();
-
-            var newImportDate = r.getImportDate() != null ? r.getImportDate() : item.getImportDate();
-            var newManufacturingDate = r.getManufacturingDate() != null ? r.getManufacturingDate() : item.getManufacturingDate();
-
-            boolean readyToFinalize = !item.isSucceed() && newImportDate != null && newManufacturingDate != null;
-
-            if (!item.isSucceed() && !readyToFinalize) {
-                item.setIngredient(newIngredient);
-                item.setWarehouse(newWarehouse);
-                item.setQuantity(newQty);
-                item.setGroupId(groupId);
-                ReceiveIngredient saved = receiveIngredientRepository.save(item);
-                responses.add(receiveIngredientMapper.toSingleResponse(saved));
-                continue;
-            }
-
-            if (readyToFinalize) {
-                item.setIngredient(newIngredient);
-                item.setWarehouse(newWarehouse);
-                item.setQuantity(newQty);
-                item.setImportDate(newImportDate);
-                item.setManufacturingDate(newManufacturingDate);
-                if (newManufacturingDate != null && newIngredient != null && newIngredient.getExpiration() != null) {
-                    item.setExpirationDate(newManufacturingDate.plusDays(newIngredient.getExpiration()));
-                }
-
-                IngredientBalance balance = getOrCreateIngredientBalance(newWarehouse, newIngredient);
-                double before = balance.getBalance() != null ? balance.getBalance() : 0.0;
-                double after = before + newQty;
-                balance.setBalance(after);
-                ingredientBalanceRepository.save(balance);
-
-                IngredientDetail detail = item.getDetail();
-                if (detail == null) {
-                    detail = new IngredientDetail();
-                    detail.setReceiveIngredient(item);
-                }
-                detail.setIngredientBalance(balance);
-                detail.setPrice(selfWorthPrice);
-                detail.setImportDate(item.getImportDate());
-                detail.setManufacturingDate(item.getManufacturingDate());
-                if (item.getManufacturingDate() != null && newIngredient != null && newIngredient.getExpiration() != null) {
-                    detail.setExpirationDate(item.getManufacturingDate().plusDays(newIngredient.getExpiration()));
-                }
-                detail.setQuantity(newQty);
-                ingredientDetailRepository.save(detail);
-                item.setDetail(detail);
-
-                if (newQty > 0) {
-                    String warehouseName = newWarehouse.getName();
-                    ingredientHistoryService.recordQuantityChange(
-                            item.getImportDate().atStartOfDay(),
-                            newIngredient,
-                            before,
-                            after,
-                            String.format("Received +%s to warehouse %s", newQty, warehouseName),
-                            selfWorthPrice,
-                            item.getCompanyId()
-                    );
-                }
-
-                item.setSucceed(true);
-                item.setGroupId(groupId);
-                ReceiveIngredient saved = receiveIngredientRepository.save(item);
-                responses.add(receiveIngredientMapper.toSingleResponse(saved));
-                continue;
-            }
-
-            boolean locationChanged = (oldWarehouse == null || !Objects.equals(oldWarehouse.getId(), newWarehouse.getId()))
-                    || (oldIngredient == null || !Objects.equals(oldIngredient.getId(), newIngredient.getId()));
-
-            if (locationChanged) {
-                if (oldWarehouse != null && oldIngredient != null) {
-                    IngredientBalance oldBalance = getOrCreateIngredientBalance(oldWarehouse, oldIngredient);
-                    double before = oldBalance.getBalance() != null ? oldBalance.getBalance() : 0.0;
-                    oldBalance.setBalance(before - oldQty);
-                    ingredientBalanceRepository.save(oldBalance);
-                    ingredientHistoryService.recordQuantityChange(
-                            item.getImportDate().atStartOfDay(),
-                            oldIngredient,
-                            before,
-                            before - oldQty,
-                            String.format("Moved -%s from warehouse %s", oldQty, oldWarehouse.getName()),
-                            item.getPrice(),
-                            item.getCompanyId()
-                    );
-                }
-
-                IngredientBalance newBalance = getOrCreateIngredientBalance(newWarehouse, newIngredient);
-                double beforeNew = newBalance.getBalance() != null ? newBalance.getBalance() : 0.0;
-                newBalance.setBalance(beforeNew + newQty);
-                ingredientBalanceRepository.save(newBalance);
-                ingredientHistoryService.recordQuantityChange(
-                        item.getImportDate().atStartOfDay(),
-                        newIngredient,
-                        beforeNew,
-                        beforeNew + newQty,
-                        String.format("Moved +%s to warehouse %s", newQty, newWarehouse.getName()),
-                        selfWorthPrice,
-                        item.getCompanyId()
-                );
-
-                IngredientDetail detail = item.getDetail();
-                if (detail == null) {
-                    detail = new IngredientDetail();
-                    detail.setReceiveIngredient(item);
-                }
-                detail.setIngredientBalance(newBalance);
-                detail.setPrice(selfWorthPrice);
-                detail.setImportDate(item.getImportDate());
-                detail.setManufacturingDate(item.getManufacturingDate());
-                if (item.getManufacturingDate() != null && effectiveIngredient != null && effectiveIngredient.getExpiration() != null) {
-                    detail.setExpirationDate(item.getManufacturingDate().plusDays(effectiveIngredient.getExpiration()));
-                }
-                detail.setQuantity(newQty);
-                ingredientDetailRepository.save(detail);
-                item.setDetail(detail);
-                item.setIngredient(newIngredient);
-                item.setWarehouse(newWarehouse);
-                item.setQuantity(newQty);
-            } else {
-                IngredientBalance balance = getOrCreateIngredientBalance(newWarehouse, newIngredient);
-                double before = balance.getBalance() != null ? balance.getBalance() : 0.0;
-                double delta = newQty - oldQty;
-                double after = before + delta;
-                balance.setBalance(after);
-                ingredientBalanceRepository.save(balance);
-                if (delta != 0.0) {
-                    ingredientHistoryService.recordQuantityChange(
-                            item.getImportDate().atStartOfDay(),
-                            newIngredient,
-                            before,
-                            after,
-                            String.format("Adjusted in warehouse %s: %s%s", newWarehouse.getName(), (delta > 0 ? "+" : "-"), Math.abs(delta)),
-                            selfWorthPrice,
-                            item.getCompanyId()
-                    );
-                }
-
-                IngredientDetail detail = item.getDetail();
-                if (detail == null) {
-                    detail = new IngredientDetail();
-                    detail.setReceiveIngredient(item);
-                    detail.setIngredientBalance(balance);
-                } else {
-                    detail.setIngredientBalance(balance);
-                }
-                detail.setPrice(selfWorthPrice);
-                detail.setImportDate(item.getImportDate());
-                detail.setManufacturingDate(item.getManufacturingDate());
-                if (item.getManufacturingDate() != null && effectiveIngredient != null && effectiveIngredient.getExpiration() != null) {
-                    detail.setExpirationDate(item.getManufacturingDate().plusDays(effectiveIngredient.getExpiration()));
-                }
-                detail.setQuantity(newQty);
-                ingredientDetailRepository.save(detail);
-                item.setQuantity(newQty);
-            }
-
+            item.setIngredient(newIngredient);
+            item.setWarehouse(newWarehouse);
+            item.setQuantity(newQty);
             item.setGroupId(groupId);
 
             ReceiveIngredient saved = receiveIngredientRepository.save(item);
-
             responses.add(receiveIngredientMapper.toSingleResponse(saved));
         }
 
@@ -601,24 +451,18 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
             throw new NotFoundException("Receive group not found");
         }
 
+        boolean hasSucceeded = items.stream().anyMatch(ReceiveIngredient::isSucceed);
+        if (hasSucceeded) {
+            throw new InvalidDataException("Only pending receive ingredients can be deleted");
+        }
+
         receiveExpenseRepository.deleteByGroupId(groupId);
 
         for (ReceiveIngredient item : items) {
             item.setDeleted(true);
-
-            IngredientDetail detail = item.getDetail();
-            if (detail != null) {
-                IngredientBalance balance = detail.getIngredientBalance();
-                balance.setBalance(balance.getBalance() - detail.getQuantity());
-                ingredientBalanceRepository.save(balance);
-                ingredientDetailRepository.delete(detail);
-                item.setDetail(null);
-            }
-
             receiveIngredientRepository.save(item);
         }
     }
-
 
     private IngredientBalance getOrCreateIngredientBalance(Warehouse warehouse, Ingredient ingredient) {
         if (warehouse == null || warehouse.getId() == null) {
