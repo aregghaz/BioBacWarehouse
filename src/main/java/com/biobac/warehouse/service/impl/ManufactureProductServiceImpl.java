@@ -222,17 +222,17 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
             ingredientBalance.setBalance(after);
             ingredientBalanceRepository.save(ingredientBalance);
 
-            String where = " from warehouse " + defWh.getName();
+            String where = " со склада " + defWh.getName();
             String productInfo = "";
             if (manufactureProduct != null && manufactureProduct.getProduct() != null) {
                 String prodName = manufactureProduct.getProduct().getName();
                 Long mId = manufactureProduct.getId();
-                productInfo = " for product " + (prodName != null ? prodName : "#" + (manufactureProduct.getProduct().getId() != null ? manufactureProduct.getProduct().getId() : "?"));
+                productInfo = " для продукта " + (prodName != null ? prodName : "#" + (manufactureProduct.getProduct().getId() != null ? manufactureProduct.getProduct().getId() : "?"));
                 if (mId != null) {
-                    productInfo += " (manufacture #" + mId + ")";
+                    productInfo += " (производство #" + mId + ")";
                 }
             }
-            String note = String.format("Consumed -%s%s%s", requiredQty, where, productInfo);
+            String note = String.format("Израсходовано -%s%s%s", requiredQty, where, productInfo);
             ingredientHistoryService.recordQuantityChange(
                     manufactureProduct.getManufacturingDate().atStartOfDay(),
                     ingredient,

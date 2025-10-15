@@ -149,7 +149,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                         ingredient,
                         before,
                         after,
-                        String.format("Received +%s to warehouse %s", qty, warehouse.getName()),
+                        String.format("Получено +%s на склад %s", qty, warehouse.getName()),
                         ingredient.getPrice(),
                         current.getCompanyId()
                 );
