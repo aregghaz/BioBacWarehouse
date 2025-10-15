@@ -34,9 +34,12 @@ public class ReceiveIngredient extends BaseAuditable {
 
     private Double quantity;
 
+    private Double receivedQuantity;
+
     private Long groupId;
 
-    private boolean succeed;
+    @ManyToOne
+    private ReceiveIngredientStatus status;
 
     private boolean deleted = false;
 

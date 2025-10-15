@@ -5,6 +5,7 @@ import jakarta.validation.constraints.PastOrPresent;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Getter
@@ -19,4 +20,9 @@ public class ReceiveIngredientFinalizeRequest {
     @NotNull(message = "Manufacturing date is required")
     @PastOrPresent(message = "Manufacturing date cannot be in the future")
     private LocalDate manufacturingDate;
+
+    @NotNull(message = "Received quantity is required")
+    private Double receivedQuantity;
+
+    private BigDecimal confirmedPrice;
 }

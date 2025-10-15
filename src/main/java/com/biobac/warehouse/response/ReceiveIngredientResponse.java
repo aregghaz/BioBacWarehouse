@@ -12,6 +12,7 @@ import java.util.List;
 public class ReceiveIngredientResponse extends AuditableResponse {
     private Long id;
     private Double quantity;
+    private Double receivedQuantity;
     private String warehouseName;
     private Long warehouseId;
     private String ingredientName;
@@ -25,6 +26,7 @@ public class ReceiveIngredientResponse extends AuditableResponse {
     private String companyName;
     private BigDecimal price;
     private Long groupId;
+    private String status;
     private boolean succeed;
     private boolean deleted;
 }

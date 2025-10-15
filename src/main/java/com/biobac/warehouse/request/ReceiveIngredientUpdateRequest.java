@@ -17,4 +17,5 @@ public class ReceiveIngredientUpdateRequest {
     private LocalDate importDate;
     private LocalDate manufacturingDate;
     private Double quantity;
+    private Long statusId;
 }

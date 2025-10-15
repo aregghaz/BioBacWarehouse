@@ -1,13 +1,7 @@
 package com.biobac.warehouse.seeder;
 
-import com.biobac.warehouse.entity.AssetCategory;
-import com.biobac.warehouse.entity.AssetStatus;
-import com.biobac.warehouse.entity.DepreciationMethod;
-import com.biobac.warehouse.entity.WarehouseType;
-import com.biobac.warehouse.repository.AssetCategoryRepository;
-import com.biobac.warehouse.repository.AssetStatusRepository;
-import com.biobac.warehouse.repository.DepreciationMethodRepository;
-import com.biobac.warehouse.repository.WarehouseTypeRepository;
+import com.biobac.warehouse.entity.*;
+import com.biobac.warehouse.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -21,6 +15,7 @@ public class DatabaseSeeder implements CommandLineRunner {
     private final AssetCategoryRepository assetCategoryRepository;
     private final AssetStatusRepository assetStatusRepository;
     private final DepreciationMethodRepository depreciationMethodRepository;
+    private final ReceiveIngredientStatusRepository receiveIngredientStatusRepository;
 
     @Override
     public void run(String... args) throws Exception {
@@ -62,6 +57,17 @@ public class DatabaseSeeder implements CommandLineRunner {
                     DepreciationMethod.builder().name("Ручной ввод").build()
             );
             depreciationMethodRepository.saveAll(methods);
+        }
+
+        if (receiveIngredientStatusRepository.count() == 0) {
+            List<ReceiveIngredientStatus> statuses = List.of(
+                    ReceiveIngredientStatus.builder().name("завершенные").build(),
+                    ReceiveIngredientStatus.builder().name("не доставлено").build(),
+                    ReceiveIngredientStatus.builder().name("цена не совпадает").build(),
+                    ReceiveIngredientStatus.builder().name("количество не совпадает").build(),
+                    ReceiveIngredientStatus.builder().name("количество и цена не совпадает").build()
+            );
+            receiveIngredientStatusRepository.saveAll(statuses);
         }
     }
 }

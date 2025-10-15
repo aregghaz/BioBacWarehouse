@@ -26,6 +26,7 @@ public abstract class ReceiveIngredientMapper {
     @Mapping(source = "ingredient.name", target = "ingredientName")
     @Mapping(source = "ingredient.id", target = "ingredientId")
     @Mapping(source = "ingredient.unit.name", target = "unitName")
+    @Mapping(source = "status.name", target = "status")
     public abstract ReceiveIngredientResponse toSingleResponse(ReceiveIngredient item);
 
     @AfterMapping
@@ -77,5 +78,15 @@ public abstract class ReceiveIngredientMapper {
             list.add(c);
         }
         resp.setUnitTypeConfigs(list);
+    }
+
+    @AfterMapping
+    protected void afterSetSucceed(ReceiveIngredient item, @MappingTarget ReceiveIngredientResponse resp) {
+        if (item == null || resp == null) return;
+        if (item.getStatus() != null && item.getStatus().getName() != null) {
+            resp.setSucceed("завершенные".equals(item.getStatus().getName()));
+        } else {
+            resp.setSucceed(false);
+        }
     }
 }
