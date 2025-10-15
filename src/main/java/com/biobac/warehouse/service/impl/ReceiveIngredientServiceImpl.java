@@ -10,6 +10,7 @@ import com.biobac.warehouse.request.*;
 import com.biobac.warehouse.response.ReceiveExpenseResponse;
 import com.biobac.warehouse.response.ReceiveIngredientGroupResponse;
 import com.biobac.warehouse.response.ReceiveIngredientResponse;
+import com.biobac.warehouse.response.ReceiveIngredientsPriceCalcResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.ReceiveIngredientService;
 import com.biobac.warehouse.utils.SecurityUtil;
@@ -156,6 +157,19 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
 
         List<ReceiveIngredientResponse> responses = new ArrayList<>();
 
+        List<ReceiveExpense> groupExpenses = receiveExpenseRepository.findByGroupId(groupId);
+        BigDecimal additionalExpense = (groupExpenses == null ? new java.util.ArrayList<ReceiveExpense>() : groupExpenses).stream()
+                .map(ReceiveExpense::getAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal totalBase = existingGroupItems.stream()
+                .map(it -> {
+                    BigDecimal p = it.getPrice() != null ? it.getPrice() : BigDecimal.ZERO;
+                    double q = it.getQuantity() != null ? it.getQuantity() : 0.0;
+                    return p.multiply(BigDecimal.valueOf(q));
+                })
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
         for (ReceiveIngredientFinalizeRequest r : request) {
             ReceiveIngredient current = byId.get(r.getId());
             if (current == null) {
@@ -191,7 +205,19 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
             balance.setBalance(after);
             ingredientBalanceRepository.save(balance);
 
-            BigDecimal selfWorthPrice = current.getPrice() != null ? current.getPrice() : BigDecimal.ZERO;
+            BigDecimal basePrice = current.getPrice() != null ? current.getPrice() : BigDecimal.ZERO;
+            BigDecimal plannedQtyBD = BigDecimal.valueOf(current.getQuantity() != null ? current.getQuantity() : 0.0);
+            BigDecimal itemBaseAmount = basePrice.multiply(plannedQtyBD);
+            BigDecimal additionalPerUnit = BigDecimal.ZERO;
+            if (additionalExpense.compareTo(BigDecimal.ZERO) > 0
+                    && totalBase.compareTo(BigDecimal.ZERO) > 0
+                    && plannedQtyBD.compareTo(BigDecimal.ZERO) > 0) {
+                additionalPerUnit = itemBaseAmount
+                        .divide(totalBase, 8, RoundingMode.HALF_EVEN)
+                        .multiply(additionalExpense)
+                        .divide(plannedQtyBD, 2, RoundingMode.HALF_EVEN);
+            }
+            BigDecimal detailPrice = basePrice.add(additionalPerUnit);
             IngredientDetail detail = current.getDetail();
             if (detail == null) {
                 detail = new IngredientDetail();
@@ -199,7 +225,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                 detail.setQuantity(0.0);
             }
             detail.setIngredientBalance(balance);
-            detail.setPrice(selfWorthPrice);
+            detail.setPrice(detailPrice);
             detail.setImportDate(current.getImportDate());
             detail.setManufacturingDate(current.getManufacturingDate());
             if (current.getManufacturingDate() != null && ingredient != null && ingredient.getExpiration() != null) {
@@ -244,31 +270,19 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
 
         double totalCount = request.getQuantity();
 
-        BigDecimal ingredientTotal = request.getPrice().multiply(BigDecimal.valueOf(totalCount));
-
-        BigDecimal proportionalExpense = BigDecimal.ZERO;
-        if (receivedExpense.compareTo(BigDecimal.ZERO) > 0) {
-            proportionalExpense = ingredientTotal
-                    .divide(receivedExpense, 8, RoundingMode.HALF_EVEN)
-                    .multiply(additionalExpense);
-        }
-
-        BigDecimal selfWorthPrice = request.getPrice().add(
-                proportionalExpense.divide(BigDecimal.valueOf(totalCount), 2, RoundingMode.HALF_EVEN)
-        );
+        BigDecimal basePrice = request.getPrice();
 
         ReceiveIngredient receiveIngredient = new ReceiveIngredient();
         receiveIngredient.setWarehouse(warehouse);
         receiveIngredient.setIngredient(ingredient);
         receiveIngredient.setCompanyId(request.getCompanyId());
         receiveIngredient.setGroupId(groupId);
-        receiveIngredient.setPrice(selfWorthPrice);
+        receiveIngredient.setPrice(basePrice);
         receiveIngredient.setImportDate(null);
         receiveIngredient.setManufacturingDate(null);
         receiveIngredient.setExpirationDate(null);
         receiveIngredient.setQuantity(totalCount);
         receiveIngredient.setReceivedQuantity(0.0);
-        // initial status: not delivered yet
         receiveIngredient.setStatus(getStatusByName(STATUS_NOT_DELIVERED));
 
         return receiveIngredientRepository.save(receiveIngredient);
@@ -463,16 +477,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                 double newQty = r.getQuantity();
                 BigDecimal basePrice = r.getPrice();
 
-                BigDecimal ingredientTotal = basePrice.multiply(BigDecimal.valueOf(newQty));
-                BigDecimal proportionalExpense = BigDecimal.ZERO;
-                if (receivedExpense.compareTo(BigDecimal.ZERO) > 0) {
-                    proportionalExpense = ingredientTotal
-                            .divide(receivedExpense, 8, RoundingMode.HALF_UP)
-                            .multiply(additionalExpense);
-                }
-                BigDecimal selfWorthPrice = basePrice.add(
-                        proportionalExpense.divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
-                );
+                // Use base price only; calculated price will be applied to IngredientDetail on finalize
 
                 ReceiveIngredient item = new ReceiveIngredient();
                 item.setIngredient(ingredient);
@@ -484,7 +489,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                     item.setExpirationDate(item.getManufacturingDate().plusDays(ingredient.getExpiration()));
                 }
                 item.setQuantity(newQty);
-                item.setPrice(selfWorthPrice);
+                item.setPrice(basePrice);
                 item.setGroupId(groupId);
                 item.setReceivedQuantity(0.0);
                 if (isAdmin && r.getStatusId() != null) {
@@ -518,16 +523,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                 double newQty = r.getQuantity() != null ? r.getQuantity() : oldQty;
 
                 BigDecimal basePrice = r.getPrice() != null ? r.getPrice() : (item.getPrice() != null ? item.getPrice() : BigDecimal.ZERO);
-                BigDecimal ingredientTotal = basePrice.multiply(BigDecimal.valueOf(newQty));
-                BigDecimal proportionalExpense = BigDecimal.ZERO;
-                if (receivedExpense.compareTo(BigDecimal.ZERO) > 0) {
-                    proportionalExpense = ingredientTotal
-                            .divide(receivedExpense, 8, RoundingMode.HALF_UP)
-                            .multiply(additionalExpense);
-                }
-                BigDecimal selfWorthPrice = basePrice.add(
-                        proportionalExpense.divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP)
-                );
+                // Use base price only; calculated price will be applied to IngredientDetail on finalize
 
                 if (r.getImportDate() != null) {
                     item.setImportDate(r.getImportDate());
@@ -551,7 +547,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                     item.setStatus(st);
                 }
 
-                item.setPrice(selfWorthPrice);
+                item.setPrice(basePrice);
                 item.setIngredient(newIngredient);
                 item.setWarehouse(newWarehouse);
                 item.setQuantity(newQty);
@@ -607,6 +603,81 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
             item.setDeleted(true);
             receiveIngredientRepository.save(item);
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ReceiveIngredientsPriceCalcResponse calcIngredientPrices(List<ReceiveIngredientsPriceCalcRequest> ingredients, List<IngredientExpenseRequest> expenses) {
+        if (ingredients == null || ingredients.isEmpty()) {
+            throw new InvalidDataException("Ingredients list cannot be empty");
+        }
+
+        BigDecimal totalBase = BigDecimal.ZERO;
+        for (ReceiveIngredientsPriceCalcRequest r : ingredients) {
+            if (r.getIngredientId() == null) throw new InvalidDataException("Ingredient id is required");
+            BigDecimal price = r.getPrice() != null ? r.getPrice() : BigDecimal.ZERO;
+            double qty = r.getQuantity() != null ? r.getQuantity() : 0.0;
+            totalBase = totalBase.add(price.multiply(BigDecimal.valueOf(qty)));
+        }
+        BigDecimal totalExpenses = (expenses == null ? new java.util.ArrayList<IngredientExpenseRequest>() : expenses)
+                .stream()
+                .map(IngredientExpenseRequest::getAmount)
+                .filter(Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        ReceiveIngredientsPriceCalcResponse response = new ReceiveIngredientsPriceCalcResponse();
+        List<ReceiveIngredientsPriceCalcResponse.Ingredients> ingredientResponses = new ArrayList<>();
+
+        BigDecimal grandTotal = BigDecimal.ZERO;
+        for (ReceiveIngredientsPriceCalcRequest r : ingredients) {
+            Ingredient ingredient = ingredientRepository.findById(r.getIngredientId())
+                    .orElseThrow(() -> new NotFoundException("Ingredient not found"));
+
+            BigDecimal price = r.getPrice() != null ? r.getPrice() : BigDecimal.ZERO;
+            double qty = r.getQuantity() != null ? r.getQuantity() : 0.0;
+
+            BigDecimal itemBaseAmount = price.multiply(BigDecimal.valueOf(qty));
+            BigDecimal additionalPerUnit = BigDecimal.ZERO;
+            if (totalExpenses.compareTo(BigDecimal.ZERO) > 0
+                    && totalBase.compareTo(BigDecimal.ZERO) > 0
+                    && qty > 0.0) {
+                additionalPerUnit = itemBaseAmount
+                        .divide(totalBase, 8, RoundingMode.HALF_EVEN)
+                        .multiply(totalExpenses)
+                        .divide(BigDecimal.valueOf(qty), 2, RoundingMode.HALF_EVEN);
+            }
+            BigDecimal calculatedPrice = price.add(additionalPerUnit);
+            BigDecimal total = calculatedPrice.multiply(BigDecimal.valueOf(qty)).setScale(2, RoundingMode.HALF_EVEN);
+            grandTotal = grandTotal.add(total);
+
+            ReceiveIngredientsPriceCalcResponse.Ingredients ir = new ReceiveIngredientsPriceCalcResponse.Ingredients();
+            ir.setIngredientId(ingredient.getId());
+            ir.setIngredientName(ingredient.getName());
+            ir.setQuantity(qty);
+            ir.setPrice(price.setScale(2, RoundingMode.HALF_EVEN));
+            ir.setCalculatedPrice(calculatedPrice.setScale(2, RoundingMode.HALF_EVEN));
+            ir.setTotal(total);
+            ingredientResponses.add(ir);
+        }
+
+        response.setIngredients(ingredientResponses);
+        response.setTotalPrice(grandTotal.setScale(2, RoundingMode.HALF_EVEN));
+
+        List<ReceiveIngredientsPriceCalcResponse.Expenses> expenseResponses = new ArrayList<>();
+        if (expenses != null) {
+            for (IngredientExpenseRequest er : expenses) {
+                if (er.getExpenseTypeId() == null) continue;
+                ExpenseType et = expenseTypeRepository.findById(er.getExpenseTypeId())
+                        .orElseThrow(() -> new NotFoundException("Expense type not found"));
+                ReceiveIngredientsPriceCalcResponse.Expenses ex = new ReceiveIngredientsPriceCalcResponse.Expenses();
+                ex.setExpenseTypeName(et.getName());
+                ex.setAmount(er.getAmount() == null ? BigDecimal.ZERO : er.getAmount().setScale(2, RoundingMode.HALF_EVEN));
+                expenseResponses.add(ex);
+            }
+        }
+        response.setExpenses(expenseResponses);
+
+        return response;
     }
 
     private IngredientBalance getOrCreateIngredientBalance(Warehouse warehouse, Ingredient ingredient) {

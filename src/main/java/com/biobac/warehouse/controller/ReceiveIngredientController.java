@@ -8,8 +8,10 @@ import com.biobac.warehouse.request.ReceiveIngredientWrapper;
 import com.biobac.warehouse.response.ApiResponse;
 import com.biobac.warehouse.response.ReceiveIngredientGroupResponse;
 import com.biobac.warehouse.response.ReceiveIngredientResponse;
+import com.biobac.warehouse.response.ReceiveIngredientsPriceCalcResponse;
 import com.biobac.warehouse.service.ReceiveIngredientService;
 import com.biobac.warehouse.utils.ResponseUtil;
+import com.biobac.warehouse.request.ReceiveIngredientsPriceCalcWrapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.util.Pair;
 import org.springframework.web.bind.annotation.*;
@@ -93,5 +95,14 @@ public class ReceiveIngredientController {
     public ApiResponse<String> delete(@PathVariable Long groupId) {
         receiveIngredientService.delete(groupId);
         return ResponseUtil.success("Ingredients receive deleted successfully");
+    }
+
+    @PostMapping("/calc-prices")
+    public ApiResponse<ReceiveIngredientsPriceCalcResponse> calcPrices(@RequestBody ReceiveIngredientsPriceCalcWrapper wrapper) {
+        ReceiveIngredientsPriceCalcResponse resp = receiveIngredientService.calcIngredientPrices(
+                wrapper.getIngredients(),
+                wrapper.getExpenses()
+        );
+        return ResponseUtil.success("Calculated ingredient prices successfully", resp);
     }
 }

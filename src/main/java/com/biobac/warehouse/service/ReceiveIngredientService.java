@@ -4,6 +4,7 @@ import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.request.*;
 import com.biobac.warehouse.response.ReceiveIngredientGroupResponse;
 import com.biobac.warehouse.response.ReceiveIngredientResponse;
+import com.biobac.warehouse.response.ReceiveIngredientsPriceCalcResponse;
 import org.springframework.data.util.Pair;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -46,4 +47,7 @@ public interface ReceiveIngredientService {
 
     @Transactional
     void delete(Long groupId);
+
+    @Transactional(readOnly = true)
+    ReceiveIngredientsPriceCalcResponse calcIngredientPrices(List<ReceiveIngredientsPriceCalcRequest> ingredients, List<IngredientExpenseRequest> expenses);
 }
