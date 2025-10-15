@@ -13,4 +13,5 @@ public class HistoryMetadata {
     private Double initial;
     private Double eventual;
     private String unitName;
+    private String ingredientName;
 }

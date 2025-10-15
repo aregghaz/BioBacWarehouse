@@ -38,8 +38,9 @@ public class IngredientHistoryController {
         Double eventual = ingredientHistoryService.getEventualForIngredient(ingredientId, filters);
         Ingredient ingredient = ingredientRepository.findById(ingredientId)
                 .orElseThrow(() -> new NotFoundException("Ingredient not found"));
+        String ingredientName = ingredient.getName();
         String unitName = ingredient.getUnit().getName();
-        HistoryMetadata metadata = new HistoryMetadata(result.getSecond(), total, initial, eventual, unitName);
+        HistoryMetadata metadata = new HistoryMetadata(result.getSecond(), total, initial, eventual, unitName, ingredientName);
         return ResponseUtil.success("Ingredient history retrieved successfully", result.getFirst(), metadata);
     }
 
