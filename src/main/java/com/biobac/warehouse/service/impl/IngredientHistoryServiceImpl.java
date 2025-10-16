@@ -8,6 +8,7 @@ import com.biobac.warehouse.repository.IngredientBalanceRepository;
 import com.biobac.warehouse.repository.IngredientHistoryRepository;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.IngredientHistoryResponse;
+import com.biobac.warehouse.response.IngredientHistorySingleResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.utils.specifications.IngredientHistorySpecification;
 import jakarta.persistence.criteria.JoinType;
@@ -25,6 +26,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -37,8 +39,8 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
 
     @Override
     @Transactional
-    public IngredientHistoryResponse recordQuantityChange(LocalDate timestamp, Ingredient ingredient, Double quantityBefore,
-                                                          Double quantityAfter, String notes, BigDecimal lastPrice, Long lastCompanyId) {
+    public IngredientHistorySingleResponse recordQuantityChange(LocalDate timestamp, Ingredient ingredient, Double quantityBefore,
+                                                                Double quantityAfter, String notes, BigDecimal lastPrice, Long lastCompanyId) {
         IngredientHistory history = new IngredientHistory();
         history.setIngredient(ingredient);
         boolean increase = (quantityAfter != null ? quantityAfter : 0.0) - (quantityBefore != null ? quantityBefore : 0.0) > 0;
@@ -53,12 +55,12 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
         history.setTimestamp(timestamp);
 
         IngredientHistory savedHistory = ingredientHistoryRepository.save(history);
-        return ingredientHistoryMapper.toResponse(savedHistory);
+        return ingredientHistoryMapper.toSingleResponse(savedHistory);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Pair<List<IngredientHistoryResponse>, PaginationMetadata> getHistoryForIngredient(Long ingredientId, Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
+    public Pair<List<IngredientHistorySingleResponse>, PaginationMetadata> getHistoryForIngredient(Long ingredientId, Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
         int safePage = (page == null || page < 0) ? 0 : page;
         int safeSize = (size == null || size <= 0) ? 20 : size;
         String safeSortBy = (sortBy == null || sortBy.isBlank()) ? "id" : sortBy;
@@ -77,9 +79,9 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
 
         Page<IngredientHistory> ingredientHistoryPage = ingredientHistoryRepository.findAll(spec, pageable);
 
-        List<IngredientHistoryResponse> content = ingredientHistoryPage.getContent()
+        List<IngredientHistorySingleResponse> content = ingredientHistoryPage.getContent()
                 .stream()
-                .map(ingredientHistoryMapper::toResponse)
+                .map(ingredientHistoryMapper::toSingleResponse)
                 .collect(Collectors.toList());
 
         String metaSortDir = pageable.getSort().toString().contains("ASC") ? "asc" : "desc";
@@ -100,9 +102,27 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
         return Pair.of(content, metadata);
     }
 
+    @Transactional(readOnly = true)
+    @Override
+    public List<IngredientHistoryResponse> getAll() {
+        Set<Long> ingredientIds = ingredientHistoryRepository.findAll().stream().map(
+                i -> i.getIngredient().getId()
+        ).collect(Collectors.toSet());
+
+        return ingredientIds.stream().map(i -> {
+            IngredientHistory first = ingredientHistoryRepository.findEarliestByIngredientId(i);
+            IngredientHistory last = ingredientHistoryRepository.findLatestByIngredientId(i);
+
+            IngredientHistoryResponse response = ingredientHistoryMapper.toResponse(first);
+            response.setInitialCount(first.getQuantityResult());
+            response.setEventualCount(last.getQuantityResult());
+            return response;
+        }).toList();
+    }
+
     @Override
     @Transactional(readOnly = true)
-    public Pair<List<IngredientHistoryResponse>, PaginationMetadata> getHistory(Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
+    public Pair<List<IngredientHistorySingleResponse>, PaginationMetadata> getHistory(Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
         int safePage = (page == null || page < 0) ? 0 : page;
         int safeSize = (size == null || size <= 0) ? 20 : size;
         String safeSortBy = (sortBy == null || sortBy.isBlank()) ? "id" : sortBy;
@@ -114,9 +134,9 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
         Specification<IngredientHistory> spec = IngredientHistorySpecification.buildSpecification(filters);
         Page<IngredientHistory> ingredientHistoryPage = ingredientHistoryRepository.findAll(spec, pageable);
 
-        List<IngredientHistoryResponse> content = ingredientHistoryPage.getContent()
+        List<IngredientHistorySingleResponse> content = ingredientHistoryPage.getContent()
                 .stream()
-                .map(ingredientHistoryMapper::toResponse)
+                .map(ingredientHistoryMapper::toSingleResponse)
                 .collect(Collectors.toList());
 
         String metaSortDir = pageable.getSort().toString().contains("ASC") ? "asc" : "desc";

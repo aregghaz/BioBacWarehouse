@@ -33,13 +33,13 @@ public class DepartmentController {
     }
 
     @PostMapping
-    public ApiResponse<DepartmentResponse> create(DepartmentRequest request) {
+    public ApiResponse<DepartmentResponse> create(@RequestBody DepartmentRequest request) {
         DepartmentResponse response = departmentService.create(request);
         return ResponseUtil.success("Department created successfully", response);
     }
 
     @PutMapping("/{id}")
-    public ApiResponse<DepartmentResponse> update(@PathVariable Long id, DepartmentRequest request) {
+    public ApiResponse<DepartmentResponse> update(@PathVariable Long id, @RequestBody DepartmentRequest request) {
         DepartmentResponse response = departmentService.update(id, request);
         return ResponseUtil.success("Department updated successfully", response);
     }
