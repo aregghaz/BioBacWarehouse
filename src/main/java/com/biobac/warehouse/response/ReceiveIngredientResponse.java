@@ -19,6 +19,7 @@ public class ReceiveIngredientResponse extends AuditableResponse {
     private Long ingredientId;
     private String unitName;
     private List<UnitTypeCalculatedResponse> unitTypeConfigs;
+    private List<UnitTypeCalculatedResponse> receivedUnitTypeConfigs;
     private LocalDate importDate;
     private LocalDate expirationDate;
     private LocalDate manufacturingDate;
