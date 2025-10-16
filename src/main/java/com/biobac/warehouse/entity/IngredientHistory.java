@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "ingredient_history")
@@ -34,5 +34,5 @@ public class IngredientHistory extends BaseAuditable {
 
     private Long userId;
 
-    private LocalDateTime timestamp;
+    private LocalDate timestamp;
 }

@@ -3,7 +3,7 @@ package com.biobac.warehouse.response;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 
 @Getter
 @Setter
@@ -17,5 +17,5 @@ public class IngredientHistoryResponse {
     private Double quantityResult;
     private String username;
     private String notes;
-    private LocalDateTime timestamp;
+    private LocalDate timestamp;
 }

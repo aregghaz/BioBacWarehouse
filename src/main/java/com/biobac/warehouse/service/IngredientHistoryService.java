@@ -7,13 +7,13 @@ import com.biobac.warehouse.response.IngredientHistoryResponse;
 import org.springframework.data.util.Pair;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 
 public interface IngredientHistoryService {
 
-    IngredientHistoryResponse recordQuantityChange(LocalDateTime timestamp, Ingredient ingredient, Double quantityResult,
+    IngredientHistoryResponse recordQuantityChange(LocalDate timestamp, Ingredient ingredient, Double quantityResult,
                                                    Double quantityChange, String notes, BigDecimal lastPrice, Long lastCompanyId);
 
 

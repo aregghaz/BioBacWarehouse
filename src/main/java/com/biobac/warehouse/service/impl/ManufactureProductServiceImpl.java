@@ -234,7 +234,7 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
             }
             String note = String.format("Израсходовано -%s%s%s", requiredQty, where, productInfo);
             ingredientHistoryService.recordQuantityChange(
-                    manufactureProduct.getManufacturingDate().atStartOfDay(),
+                    manufactureProduct.getManufacturingDate(),
                     ingredient,
                     before,
                     after,

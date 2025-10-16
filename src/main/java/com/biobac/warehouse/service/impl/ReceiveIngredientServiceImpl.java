@@ -237,7 +237,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
             current.setDetail(detail);
 
             ingredientHistoryService.recordQuantityChange(
-                    current.getImportDate().atStartOfDay(),
+                    current.getImportDate(),
                     ingredient,
                     before,
                     after,
@@ -477,8 +477,6 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                 double newQty = r.getQuantity();
                 BigDecimal basePrice = r.getPrice();
 
-                // Use base price only; calculated price will be applied to IngredientDetail on finalize
-
                 ReceiveIngredient item = new ReceiveIngredient();
                 item.setIngredient(ingredient);
                 item.setWarehouse(warehouse);
@@ -523,7 +521,6 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                 double newQty = r.getQuantity() != null ? r.getQuantity() : oldQty;
 
                 BigDecimal basePrice = r.getPrice() != null ? r.getPrice() : (item.getPrice() != null ? item.getPrice() : BigDecimal.ZERO);
-                // Use base price only; calculated price will be applied to IngredientDetail on finalize
 
                 if (r.getImportDate() != null) {
                     item.setImportDate(r.getImportDate());

@@ -22,7 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -37,7 +37,7 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
 
     @Override
     @Transactional
-    public IngredientHistoryResponse recordQuantityChange(LocalDateTime timestamp, Ingredient ingredient, Double quantityBefore,
+    public IngredientHistoryResponse recordQuantityChange(LocalDate timestamp, Ingredient ingredient, Double quantityBefore,
                                                           Double quantityAfter, String notes, BigDecimal lastPrice, Long lastCompanyId) {
         IngredientHistory history = new IngredientHistory();
         history.setIngredient(ingredient);
@@ -65,6 +65,11 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
         String safeSortDir = (sortDir == null || sortDir.isBlank()) ? "desc" : sortDir;
 
         Sort sort = safeSortDir.equalsIgnoreCase("asc") ? Sort.by(safeSortBy).ascending() : Sort.by(safeSortBy).descending();
+
+        if (!safeSortBy.equalsIgnoreCase("id")) {
+            sort = sort.and(Sort.by("id").descending());
+        }
+
         Pageable pageable = PageRequest.of(safePage, safeSize, sort);
 
         Specification<IngredientHistory> spec = IngredientHistorySpecification.buildSpecification(filters)
