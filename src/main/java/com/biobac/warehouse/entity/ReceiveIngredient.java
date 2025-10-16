@@ -32,6 +32,8 @@ public class ReceiveIngredient extends BaseAuditable {
 
     private BigDecimal price;
 
+    private BigDecimal lastPrice;
+
     private Double quantity;
 
     private Double receivedQuantity;

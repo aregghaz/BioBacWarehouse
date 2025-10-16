@@ -26,6 +26,7 @@ public class ReceiveIngredientResponse extends AuditableResponse {
     private Long companyId;
     private String companyName;
     private BigDecimal price;
+    private BigDecimal lastPrice;
     private Long groupId;
     private String status;
     private boolean succeed;

@@ -181,22 +181,15 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
 
             current.setImportDate(r.getImportDate());
             current.setManufacturingDate(r.getManufacturingDate());
+            current.setLastPrice(r.getConfirmedPrice());
             if (current.getManufacturingDate() != null && ingredient != null && ingredient.getExpiration() != null) {
                 current.setExpirationDate(current.getManufacturingDate().plusDays(ingredient.getExpiration()));
             }
 
-            double plannedQty = current.getQuantity() == null ? 0.0 : current.getQuantity();
             double alreadyReceived = current.getReceivedQuantity() == null ? 0.0 : current.getReceivedQuantity();
             double delta = r.getReceivedQuantity() == null ? 0.0 : r.getReceivedQuantity();
             if (delta <= 0.0) {
                 throw new InvalidDataException("Received quantity must be greater than zero");
-            }
-            double remaining = Math.max(0.0, plannedQty - alreadyReceived);
-            if (remaining <= 0.0) {
-                throw new InvalidDataException("Item is already fully received");
-            }
-            if (delta > remaining) {
-                delta = remaining;
             }
 
             IngredientBalance balance = getOrCreateIngredientBalance(warehouse, ingredient);
