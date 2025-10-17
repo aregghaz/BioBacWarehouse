@@ -18,17 +18,10 @@ public class DepreciationRecord extends BaseAuditable {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(optional = false)
-    @JoinColumn(name = "asset_id", nullable = false)
-    private Asset asset;
+    @ManyToOne
+    private Asset asset;              // Which asset this record belongs to
 
-    @Column(nullable = false)
-    private LocalDate period;
-
-    @Column(precision = 19, scale = 2, nullable = false)
-    private BigDecimal amount;
-
-    private Boolean paused = false;
-
-    private Boolean manual = false;
+    private LocalDate period;         // Month of depreciation (e.g., 2025-10-01)
+    private BigDecimal amount;        // Depreciation amount for that month
+    private LocalDate createdAt;      // Date of posting
 }

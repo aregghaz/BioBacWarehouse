@@ -6,30 +6,22 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.List;
 
 @Entity
 @Getter
 @Setter
-public class Asset extends BaseAuditable {
+public class Asset {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String name;
-
-    @Column(unique = true)
-    private String code;
-
-    private LocalDate commissioningDate;
-
-    private LocalDate acquisitionDate;
-
-    @Column(precision = 19, scale = 2, nullable = false)
-    private BigDecimal initialCost;
-
-    private Integer usefulLifeMonths;
+    private String name;                          // Asset name or description
+    private LocalDate startDate;                  // Date of commissioning
+    private BigDecimal originalCost;              // Initial acquisition cost
+    private BigDecimal currentCost;               // Current cost after improvements
+    private BigDecimal accumulatedDepreciation;   // Total depreciation applied so far
+    private BigDecimal residualValue;             // Remaining value (auto-calculated)
+    private Integer usefulLifeMonths;             // Total useful life in months
 
     @ManyToOne
     private AssetCategory category;
@@ -43,24 +35,14 @@ public class Asset extends BaseAuditable {
     @ManyToOne
     private Department department;
 
-    private String responsible;
-
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     private Warehouse warehouse;
 
-    @Column(columnDefinition = "text")
     private String note;
 
-    @Enumerated(EnumType.STRING)
-    private AssetAcquisitionType acquisitionType = AssetAcquisitionType.REGISTERED; // REGISTERED or RECEIVED
-
-    private Long receiptId;
-
-    private Boolean depreciationPaused = false;
-
-    @OneToMany(mappedBy = "asset")
-    private List<DepreciationRecord> depreciationRecords;
-
-    @OneToMany(mappedBy = "asset")
-    private List<AssetImprovement> improvements;
+    public void recalcResidual() {
+        if (currentCost == null) currentCost = BigDecimal.ZERO;
+        if (accumulatedDepreciation == null) accumulatedDepreciation = BigDecimal.ZERO;
+        this.residualValue = currentCost.subtract(accumulatedDepreciation);
+    }
 }
