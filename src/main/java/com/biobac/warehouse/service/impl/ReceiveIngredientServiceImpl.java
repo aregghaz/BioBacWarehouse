@@ -7,10 +7,7 @@ import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.ReceiveIngredientMapper;
 import com.biobac.warehouse.repository.*;
 import com.biobac.warehouse.request.*;
-import com.biobac.warehouse.response.ReceiveExpenseResponse;
-import com.biobac.warehouse.response.ReceiveIngredientGroupResponse;
-import com.biobac.warehouse.response.ReceiveIngredientResponse;
-import com.biobac.warehouse.response.ReceiveIngredientsPriceCalcResponse;
+import com.biobac.warehouse.response.*;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.ReceiveIngredientService;
 import com.biobac.warehouse.utils.SecurityUtil;
@@ -698,6 +695,17 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
         response.setExpenses(expenseResponses);
 
         return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<SelectResponse> getStatusesSelect() {
+        return receiveIngredientStatusRepository.findAll().stream().map(s -> {
+            SelectResponse response = new SelectResponse();
+            response.setId(s.getId());
+            response.setName(s.getName());
+            return response;
+        }).toList();
     }
 
     private IngredientBalance getOrCreateIngredientBalance(Warehouse warehouse, Ingredient ingredient) {

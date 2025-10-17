@@ -5,6 +5,7 @@ import com.biobac.warehouse.request.*;
 import com.biobac.warehouse.response.ReceiveIngredientGroupResponse;
 import com.biobac.warehouse.response.ReceiveIngredientResponse;
 import com.biobac.warehouse.response.ReceiveIngredientsPriceCalcResponse;
+import com.biobac.warehouse.response.SelectResponse;
 import org.springframework.data.util.Pair;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,4 +51,7 @@ public interface ReceiveIngredientService {
 
     @Transactional(readOnly = true)
     ReceiveIngredientsPriceCalcResponse calcIngredientPrices(List<ReceiveIngredientsPriceCalcRequest> ingredients, List<IngredientExpenseRequest> expenses);
+
+    @Transactional(readOnly = true)
+    List<SelectResponse> getStatusesSelect();
 }

@@ -5,10 +5,7 @@ import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.request.ReceiveIngredientFinalizeRequest;
 import com.biobac.warehouse.request.ReceiveIngredientUpdateWrapper;
 import com.biobac.warehouse.request.ReceiveIngredientWrapper;
-import com.biobac.warehouse.response.ApiResponse;
-import com.biobac.warehouse.response.ReceiveIngredientGroupResponse;
-import com.biobac.warehouse.response.ReceiveIngredientResponse;
-import com.biobac.warehouse.response.ReceiveIngredientsPriceCalcResponse;
+import com.biobac.warehouse.response.*;
 import com.biobac.warehouse.service.ReceiveIngredientService;
 import com.biobac.warehouse.utils.ResponseUtil;
 import com.biobac.warehouse.request.ReceiveIngredientsPriceCalcWrapper;
@@ -104,5 +101,11 @@ public class ReceiveIngredientController {
                 wrapper.getExpenses()
         );
         return ResponseUtil.success("Calculated ingredient prices successfully", resp);
+    }
+
+    @GetMapping("status")
+    public ApiResponse<List<SelectResponse>> getStatuses() {
+        List<SelectResponse> responses = receiveIngredientService.getStatusesSelect();
+        return ResponseUtil.success("Receive statuses retrieved successfully", responses);
     }
 }
