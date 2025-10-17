@@ -29,6 +29,7 @@ public class ReceiveIngredientResponse extends AuditableResponse {
     private BigDecimal lastPrice;
     private Long groupId;
     private String status;
+    private Long statusId;
     private boolean succeed;
     private boolean deleted;
 }
