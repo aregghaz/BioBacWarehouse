@@ -450,9 +450,9 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
             throw new InvalidDataException("Update request cannot be empty");
         }
 
-        boolean isAdmin = securityUtil.hasPermission("ROLE_ADMIN");
+        boolean isAdmin = securityUtil.hasPermission(List.of("ROLE_ADMIN", "ROLE_SUPER_ADMIN"));
 
-        Map<Long, ReceiveIngredient> byId = existingGroupItems.stream()
+         Map<Long, ReceiveIngredient> byId = existingGroupItems.stream()
                 .collect(Collectors.toMap(ReceiveIngredient::getId, it -> it));
 
         BigDecimal additionalExpense = expenseRequests == null ? BigDecimal.ZERO : expenseRequests.stream()

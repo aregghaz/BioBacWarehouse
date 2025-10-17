@@ -22,14 +22,14 @@ public class Asset extends BaseAuditable {
     @Column(unique = true)
     private String code;
 
-    private LocalDate commissioningDate; // date put into operation
+    private LocalDate commissioningDate;
 
-    private LocalDate acquisitionDate; // date acquired or registered
+    private LocalDate acquisitionDate;
 
     @Column(precision = 19, scale = 2, nullable = false)
     private BigDecimal initialCost;
 
-    private Integer usefulLifeMonths; // useful life in months
+    private Integer usefulLifeMonths;
 
     @ManyToOne
     private AssetCategory category;
@@ -43,7 +43,6 @@ public class Asset extends BaseAuditable {
     @ManyToOne
     private Department department;
 
-    // Free-text responsible person/role
     private String responsible;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -55,7 +54,7 @@ public class Asset extends BaseAuditable {
     @Enumerated(EnumType.STRING)
     private AssetAcquisitionType acquisitionType = AssetAcquisitionType.REGISTERED; // REGISTERED or RECEIVED
 
-    private Long receiptId; // optional link to receiving document
+    private Long receiptId;
 
     private Boolean depreciationPaused = false;
 

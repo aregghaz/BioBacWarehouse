@@ -1,14 +1,13 @@
 package com.biobac.warehouse.utils;
 
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jws;
-import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.*;
 import io.jsonwebtoken.security.Keys;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
 import java.security.Key;
+import java.util.*;
 
 @Component
 public class JwtUtil {
@@ -20,6 +19,23 @@ public class JwtUtil {
 
     public String extractUsername(String token) {
         return parseClaims(token).getBody().getSubject();
+    }
+
+    public List<String> extractRoles(String token) {
+        Claims claims = parseClaims(token).getBody();
+        Object rolesObj = claims.get("roles");
+        if (rolesObj instanceof Collection<?> coll) {
+            List<String> roles = new ArrayList<>();
+            for (Object o : coll) {
+                if (o != null) roles.add(o.toString());
+            }
+            return roles;
+        }
+        return Collections.emptyList();
+    }
+
+    public void validateAccessToken(String token) throws JwtException, IllegalArgumentException {
+        parseClaims(token);
     }
 
     private Jws<Claims> parseClaims(String token) {
