@@ -15,8 +15,8 @@ public class ComponentBalanceIngResponse {
     private String warehouseName;
     private BigDecimal selfWorthPrice;
     private BigDecimal totalPrice;
-    private Double minimalBalance;
+    private Double ingredientMinimalBalance;
     private Double balance;
     private LocalDate expirationDate;
-    private String unitName;
+    private String ingredientUnitName;
 }

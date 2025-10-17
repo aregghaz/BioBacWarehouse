@@ -22,6 +22,7 @@ public class ReceiveIngredientsPriceCalcResponse {
         private BigDecimal price;
         private BigDecimal calculatedPrice;
         private BigDecimal total;
+        private String unitName;
     }
     
     @Getter

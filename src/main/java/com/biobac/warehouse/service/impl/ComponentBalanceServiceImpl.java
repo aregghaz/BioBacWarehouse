@@ -50,15 +50,40 @@ public class ComponentBalanceServiceImpl implements ComponentBalanceService {
     private static final String DEFAULT_SORT_DIR = "desc";
 
     private Pageable buildPageable(Integer page, Integer size, String sortBy, String sortDir) {
-        int safePage = page == null || page < 0 ? DEFAULT_PAGE : page;
-        int safeSize = size == null || size <= 0 ? DEFAULT_SIZE : size;
-        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? DEFAULT_SORT_BY : sortBy;
-        String sd = (sortDir == null || sortDir.isBlank()) ? DEFAULT_SORT_DIR : sortDir;
-        Sort sort = sd.equalsIgnoreCase("asc") ? Sort.by(safeSortBy).ascending() : Sort.by(safeSortBy).descending();
-        if (safeSize > 1000) {
-            safeSize = 1000;
-        }
+        int safePage = (page == null || page < 0) ? DEFAULT_PAGE : page;
+        int safeSize = (size == null || size <= 0) ? DEFAULT_SIZE : size;
+        if (safeSize > 1000) safeSize = 1000;
+
+        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? DEFAULT_SORT_BY : sortBy.trim();
+        String safeSortDir = (sortDir == null || sortDir.isBlank()) ? DEFAULT_SORT_DIR : sortDir.trim();
+
+        String mappedSortBy = mapSortField(safeSortBy);
+
+        Sort sort = safeSortDir.equalsIgnoreCase("asc")
+                ? Sort.by(mappedSortBy).ascending()
+                : Sort.by(mappedSortBy).descending();
+
         return PageRequest.of(safePage, safeSize, sort);
+    }
+
+    private String mapSortField(String sortBy) {
+        return switch (sortBy) {
+            case "ingredientName" -> "ingredient.name";
+            case "ingredientGroupName" -> "ingredient.ingredientGroup.name";
+            case "ingredientUnitName" -> "ingredient.unit.name";
+            case "ingredientMinimalBalance" -> "ingredient.minimalBalance";
+            case "ingredientExpirationDate", "productExpirationDate" -> "details.expirationDate";
+            case "warehouseName" -> "warehouse.name";
+            case "productName" -> "product.name";
+            case "productGroupName" -> "product.productGroup.name";
+            case "productUnitName" -> "product.unit.name";
+            case "productMinimalBalance" -> "product.minimalBalance";
+            case "ingredientDetailName" -> "ingredientBalance.ingredient.name";
+            case "ingredientDetailUnitName" -> "ingredientBalance.ingredient.unit.name";
+            case "productDetailName" -> "productBalance.product.name";
+            case "productDetailUnitName" -> "productBalance.product.unit.name";
+            default -> sortBy;
+        };
     }
 
     @Override
@@ -138,10 +163,10 @@ public class ComponentBalanceServiceImpl implements ComponentBalanceService {
                 .stream()
                 .map(c -> {
                     ProductDetailResponse response = new ProductDetailResponse();
-                    response.setProductName(c.getProductBalance().getProduct().getName());
+                    response.setProductDetailName(c.getProductBalance().getProduct().getName());
                     response.setExpirationDate(c.getExpirationDate());
                     response.setQuantity(c.getQuantity());
-                    response.setUnitName(c.getProductBalance().getProduct().getUnit().getName());
+                    response.setProductDetailUnitName(c.getProductBalance().getProduct().getUnit().getName());
                     response.setManufacturingDate(c.getManufacturingDate());
                     response.setPrice(c.getPrice());
                     return response;
@@ -175,9 +200,9 @@ public class ComponentBalanceServiceImpl implements ComponentBalanceService {
                 .stream()
                 .map(c -> {
                     IngredientDetailResponse response = new IngredientDetailResponse();
-                    response.setIngredientName(c.getIngredientBalance().getIngredient().getName());
+                    response.setIngredientDetailName(c.getIngredientBalance().getIngredient().getName());
                     response.setExpirationDate(c.getExpirationDate());
-                    response.setUnitName(c.getIngredientBalance().getIngredient().getUnit().getName());
+                    response.setIngredientDetailUnitName(c.getIngredientBalance().getIngredient().getUnit().getName());
                     response.setQuantity(c.getQuantity());
                     response.setManufacturingDate(c.getManufacturingDate());
                     response.setPrice(c.getPrice());

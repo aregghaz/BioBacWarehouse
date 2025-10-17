@@ -47,6 +47,37 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
     private final ProductDetailRepository productDetailRepository;
     private final ManufactureComponentRepository manufactureComponentRepository;
 
+    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_SIZE = 20;
+    private static final String DEFAULT_SORT_BY = "id";
+    private static final String DEFAULT_SORT_DIR = "desc";
+
+    private Pageable buildPageable(Integer page, Integer size, String sortBy, String sortDir) {
+        int safePage = (page == null || page < 0) ? DEFAULT_PAGE : page;
+        int safeSize = (size == null || size <= 0) ? DEFAULT_SIZE : size;
+        if (safeSize > 1000) safeSize = 1000;
+
+        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? DEFAULT_SORT_BY : sortBy.trim();
+        String safeSortDir = (sortDir == null || sortDir.isBlank()) ? DEFAULT_SORT_DIR : sortDir.trim();
+
+        String mappedSortBy = mapSortField(safeSortBy);
+
+        Sort sort = safeSortDir.equalsIgnoreCase("asc")
+                ? Sort.by(mappedSortBy).ascending()
+                : Sort.by(mappedSortBy).descending();
+
+        return PageRequest.of(safePage, safeSize, sort);
+    }
+
+    private String mapSortField(String sortBy) {
+        return switch (sortBy) {
+            case "warehouseName" -> "warehouse.name";
+            case "productName" -> "product.name";
+            case "unitName" -> "product.unit.name";
+            default -> sortBy;
+        };
+    }
+
     @Override
     @Transactional
     public ManufactureProductResponse createForProduct(ManufactureProductRequest request) {
@@ -125,8 +156,7 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
                                                                                      String sortDir) {
         productRepository.findById(productId).orElseThrow(() -> new NotFoundException("Product not found"));
 
-        Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
-        Pageable pageable = PageRequest.of(page, size, sort);
+        Pageable pageable = buildPageable(page, size, sortBy, sortDir);
 
         Specification<ManufactureProduct> spec = ManufactureSpecification.buildSpecification(filters)
                 .and((root, query, cb) -> root.join("product", JoinType.LEFT).get("id").in(productId));

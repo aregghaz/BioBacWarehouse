@@ -49,6 +49,37 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
     private final ReceiveIngredientStatusRepository receiveIngredientStatusRepository;
     private final SecurityUtil securityUtil;
 
+    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_SIZE = 20;
+    private static final String DEFAULT_SORT_BY = "id";
+    private static final String DEFAULT_SORT_DIR = "desc";
+
+    private Pageable buildPageable(Integer page, Integer size, String sortBy, String sortDir) {
+        int safePage = (page == null || page < 0) ? DEFAULT_PAGE : page;
+        int safeSize = (size == null || size <= 0) ? DEFAULT_SIZE : size;
+        if (safeSize > 1000) safeSize = 1000;
+
+        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? DEFAULT_SORT_BY : sortBy.trim();
+        String safeSortDir = (sortDir == null || sortDir.isBlank()) ? DEFAULT_SORT_DIR : sortDir.trim();
+
+        String mappedSortBy = mapSortField(safeSortBy);
+
+        Sort sort = safeSortDir.equalsIgnoreCase("asc")
+                ? Sort.by(mappedSortBy).ascending()
+                : Sort.by(mappedSortBy).descending();
+
+        return PageRequest.of(safePage, safeSize, sort);
+    }
+
+    private String mapSortField(String sortBy) {
+        return switch (sortBy) {
+            case "ingredientName" -> "ingredient.name";
+            case "unitName" -> "ingredient.unit.name";
+            case "status" -> "status.name";
+            default -> sortBy;
+        };
+    }
+
     private static final String STATUS_COMPLETED = "завершенные";
     private static final String STATUS_NOT_DELIVERED = "не доставлено";
     private static final String STATUS_PRICE_MISMATCH = "цена не совпадает";
@@ -291,8 +322,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                                                                                        String sortDir) {
         ingredientRepository.findById(ingredientId).orElseThrow(() -> new NotFoundException("Ingredient not found"));
 
-        Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
-        Pageable pageable = PageRequest.of(page, size, sort);
+        Pageable pageable = buildPageable(page, size, sortBy, sortDir);
 
         Specification<ReceiveIngredient> spec = ReceiveIngredientSpecification.buildSpecification(filters)
                 .and((root, query, cb) -> root.join("ingredient", JoinType.LEFT).get("id").in(ingredientId));
@@ -345,8 +375,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                                                                                    Integer size,
                                                                                    String sortBy,
                                                                                    String sortDir) {
-        Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
-        Pageable pageable = PageRequest.of(page, size, sort);
+        Pageable pageable = buildPageable(page, size, sortBy, sortDir);
 
         Specification<ReceiveIngredient> spec = ReceiveIngredientSpecification.buildSpecification(filters)
                 .and((root, query, cb) -> {
@@ -643,6 +672,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
             ReceiveIngredientsPriceCalcResponse.Ingredients ir = new ReceiveIngredientsPriceCalcResponse.Ingredients();
             ir.setIngredientId(ingredient.getId());
             ir.setIngredientName(ingredient.getName());
+            ir.setUnitName(ingredient.getUnit().getName());
             ir.setQuantity(qty);
             ir.setPrice(price.setScale(2, RoundingMode.HALF_EVEN));
             ir.setCalculatedPrice(calculatedPrice.setScale(2, RoundingMode.HALF_EVEN));

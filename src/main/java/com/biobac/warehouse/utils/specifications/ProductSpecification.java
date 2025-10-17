@@ -37,7 +37,6 @@ public class ProductSpecification {
 
     public static Specification<Product> buildSpecification(Map<String, FilterCriteria> filters) {
         return (root, query, cb) -> {
-            query.distinct(true);
             List<Predicate> predicates = new ArrayList<>();
             Join<Product, RecipeItem> recipeItemJoin = null;
             Join<Product, Ingredient> ingredientJoin = null;

@@ -22,13 +22,13 @@ public class ComponentBalanceMapper {
         BigDecimal selfWorth = SelfWorthPriceUtil.calculateIngredientPrice(entity);
         response.setId(entity.getId());
         response.setSelfWorthPrice(selfWorth);
-        response.setUnitName(entity.getIngredient().getUnit().getName());
+        response.setIngredientUnitName(entity.getIngredient().getUnit().getName());
         response.setTotalPrice(selfWorth.multiply(BigDecimal.valueOf(entity.getBalance())));
         response.setIngredientName(entity.getIngredient() == null ? null : entity.getIngredient().getName());
         response.setWarehouseName(entity.getWarehouse() == null ? null : entity.getWarehouse().getName());
         response.setBalance(entity.getBalance());
         assert entity.getIngredient() != null;
-        response.setMinimalBalance(
+        response.setIngredientMinimalBalance(
                 Optional.of(entity.getIngredient())
                         .map(Ingredient::getMinimalBalance)
                         .orElse(0.0)
@@ -42,7 +42,7 @@ public class ComponentBalanceMapper {
         ComponentBalanceProdResponse response = new ComponentBalanceProdResponse();
         BigDecimal selfWorth = SelfWorthPriceUtil.calculateProductPrice(entity);
         response.setId(entity.getId());
-        response.setUnitName(entity.getProduct().getUnit().getName());
+        response.setProductUnitName(entity.getProduct().getUnit().getName());
         response.setSelfWorthPrice(selfWorth);
         response.setTotalPrice(selfWorth.multiply(BigDecimal.valueOf(entity.getBalance())));
         response.setBalance(entity.getBalance());
@@ -50,13 +50,13 @@ public class ComponentBalanceMapper {
         response.setProductName(entity.getProduct() == null ? null : entity.getProduct().getName());
 
         assert entity.getProduct() != null;
-        response.setMinimalBalance(
+        response.setProductMinimalBalance(
                 Optional.of(entity.getProduct())
                         .map(Product::getMinimalBalance)
                         .orElse(0.0)
         );
         response.setProductGroupName(entity.getProduct().getProductGroup().getName());
-        response.setExpirationDate(getProductLastExpirationDate(entity));
+        response.setProductExpirationDate(getProductLastExpirationDate(entity));
         return response;
     }
 

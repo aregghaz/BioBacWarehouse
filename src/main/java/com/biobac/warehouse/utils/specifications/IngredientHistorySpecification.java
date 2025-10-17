@@ -26,7 +26,6 @@ public class IngredientHistorySpecification {
 
     public static Specification<IngredientHistory> buildSpecification(Map<String, FilterCriteria> filters) {
         return (root, query, cb) -> {
-            query.distinct(true);
             List<Predicate> predicates = new ArrayList<>();
             Join<IngredientHistory, Ingredient> ingredientJoin = null;
 

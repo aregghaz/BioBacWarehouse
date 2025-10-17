@@ -48,16 +48,28 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
     private static final String DEFAULT_SORT_DIR = "desc";
 
     private Pageable buildPageable(Integer page, Integer size, String sortBy, String sortDir) {
-        int safePage = page == null || page < 0 ? DEFAULT_PAGE : page;
-        int safeSize = size == null || size <= 0 ? DEFAULT_SIZE : size;
-        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? DEFAULT_SORT_BY : sortBy;
-        String sd = (sortDir == null || sortDir.isBlank()) ? DEFAULT_SORT_DIR : sortDir;
-        Sort sort = sd.equalsIgnoreCase("asc") ? Sort.by(safeSortBy).ascending() : Sort.by(safeSortBy).descending();
-        if (safeSize > 1000) {
-            log.warn("Requested page size {} is too large, capping to 1000", safeSize);
-            safeSize = 1000;
-        }
+        int safePage = (page == null || page < 0) ? DEFAULT_PAGE : page;
+        int safeSize = (size == null || size <= 0) ? DEFAULT_SIZE : size;
+        if (safeSize > 1000) safeSize = 1000;
+
+        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? DEFAULT_SORT_BY : sortBy.trim();
+        String safeSortDir = (sortDir == null || sortDir.isBlank()) ? DEFAULT_SORT_DIR : sortDir.trim();
+
+        String mappedSortBy = mapSortField(safeSortBy);
+
+        Sort sort = safeSortDir.equalsIgnoreCase("asc")
+                ? Sort.by(mappedSortBy).ascending()
+                : Sort.by(mappedSortBy).descending();
+
         return PageRequest.of(safePage, safeSize, sort);
+    }
+
+    private String mapSortField(String sortBy) {
+        return switch (sortBy) {
+            case "ingredientGroupName" -> "ingredientGroup.name";
+            case "unitName" -> "unit.name";
+            default -> sortBy;
+        };
     }
 
     @Override

@@ -15,8 +15,8 @@ public class ComponentBalanceProdResponse {
     private String productName;
     private String productGroupName;
     private String warehouseName;
-    private Double minimalBalance;
+    private Double productMinimalBalance;
     private Double balance;
-    private LocalDate expirationDate;
-    private String unitName;
+    private LocalDate productExpirationDate;
+    private String productUnitName;
 }

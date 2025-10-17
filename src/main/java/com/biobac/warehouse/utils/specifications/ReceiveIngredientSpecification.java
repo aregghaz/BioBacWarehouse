@@ -42,7 +42,6 @@ public class ReceiveIngredientSpecification {
 
     public static Specification<ReceiveIngredient> buildSpecification(Map<String, FilterCriteria> filters) {
         return (root, query, cb) -> {
-            query.distinct(true);
             List<Predicate> predicates = new ArrayList<>();
             Join<InventoryItem, Ingredient> ingredientJoin = null;
             Join<InventoryItem, Warehouse> warehouseJoin = null;

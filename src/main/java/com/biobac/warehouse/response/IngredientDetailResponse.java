@@ -9,11 +9,11 @@ import java.time.LocalDate;
 @Getter
 @Setter
 public class IngredientDetailResponse {
-    private String ingredientName;
+    private String ingredientDetailName;
     private LocalDate importDate;
     private LocalDate expirationDate;
     private LocalDate manufacturingDate;
     private Double quantity;
     private BigDecimal price;
-    private String unitName;
+    private String ingredientDetailUnitName;
 }

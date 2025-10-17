@@ -37,6 +37,36 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
     private final IngredientHistoryMapper ingredientHistoryMapper;
     private final IngredientBalanceRepository ingredientBalanceRepository;
 
+    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_SIZE = 20;
+    private static final String DEFAULT_SORT_BY = "timestamp";
+    private static final String DEFAULT_SORT_DIR = "desc";
+
+    private Pageable buildPageable(Integer page, Integer size, String sortBy, String sortDir) {
+        int safePage = (page == null || page < 0) ? DEFAULT_PAGE : page;
+        int safeSize = (size == null || size <= 0) ? DEFAULT_SIZE : size;
+        if (safeSize > 1000) safeSize = 1000;
+
+        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? DEFAULT_SORT_BY : sortBy.trim();
+        String safeSortDir = (sortDir == null || sortDir.isBlank()) ? DEFAULT_SORT_DIR : sortDir.trim();
+
+        String mappedSortBy = mapSortField(safeSortBy);
+
+        Sort sort = safeSortDir.equalsIgnoreCase("asc")
+                ? Sort.by(mappedSortBy).ascending()
+                : Sort.by(mappedSortBy).descending();
+
+        return PageRequest.of(safePage, safeSize, sort);
+    }
+
+    private String mapSortField(String sortBy) {
+        return switch (sortBy) {
+            case "ingredientName" -> "ingredient.name";
+            case "unitName" -> "ingredient.unit.name";
+            default -> sortBy;
+        };
+    }
+
     @Override
     @Transactional
     public IngredientHistorySingleResponse recordQuantityChange(LocalDate timestamp, Ingredient ingredient, Double quantityBefore,
@@ -61,8 +91,6 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
     @Override
     @Transactional(readOnly = true)
     public Pair<List<IngredientHistorySingleResponse>, PaginationMetadata> getHistoryForIngredient(Long ingredientId, Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
-        int safePage = (page == null || page < 0) ? 0 : page;
-        int safeSize = (size == null || size <= 0) ? 20 : size;
         String safeSortBy = (sortBy == null || sortBy.isBlank()) ? "id" : sortBy;
         String safeSortDir = (sortDir == null || sortDir.isBlank()) ? "desc" : sortDir;
 
@@ -72,7 +100,8 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
             sort = sort.and(Sort.by("id").descending());
         }
 
-        Pageable pageable = PageRequest.of(safePage, safeSize, sort);
+        Pageable pageable = buildPageable(page, size, sortBy, sortDir);
+        pageable.getSort().and(sort);
 
         Specification<IngredientHistory> spec = IngredientHistorySpecification.buildSpecification(filters)
                 .and((root, query, cb) -> cb.equal(root.join("ingredient", JoinType.LEFT).get("id"), ingredientId));

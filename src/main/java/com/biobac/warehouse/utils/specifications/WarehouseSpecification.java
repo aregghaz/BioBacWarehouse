@@ -29,7 +29,6 @@ public class WarehouseSpecification {
 
     public static Specification<Warehouse> buildSpecification(Map<String, FilterCriteria> filters) {
         return (root, query, cb) -> {
-            query.distinct(true);
             List<Predicate> predicates = new ArrayList<>();
             Join<Warehouse, WarehouseType> warehouseTypeJoin = null;
 
