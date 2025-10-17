@@ -41,7 +41,6 @@ public class ProductBalanceSpecification {
 
     public static Specification<ProductBalance> buildSpecification(Map<String, FilterCriteria> filters) {
         return (root, query, cb) -> {
-            query.distinct(true);
             List<Predicate> predicates = new ArrayList<>();
             Join<ManufactureProduct, Product> productJoin = null;
             Join<ManufactureProduct, Warehouse> warehouseJoin = null;
