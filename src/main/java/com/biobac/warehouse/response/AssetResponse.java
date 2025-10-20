@@ -12,6 +12,7 @@ public class AssetResponse {
     private String name;
     private BigDecimal originalCost;
     private BigDecimal currentCost;
+    private BigDecimal accumulatedDepreciation;
     private Integer usefulLifeMonths;
     private Long categoryId;
     private String categoryName;

@@ -23,5 +23,4 @@ public class DepreciationRecord extends BaseAuditable {
 
     private LocalDate period;         // Month of depreciation (e.g., 2025-10-01)
     private BigDecimal amount;        // Depreciation amount for that month
-    private LocalDate createdAt;      // Date of posting
 }

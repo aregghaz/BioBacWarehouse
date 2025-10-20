@@ -15,13 +15,17 @@ public class Asset {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String name;                          // Asset name or description
-    private LocalDate startDate;                  // Date of commissioning
-    private BigDecimal originalCost;              // Initial acquisition cost
-    private BigDecimal currentCost;               // Current cost after improvements
-    private BigDecimal accumulatedDepreciation;   // Total depreciation applied so far
-    private BigDecimal residualValue;             // Remaining value (auto-calculated)
-    private Integer usefulLifeMonths;             // Total useful life in months
+    private String name;
+
+    private LocalDate startDate;
+    private BigDecimal originalCost;
+    private BigDecimal currentCost;
+    private BigDecimal accumulatedDepreciation;
+    private BigDecimal residualValue;
+    private Integer usefulLifeMonths;             
+
+    @Column(unique = true)
+    private String code;
 
     @ManyToOne
     private AssetCategory category;

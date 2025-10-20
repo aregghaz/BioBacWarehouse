@@ -12,7 +12,7 @@ import lombok.*;
 @Builder
 @RequiredArgsConstructor
 @AllArgsConstructor
-public class AssetStatus extends BaseAuditable {
+public class AssetStatus {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

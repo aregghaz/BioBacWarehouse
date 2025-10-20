@@ -216,9 +216,6 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
 
             double alreadyReceived = current.getReceivedQuantity() == null ? 0.0 : current.getReceivedQuantity();
             double delta = r.getReceivedQuantity() == null ? 0.0 : r.getReceivedQuantity();
-            if (delta <= 0.0) {
-                throw new InvalidDataException("Received quantity must be greater than zero");
-            }
 
             IngredientBalance balance = getOrCreateIngredientBalance(warehouse, ingredient);
             double before = balance.getBalance() != null ? balance.getBalance() : 0.0;
