@@ -43,6 +43,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
     private final IngredientDetailRepository ingredientDetailRepository;
     private final ExpenseTypeRepository expenseTypeRepository;
     private final ReceiveExpenseRepository receiveExpenseRepository;
+    private final ReceiveGroupRepository receiveGroupRepository;
     private final ReceiveIngredientStatusRepository receiveIngredientStatusRepository;
     private final SecurityUtil securityUtil;
 
@@ -141,10 +142,12 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
 
         List<ReceiveIngredientResponse> responses = new ArrayList<>();
 
-        Long groupId = System.currentTimeMillis();
+        ReceiveGroup group = new ReceiveGroup();
+        group = receiveGroupRepository.save(group);
+        Long groupId = group.getId();
         for (ReceiveIngredientRequest req : requests) {
             ReceiveIngredient receiveIngredient =
-                    createSingleReceiveItem(req, additionalExpense, receivedExpense, groupId);
+                    createSingleReceiveItem(req, additionalExpense, receivedExpense, group);
             Ingredient currentIngredient = receiveIngredient.getIngredient();
             currentIngredient.setPrice(req.getPrice());
             ingredientRepository.save(currentIngredient);
@@ -158,7 +161,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                         .orElseThrow(() -> new NotFoundException("Expense type not found"));
 
                 ReceiveExpense receiveExpense = new ReceiveExpense();
-                receiveExpense.setGroupId(groupId);
+                receiveExpense.setGroup(group);
                 receiveExpense.setExpenseType(expenseType);
                 receiveExpense.setAmount(expReq.getAmount());
 
@@ -254,15 +257,17 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
             ingredientDetailRepository.save(detail);
             current.setDetail(detail);
 
-            ingredientHistoryService.recordQuantityChange(
-                    current.getImportDate(),
-                    ingredient,
-                    before,
-                    after,
-                    String.format("Получено +%s на склад %s", delta, warehouse.getName()),
-                    ingredient.getPrice(),
-                    current.getCompanyId()
-            );
+            if (r.getReceivedQuantity() > 0) {
+                ingredientHistoryService.recordQuantityChange(
+                        current.getImportDate(),
+                        ingredient,
+                        before,
+                        after,
+                        String.format("Получено +%s на склад %s", delta, warehouse.getName()),
+                        ingredient.getPrice(),
+                        current.getCompanyId()
+                );
+            }
 
             current.setReceivedQuantity(alreadyReceived + delta);
             updateStatusFor(current, r.getConfirmedPrice());
@@ -278,7 +283,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
             ReceiveIngredientRequest request,
             BigDecimal additionalExpense,
             BigDecimal receivedExpense,
-            Long groupId) {
+            ReceiveGroup group) {
 
         Ingredient ingredient = ingredientRepository.findById(request.getIngredientId())
                 .orElseThrow(() -> new NotFoundException("Ingredient not found"));
@@ -294,7 +299,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
         receiveIngredient.setWarehouse(warehouse);
         receiveIngredient.setIngredient(ingredient);
         receiveIngredient.setCompanyId(request.getCompanyId());
-        receiveIngredient.setGroupId(groupId);
+        receiveIngredient.setGroup(group);
         receiveIngredient.setPrice(basePrice);
         receiveIngredient.setImportDate(null);
         receiveIngredient.setManufacturingDate(null);
@@ -309,17 +314,14 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
 
     @Override
     @Transactional(readOnly = true)
-    public Pair<List<ReceiveIngredientResponse>, PaginationMetadata> getByIngredientId(Long ingredientId, Map<String, FilterCriteria> filters,
-                                                                                       Integer page,
-                                                                                       Integer size,
-                                                                                       String sortBy,
-                                                                                       String sortDir) {
-        ingredientRepository.findById(ingredientId).orElseThrow(() -> new NotFoundException("Ingredient not found"));
-
+    public Pair<List<ReceiveIngredientResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters,
+                                                                                   Integer page,
+                                                                                   Integer size,
+                                                                                   String sortBy,
+                                                                                   String sortDir) {
         Pageable pageable = buildPageable(page, size, sortBy, sortDir);
 
-        Specification<ReceiveIngredient> spec = ReceiveIngredientSpecification.buildSpecification(filters)
-                .and((root, query, cb) -> root.join("ingredient", JoinType.LEFT).get("id").in(ingredientId));
+        Specification<ReceiveIngredient> spec = ReceiveIngredientSpecification.buildSpecification(filters);
 
         Page<ReceiveIngredient> pageResult = receiveIngredientRepository.findAll(spec, pageable);
 
@@ -447,9 +449,12 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
             throw new InvalidDataException("Update request cannot be empty");
         }
 
+        ReceiveGroup group = receiveGroupRepository.findById(groupId)
+                .orElseThrow(() -> new NotFoundException("Receive group not found"));
+
         boolean isAdmin = securityUtil.hasPermission(List.of("ROLE_ADMIN", "ROLE_SUPER_ADMIN"));
 
-         Map<Long, ReceiveIngredient> byId = existingGroupItems.stream()
+        Map<Long, ReceiveIngredient> byId = existingGroupItems.stream()
                 .collect(Collectors.toMap(ReceiveIngredient::getId, it -> it));
 
         BigDecimal additionalExpense = expenseRequests == null ? BigDecimal.ZERO : expenseRequests.stream()
@@ -504,7 +509,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                 }
                 item.setQuantity(newQty);
                 item.setPrice(basePrice);
-                item.setGroupId(groupId);
+                item.setGroup(group);
                 item.setReceivedQuantity(0.0);
                 if (isAdmin && r.getStatusId() != null) {
                     ReceiveIngredientStatus st = receiveIngredientStatusRepository.findById(r.getStatusId())
@@ -564,7 +569,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                 item.setIngredient(newIngredient);
                 item.setWarehouse(newWarehouse);
                 item.setQuantity(newQty);
-                item.setGroupId(groupId);
+                item.setGroup(group);
 
                 ReceiveIngredient saved = receiveIngredientRepository.save(item);
                 responses.add(receiveIngredientMapper.toSingleResponse(saved));
@@ -587,7 +592,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                 ExpenseType expenseType = expenseTypeRepository.findById(expReq.getExpenseTypeId())
                         .orElseThrow(() -> new NotFoundException("Expense type not found"));
                 ReceiveExpense receiveExpense = new ReceiveExpense();
-                receiveExpense.setGroupId(groupId);
+                receiveExpense.setGroup(group);
                 receiveExpense.setExpenseType(expenseType);
                 receiveExpense.setAmount(expReq.getAmount());
                 receiveExpenseRepository.save(receiveExpense);

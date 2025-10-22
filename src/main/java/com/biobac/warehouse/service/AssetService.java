@@ -18,5 +18,7 @@ public interface AssetService {
 
     List<AssetResponse> getAll();
 
+    void delete(Long id);
+
     Pair<List<AssetResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir);
 }

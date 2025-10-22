@@ -38,7 +38,9 @@ public class ReceiveIngredient extends BaseAuditable {
 
     private Double receivedQuantity;
 
-    private Long groupId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_id")
+    private ReceiveGroup group;
 
     @ManyToOne
     private ReceiveIngredientStatus status;

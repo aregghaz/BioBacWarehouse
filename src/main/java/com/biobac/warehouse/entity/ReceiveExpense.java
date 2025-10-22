@@ -14,8 +14,9 @@ public class ReceiveExpense {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "group_id")
-    private Long groupId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "group_id")
+    private ReceiveGroup group;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "receive_ingredient_id")

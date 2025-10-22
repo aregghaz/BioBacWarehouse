@@ -30,6 +30,7 @@ public abstract class ReceiveIngredientMapper {
     @Mapping(source = "ingredient.unit.name", target = "unitName")
     @Mapping(source = "status.name", target = "status")
     @Mapping(source = "status.id", target = "statusId")
+    @Mapping(source = "group.id", target = "groupId")
     public abstract ReceiveIngredientResponse toSingleResponse(ReceiveIngredient item);
 
     @AfterMapping

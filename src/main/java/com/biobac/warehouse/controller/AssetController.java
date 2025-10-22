@@ -4,11 +4,9 @@ import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.request.AssetRegisterRequest;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.ApiResponse;
-import com.biobac.warehouse.response.AssetCategoryResponse;
 import com.biobac.warehouse.response.AssetResponse;
 import com.biobac.warehouse.service.AssetService;
 import com.biobac.warehouse.utils.ResponseUtil;
-import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.util.Pair;
 import org.springframework.web.bind.annotation.*;
@@ -54,5 +52,11 @@ public class AssetController {
     public ApiResponse<AssetResponse> getById(@PathVariable Long id) {
         AssetResponse response = assetService.getById(id);
         return ResponseUtil.success("Asset retrieved successfully", response);
+    }
+
+    @DeleteMapping("/{id}")
+    public ApiResponse<String> delete(@PathVariable Long id) {
+        assetService.delete(id);
+        return ResponseUtil.success("Asset deleted successfully");
     }
 }

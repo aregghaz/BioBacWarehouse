@@ -35,13 +35,12 @@ public class ReceiveIngredientController {
     }
 
     @PostMapping("/all")
-    public ApiResponse<List<ReceiveIngredientResponse>> getByIngredientId(@RequestParam Long ingredientId,
-                                                                          @RequestParam(required = false, defaultValue = "0") Integer page,
+    public ApiResponse<List<ReceiveIngredientResponse>> getPagination(@RequestParam(required = false, defaultValue = "0") Integer page,
                                                                           @RequestParam(required = false, defaultValue = "10") Integer size,
                                                                           @RequestParam(required = false, defaultValue = "id") String sortBy,
                                                                           @RequestParam(required = false, defaultValue = "asc") String sortDir,
                                                                           @RequestBody Map<String, FilterCriteria> filters) {
-        Pair<List<ReceiveIngredientResponse>, PaginationMetadata> result = receiveIngredientService.getByIngredientId(ingredientId, filters, page, size, sortBy, sortDir);
+        Pair<List<ReceiveIngredientResponse>, PaginationMetadata> result = receiveIngredientService.getPagination(filters, page, size, sortBy, sortDir);
         return ResponseUtil.success("Received ingredients retrieved successfully", result.getFirst(), result.getSecond());
     }
 

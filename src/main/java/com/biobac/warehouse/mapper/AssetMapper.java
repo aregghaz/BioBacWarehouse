@@ -1,25 +1,50 @@
 package com.biobac.warehouse.mapper;
 
-import com.biobac.warehouse.entity.Asset;
+import com.biobac.warehouse.entity.*;
 import com.biobac.warehouse.request.AssetRegisterRequest;
 import com.biobac.warehouse.response.AssetResponse;
-import org.mapstruct.BeanMapping;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.MappingTarget;
-import org.mapstruct.NullValuePropertyMappingStrategy;
+import com.biobac.warehouse.response.EntityReferenceResponse;
+import org.mapstruct.*;
 
 @Mapper(componentModel = "spring")
 public interface AssetMapper {
-    @Mapping(target = "categoryId", source = "category.id")
-    @Mapping(target = "categoryName", source = "category.name")
-    @Mapping(target = "depreciationMethodId", source = "depreciationMethod.id")
-    @Mapping(target = "depreciationMethodName", source = "depreciationMethod.name")
-    @Mapping(target = "departmentId", source = "department.id")
-    @Mapping(target = "departmentName", source = "department.name")
-    @Mapping(target = "warehouseId", source = "warehouse.id")
-    @Mapping(target = "warehouseName", source = "warehouse.name")
+    @Mapping(target = "category", source = "category")
+    @Mapping(target = "depreciationMethod", source = "depreciationMethod")
+    @Mapping(target = "department", source = "department")
+    @Mapping(target = "warehouse", source = "warehouse")
     AssetResponse toResponse(Asset entity);
+
+    default EntityReferenceResponse mapCategory(AssetCategory entity) {
+        if (entity == null) return null;
+        EntityReferenceResponse dto = new EntityReferenceResponse();
+        dto.setId(entity.getId());
+        dto.setName(entity.getName());
+        return dto;
+    }
+
+    default EntityReferenceResponse mapDepreciationMethod(DepreciationMethod entity) {
+        if (entity == null) return null;
+        EntityReferenceResponse dto = new EntityReferenceResponse();
+        dto.setId(entity.getId());
+        dto.setName(entity.getName());
+        return dto;
+    }
+
+    default EntityReferenceResponse mapDepartment(Department entity) {
+        if (entity == null) return null;
+        EntityReferenceResponse dto = new EntityReferenceResponse();
+        dto.setId(entity.getId());
+        dto.setName(entity.getName());
+        return dto;
+    }
+
+    default EntityReferenceResponse mapWarehouse(Warehouse entity) {
+        if (entity == null) return null;
+        EntityReferenceResponse dto = new EntityReferenceResponse();
+        dto.setId(entity.getId());
+        dto.setName(entity.getName());
+        return dto;
+    }
 
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "status", ignore = true)

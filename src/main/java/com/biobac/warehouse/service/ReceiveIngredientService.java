@@ -14,11 +14,11 @@ import java.util.Map;
 
 public interface ReceiveIngredientService {
     @Transactional(readOnly = true)
-    Pair<List<ReceiveIngredientResponse>, PaginationMetadata> getByIngredientId(Long ingredientId, Map<String, FilterCriteria> filters,
-                                                                                Integer page,
-                                                                                Integer size,
-                                                                                String sortBy,
-                                                                                String sortDir);
+    Pair<List<ReceiveIngredientResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters,
+                                                                            Integer page,
+                                                                            Integer size,
+                                                                            String sortBy,
+                                                                            String sortDir);
 
     @Transactional(readOnly = true)
     Pair<List<ReceiveIngredientResponse>, PaginationMetadata> getSucceeded(Map<String, FilterCriteria> filters,

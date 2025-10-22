@@ -30,11 +30,9 @@ import java.util.stream.Collectors;
 public class AssetServiceImpl implements AssetService {
     private final AssetCategoryRepository assetCategoryRepository;
     private final AssetStatusRepository assetStatusRepository;
-    private final AssetImprovementRepository assetImprovementRepository;
     private final AssetRepository assetRepository;
     private final DepartmentRepository departmentRepository;
     private final DepreciationMethodRepository depreciationMethodRepository;
-    private final DepreciationRecordRepository depreciationRecordRepository;
     private final AssetMapper assetMapper;
     private final WarehouseRepository warehouseRepository;
 
@@ -149,6 +147,14 @@ public class AssetServiceImpl implements AssetService {
     @Transactional(readOnly = true)
     public List<AssetResponse> getAll() {
         return assetRepository.findAll().stream().map(assetMapper::toResponse).toList();
+    }
+
+    @Override
+    @Transactional
+    public void delete(Long id) {
+        Asset asset = assetRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Asset not found"));
+        assetRepository.delete(asset);
     }
 
     @Override
