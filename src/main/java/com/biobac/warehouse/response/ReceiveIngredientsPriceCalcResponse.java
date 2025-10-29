@@ -10,6 +10,7 @@ import java.util.List;
 @Setter
 public class ReceiveIngredientsPriceCalcResponse {
     private BigDecimal totalPrice;
+    private BigDecimal priceWithoutExpense;
     private List<Ingredients> ingredients;
     private List<Expenses> expenses;
 

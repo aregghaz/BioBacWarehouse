@@ -45,19 +45,23 @@ public class IngredientHistoryController {
         return ResponseUtil.success("Ingredient history retrieved successfully", result.getFirst(), metadata);
     }
 
-    @PostMapping("/all")
-    public ApiResponse<List<IngredientHistorySingleResponse>> getHistoryForDateRange(@RequestParam(required = false, defaultValue = "0") Integer page,
-                                                                               @RequestParam(required = false, defaultValue = "10") Integer size,
-                                                                               @RequestParam(required = false, defaultValue = "id") String sortBy,
-                                                                               @RequestParam(required = false, defaultValue = "asc") String sortDir,
-                                                                               @RequestBody Map<String, FilterCriteria> filters) {
-        Pair<List<IngredientHistorySingleResponse>, PaginationMetadata> result = ingredientHistoryService.getHistory(filters, page, size, sortBy, sortDir);
-        return ResponseUtil.success("Ingredients history retrieved successfully", result.getFirst(), result.getSecond());
-    }
+//    @PostMapping("/all")
+//    public ApiResponse<List<IngredientHistorySingleResponse>> getHistoryForDateRange(@RequestParam(required = false, defaultValue = "0") Integer page,
+//                                                                                     @RequestParam(required = false, defaultValue = "10") Integer size,
+//                                                                                     @RequestParam(required = false, defaultValue = "id") String sortBy,
+//                                                                                     @RequestParam(required = false, defaultValue = "asc") String sortDir,
+//                                                                                     @RequestBody Map<String, FilterCriteria> filters) {
+//        Pair<List<IngredientHistorySingleResponse>, PaginationMetadata> result = ingredientHistoryService.getHistory(filters, page, size, sortBy, sortDir);
+//        return ResponseUtil.success("Ingredients history retrieved successfully", result.getFirst(), result.getSecond());
+//    }
 
-    @GetMapping
-    public ApiResponse<List<IngredientHistoryResponse>> getAll() {
-        List<IngredientHistoryResponse> responses = ingredientHistoryService.getAll();
-        return ResponseUtil.success("Ingredients history retrieved successfully", responses);
+    @PostMapping("/all")
+    public ApiResponse<List<IngredientHistoryResponse>> getAll(@RequestParam(required = false, defaultValue = "0") Integer page,
+                                                               @RequestParam(required = false, defaultValue = "10") Integer size,
+                                                               @RequestParam(required = false, defaultValue = "id") String sortBy,
+                                                               @RequestParam(required = false, defaultValue = "asc") String sortDir,
+                                                               @RequestBody Map<String, FilterCriteria> filters) {
+        Pair<List<IngredientHistoryResponse>, PaginationMetadata> result = ingredientHistoryService.getAll(filters, page, size, sortBy, sortDir);
+        return ResponseUtil.success("Ingredients history retrieved successfully", result.getFirst(), result.getSecond());
     }
 }

@@ -452,7 +452,8 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
         ReceiveGroup group = receiveGroupRepository.findById(groupId)
                 .orElseThrow(() -> new NotFoundException("Receive group not found"));
 
-        boolean isAdmin = securityUtil.hasPermission(List.of("ROLE_ADMIN", "ROLE_SUPER_ADMIN"));
+        boolean canReceiveUpdate =
+                securityUtil.hasPermission("RECEIVE_INGREDIENT_STATUS_UPDATE");
 
         Map<Long, ReceiveIngredient> byId = existingGroupItems.stream()
                 .collect(Collectors.toMap(ReceiveIngredient::getId, it -> it));
@@ -466,7 +467,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
         for (ReceiveIngredientUpdateRequest r : request) {
             if (r.getId() != null) {
                 ReceiveIngredient current = byId.get(r.getId());
-                if (isCompleted(current) && !isAdmin) {
+                if (isCompleted(current) && canReceiveUpdate) {
                     throw new InvalidDataException("Only pending receive ingredients can be updated");
                 }
                 BigDecimal price = r.getPrice() != null ? r.getPrice() : (current.getPrice() != null ? current.getPrice() : BigDecimal.ZERO);
@@ -511,7 +512,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                 item.setPrice(basePrice);
                 item.setGroup(group);
                 item.setReceivedQuantity(0.0);
-                if (isAdmin && r.getStatusId() != null) {
+                if (canReceiveUpdate && r.getStatusId() != null) {
                     ReceiveIngredientStatus st = receiveIngredientStatusRepository.findById(r.getStatusId())
                             .orElseThrow(() -> new NotFoundException("Status not found"));
                     item.setStatus(st);
@@ -523,7 +524,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                 responses.add(receiveIngredientMapper.toSingleResponse(saved));
             } else {
                 ReceiveIngredient item = byId.get(r.getId());
-                if (!isAdmin && r.getStatusId() != null) {
+                if (canReceiveUpdate && r.getStatusId() != null) {
                     throw new InvalidDataException("Only admin can update status");
                 }
 
@@ -559,7 +560,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                     item.setCompanyId(r.getCompanyId());
                 }
 
-                if (isAdmin && r.getStatusId() != null) {
+                if (canReceiveUpdate && r.getStatusId() != null) {
                     ReceiveIngredientStatus st = receiveIngredientStatusRepository.findById(r.getStatusId())
                             .orElseThrow(() -> new NotFoundException("Status not found"));
                     item.setStatus(st);
@@ -579,7 +580,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
 
         for (ReceiveIngredient oldItem : existingGroupItems) {
             if (!oldItem.isDeleted() && !processedExistingIds.contains(oldItem.getId())) {
-                if (isAdmin || !isCompleted(oldItem)) {
+                if (canReceiveUpdate || !isCompleted(oldItem)) {
                     oldItem.setDeleted(true);
                     receiveIngredientRepository.save(oldItem);
                 }
@@ -631,13 +632,14 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
         }
 
         BigDecimal totalBase = BigDecimal.ZERO;
+        BigDecimal totalWithoutExpense = BigDecimal.ZERO;
         for (ReceiveIngredientsPriceCalcRequest r : ingredients) {
             if (r.getIngredientId() == null) throw new InvalidDataException("Ingredient id is required");
             BigDecimal price = r.getPrice() != null ? r.getPrice() : BigDecimal.ZERO;
             double qty = r.getQuantity() != null ? r.getQuantity() : 0.0;
             totalBase = totalBase.add(price.multiply(BigDecimal.valueOf(qty)));
         }
-        BigDecimal totalExpenses = (expenses == null ? new java.util.ArrayList<IngredientExpenseRequest>() : expenses)
+        BigDecimal totalExpenses = (expenses == null ? new ArrayList<IngredientExpenseRequest>() : expenses)
                 .stream()
                 .map(IngredientExpenseRequest::getAmount)
                 .filter(Objects::nonNull)
@@ -680,6 +682,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
         }
 
         response.setIngredients(ingredientResponses);
+        response.setPriceWithoutExpense(totalBase);
         response.setTotalPrice(grandTotal.setScale(2, RoundingMode.HALF_EVEN));
 
         List<ReceiveIngredientsPriceCalcResponse.Expenses> expenseResponses = new ArrayList<>();

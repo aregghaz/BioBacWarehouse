@@ -34,6 +34,19 @@ public class JwtUtil {
         return Collections.emptyList();
     }
 
+    public List<String> extractPermissions(String token) {
+        Claims claims = parseClaims(token).getBody();
+        Object permsObj = claims.get("perms");
+        if (permsObj instanceof Collection<?> coll) {
+            List<String> perms = new ArrayList<>();
+            for (Object o : coll) {
+                if (o != null) perms.add(o.toString());
+            }
+            return perms;
+        }
+        return Collections.emptyList();
+    }
+
     public void validateAccessToken(String token) throws JwtException, IllegalArgumentException {
         parseClaims(token);
     }

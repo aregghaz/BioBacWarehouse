@@ -22,8 +22,7 @@ public interface IngredientHistoryService {
     Pair<List<IngredientHistorySingleResponse>, PaginationMetadata> getHistoryForIngredient(Long ingredientId, Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir);
 
 
-    @Transactional(readOnly = true)
-    List<IngredientHistoryResponse> getAll();
+    Pair<List<IngredientHistoryResponse>, PaginationMetadata> getAll(Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir);
 
     Pair<List<IngredientHistorySingleResponse>, PaginationMetadata> getHistory(Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir);
 

@@ -10,6 +10,7 @@ import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.IngredientHistoryResponse;
 import com.biobac.warehouse.response.IngredientHistorySingleResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
+import com.biobac.warehouse.utils.DateUtil;
 import com.biobac.warehouse.utils.specifications.IngredientHistorySpecification;
 import jakarta.persistence.criteria.JoinType;
 import lombok.RequiredArgsConstructor;
@@ -26,7 +27,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -133,20 +133,127 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
 
     @Transactional(readOnly = true)
     @Override
-    public List<IngredientHistoryResponse> getAll() {
-        Set<Long> ingredientIds = ingredientHistoryRepository.findAll().stream().map(
-                i -> i.getIngredient().getId()
-        ).collect(Collectors.toSet());
+    public Pair<List<IngredientHistoryResponse>, PaginationMetadata> getAll(
+            Map<String, FilterCriteria> filters,
+            Integer page,
+            Integer size,
+            String sortBy,
+            String sortDir) {
 
-        return ingredientIds.stream().map(i -> {
-            IngredientHistory first = ingredientHistoryRepository.findEarliestByIngredientId(i);
-            IngredientHistory last = ingredientHistoryRepository.findLatestByIngredientId(i);
+        int safePage = (page == null || page < 0) ? DEFAULT_PAGE : page;
+        int safeSize = (size == null || size <= 0) ? DEFAULT_SIZE : size;
+        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? "ingredientName" : sortBy.trim();
+        String safeSortDir = (sortDir == null || sortDir.isBlank()) ? DEFAULT_SORT_DIR : sortDir.trim();
 
-            IngredientHistoryResponse response = ingredientHistoryMapper.toResponse(first);
-            response.setInitialCount(first.getQuantityResult());
-            response.setEventualCount(last.getQuantityResult());
-            return response;
+        Specification<IngredientHistory> spec = IngredientHistorySpecification.buildSpecification(filters);
+
+        List<IngredientHistory> matching = ingredientHistoryRepository.findAll(spec);
+        Map<Long, List<IngredientHistory>> historiesByIngredient = matching.stream()
+                .collect(Collectors.groupingBy(h -> h.getIngredient().getId()));
+
+        LocalDate startDate = null;
+        LocalDate endDate = null;
+        if (filters != null) {
+            FilterCriteria ts = filters.get("timestamp");
+            if (ts != null && ts.getOperator() != null) {
+                String op = ts.getOperator();
+                Object val = ts.getValue();
+                try {
+                    if ("between".equals(op) && val instanceof List<?> list && list.size() == 2) {
+                        startDate = DateUtil.parseDate(String.valueOf(list.get(0)));
+                        endDate = DateUtil.parseDate(String.valueOf(list.get(1)));
+                    }
+                } catch (Exception ignore) {
+                }
+            }
+        }
+
+        Map<Long, IngredientHistory> representative = historiesByIngredient.entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        e -> e.getValue().stream()
+                                .sorted((a, b) -> {
+                                    int cmp = b.getTimestamp().compareTo(a.getTimestamp());
+                                    if (cmp == 0) cmp = Long.compare(b.getId(), a.getId());
+                                    return cmp;
+                                })
+                                .findFirst().orElse(null)
+                ));
+
+        final LocalDate fStartDate = startDate;
+        final LocalDate fEndDate = endDate;
+
+        List<Long> sortedIngredientIds = representative.keySet().stream().sorted((id1, id2) -> {
+            IngredientHistory h1 = representative.get(id1);
+            IngredientHistory h2 = representative.get(id2);
+            int cmp;
+            switch (safeSortBy) {
+                case "ingredientName":
+                    String n1 = h1 != null && h1.getIngredient() != null && h1.getIngredient().getName() != null ? h1.getIngredient().getName() : "";
+                    String n2 = h2 != null && h2.getIngredient() != null && h2.getIngredient().getName() != null ? h2.getIngredient().getName() : "";
+                    cmp = n1.compareToIgnoreCase(n2);
+                    break;
+                case "unitName":
+                    String u1 = h1 != null && h1.getIngredient() != null && h1.getIngredient().getUnit() != null && h1.getIngredient().getUnit().getName() != null ? h1.getIngredient().getUnit().getName() : "";
+                    String u2 = h2 != null && h2.getIngredient() != null && h2.getIngredient().getUnit() != null && h2.getIngredient().getUnit().getName() != null ? h2.getIngredient().getUnit().getName() : "";
+                    cmp = u1.compareToIgnoreCase(u2);
+                    break;
+                case "timestamp":
+                    if (h1 == null && h2 == null) cmp = 0;
+                    else if (h1 == null) cmp = -1;
+                    else if (h2 == null) cmp = 1;
+                    else {
+                        cmp = h1.getTimestamp().compareTo(h2.getTimestamp());
+                        if (cmp == 0) cmp = Long.compare(h1.getId(), h2.getId());
+                    }
+                    break;
+                default:
+                    cmp = Long.compare(id1, id2);
+            }
+            return safeSortDir.equalsIgnoreCase("asc") ? cmp : -cmp;
         }).toList();
+
+        int totalIngredients = sortedIngredientIds.size();
+        int fromIndex = Math.min(safePage * safeSize, totalIngredients);
+        int toIndex = Math.min(fromIndex + safeSize, totalIngredients);
+        List<Long> pageOfIds = sortedIngredientIds.subList(fromIndex, toIndex);
+
+        List<IngredientHistoryResponse> responses = pageOfIds.stream().map(id -> {
+            IngredientHistory representativeHistory = representative.get(id);
+
+            Double initial = 0.0;
+            Double eventual = 0.0;
+            if (fEndDate != null && fStartDate != null) {
+                IngredientHistory lastInRange = ingredientHistoryRepository.findLastInRange(id, fStartDate, fEndDate);
+                IngredientHistory firstInRange = ingredientHistoryRepository.findFirstBeforeRange(id, fStartDate);
+                if (lastInRange != null && lastInRange.getQuantityResult() != null) {
+                    eventual = lastInRange.getQuantityResult();
+                }
+                if(firstInRange != null && firstInRange.getQuantityResult() != null) {
+                    initial = firstInRange.getQuantityResult();
+                }
+            }
+
+            IngredientHistoryResponse response = ingredientHistoryMapper.toResponse(representativeHistory != null ? representativeHistory : ingredientHistoryRepository.findLatestByIngredientId(id));
+            response.setInitialCount(initial);
+            response.setEventualCount(eventual);
+            return response;
+        }).collect(Collectors.toList());
+
+        int totalPages = (int) Math.ceil((double) totalIngredients / (double) safeSize);
+        PaginationMetadata metadata = PaginationMetadata.builder()
+                .page(safePage)
+                .size(safeSize)
+                .totalElements((long) totalIngredients)
+                .totalPages(totalPages)
+                .last(safePage >= totalPages - 1)
+                .filter(filters)
+                .sortDir(safeSortDir)
+                .sortBy(safeSortBy)
+                .table("ingredientHistoryTable")
+                .build();
+
+        return Pair.of(responses, metadata);
     }
 
     @Override
