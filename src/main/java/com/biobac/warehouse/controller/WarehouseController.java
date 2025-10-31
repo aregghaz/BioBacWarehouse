@@ -55,7 +55,6 @@ public class WarehouseController extends BaseController {
 
     @PutMapping("/{id}")
     public ApiResponse<WarehouseResponse> update(@PathVariable Long id, @RequestBody WarehouseRequest dto, HttpServletRequest request) {
-        ;
         WarehouseResponse warehouseDto = warehouseService.update(id, dto);
         return ResponseUtil.success("Warehouse updated successfully", warehouseDto);
     }

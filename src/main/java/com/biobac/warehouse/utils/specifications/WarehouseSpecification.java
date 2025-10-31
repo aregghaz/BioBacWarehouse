@@ -65,4 +65,13 @@ public class WarehouseSpecification {
             return cb.and(predicates.toArray(new Predicate[0]));
         };
     }
+
+    public static Specification<Warehouse> belongsToGroups(List<Long> groupIds) {
+        return (root, query, cb) -> {
+            if (groupIds == null || groupIds.isEmpty()) {
+                return cb.disjunction();
+            }
+            return root.get("warehouseGroup").get("id").in(groupIds);
+        };
+    }
 }

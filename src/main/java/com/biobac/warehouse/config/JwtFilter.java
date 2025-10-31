@@ -34,12 +34,14 @@ public class JwtFilter extends OncePerRequestFilter {
             try {
                 jwtUtil.validateAccessToken(token);
                 String username = jwtUtil.extractUsername(token);
+                Long userId = jwtUtil.extractUserId(token);
                 if (username != null && SecurityContextHolder.getContext().getAuthentication() == null) {
                     List<SimpleGrantedAuthority> authorities = jwtUtil.extractPermissions(token).stream()
                             .map(SimpleGrantedAuthority::new)
                             .collect(Collectors.toList());
+                    CustomUserPrincipal principal = new CustomUserPrincipal(userId, username);
                     UsernamePasswordAuthenticationToken authentication =
-                            new UsernamePasswordAuthenticationToken(username, null, authorities);
+                            new UsernamePasswordAuthenticationToken(principal, token, authorities);
                     authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authentication);
                 }

@@ -13,6 +13,7 @@ import com.biobac.warehouse.response.UnitTypeCalculatedResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.IngredientService;
 import com.biobac.warehouse.service.UnitTypeCalculator;
+import com.biobac.warehouse.utils.GroupUtil;
 import com.biobac.warehouse.utils.specifications.IngredientSpecification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +42,7 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
     private final IngredientHistoryService ingredientHistoryService;
     private final IngredientMapper ingredientMapper;
     private final AttributeClient attributeClient;
+    private final GroupUtil groupUtil;
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
@@ -173,6 +175,8 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
 
         List<Ingredient> ingredients = ingredientRepository.findAllByDeletedFalse();
 
+        List<Long> groupIds = groupUtil.getAccessibleWarehouseGroupIds();
+
         return ingredients.stream()
                 .map(ingredientMapper::toResponse)
                 .toList();
@@ -287,8 +291,10 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
                                                                             Integer size,
                                                                             String sortBy,
                                                                             String sortDir) {
+        List<Long> groupIds = groupUtil.getAccessibleWarehouseGroupIds();
         Pageable pageable = buildPageable(page, size, sortBy, sortDir);
-        Specification<Ingredient> spec = IngredientSpecification.buildSpecification(filters);
+        Specification<Ingredient> spec = IngredientSpecification.buildSpecification(filters)
+                .and(IngredientSpecification.belongsToGroups(groupIds));
         Page<Ingredient> ingredientPage = ingredientRepository.findAll(spec, pageable);
 
         List<IngredientResponse> content = ingredientPage.getContent()

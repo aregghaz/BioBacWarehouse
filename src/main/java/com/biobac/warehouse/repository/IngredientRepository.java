@@ -13,22 +13,4 @@ public interface IngredientRepository extends JpaRepository<Ingredient, Long>, J
     Optional<Ingredient> findByIdAndDeletedFalse(Long id);
 
     List<Ingredient> findAllByDeletedFalse();
-
-//    @Query("""
-//            SELECT i
-//            FROM Ingredient i
-//            WHERE i.deleted = false
-//              AND i.id NOT IN (
-//                  SELECT ri.ingredient.id
-//                  FROM RecipeItem ri
-//                  WHERE ri.ingredient IS NOT NULL
-//              )
-//              AND i.id NOT IN (
-//                  SELECT rc.ingredient.id
-//                  FROM RecipeComponent rc
-//                  WHERE rc.recipeItem.id = :recipeItemId
-//                    AND rc.ingredient IS NOT NULL
-//              )
-//            """)
-//    List<Ingredient> findAllByDeletedFalseExcludeRecipe(@Param("recipeItemId") Long recipeItemId);
 }

@@ -14,6 +14,7 @@ import com.biobac.warehouse.response.UnitTypeCalculatedResponse;
 import com.biobac.warehouse.service.ProductHistoryService;
 import com.biobac.warehouse.service.ProductService;
 import com.biobac.warehouse.service.UnitTypeCalculator;
+import com.biobac.warehouse.utils.GroupUtil;
 import com.biobac.warehouse.utils.specifications.ProductSpecification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,6 +46,7 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
     private final WarehouseRepository warehouseRepository;
     private final ProductMapper productMapper;
     private final AttributeClient attributeClient;
+    private final GroupUtil groupUtil;
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;

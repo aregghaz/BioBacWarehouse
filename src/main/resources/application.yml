@@ -19,3 +19,4 @@ jwt:
 services:
   company-url: http://kinomino.ru:8060/api/company
   attribute-url: http://kinomino.ru:8050/api
+  user-url: http://kinomino.ru:8070/api

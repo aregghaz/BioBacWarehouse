@@ -21,6 +21,13 @@ public class JwtUtil {
         return parseClaims(token).getBody().getSubject();
     }
 
+    public Long extractUserId(String token) {
+        Object id = parseClaims(token).getBody().get("userId");
+        return id == null ? null :
+                id instanceof Number ? ((Number) id).longValue() :
+                        Long.parseLong(id.toString());
+    }
+
     public List<String> extractRoles(String token) {
         Claims claims = parseClaims(token).getBody();
         Object rolesObj = claims.get("roles");

@@ -27,4 +27,6 @@ public class Warehouse extends BaseAuditable {
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "type_id", nullable = false)
     private WarehouseType warehouseType;
+
+    private boolean deleted = false;
 }

@@ -19,6 +19,7 @@ import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.request.WarehouseRequest;
 import com.biobac.warehouse.response.WarehouseResponse;
 import com.biobac.warehouse.service.WarehouseService;
+import com.biobac.warehouse.utils.GroupUtil;
 import com.biobac.warehouse.utils.specifications.WarehouseSpecification;
 import jakarta.validation.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +48,7 @@ public class WarehouseServiceImpl implements WarehouseService {
     private final AttributeClient attributeClient;
     private final WarehouseGroupRepository warehouseGroupRepository;
     private final WarehouseTypeRepository warehouseTypeRepository;
+    private final GroupUtil groupUtil;
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
@@ -87,9 +89,12 @@ public class WarehouseServiceImpl implements WarehouseService {
             String sortBy,
             String sortDir
     ) {
-        Pageable pageable = buildPageable(page, size, sortBy, sortDir);
-        Specification<Warehouse> spec = WarehouseSpecification.buildSpecification(filters);
+        List<Long> groupIds = groupUtil.getAccessibleWarehouseGroupIds();
 
+        Pageable pageable = buildPageable(page, size, sortBy, sortDir);
+        Specification<Warehouse> spec = Specification
+                .where(WarehouseSpecification.buildSpecification(filters))
+                .and(WarehouseSpecification.belongsToGroups(groupIds));
         Page<Warehouse> warehousePage = warehouseRepository.findAll(spec, pageable);
 
         List<WarehouseResponse> content = warehousePage.getContent()
@@ -188,7 +193,11 @@ public class WarehouseServiceImpl implements WarehouseService {
     @Transactional(readOnly = true)
     @Override
     public List<WarehouseResponse> getAll() {
-        return warehouseRepository.findAll()
+        List<Long> groupIds = groupUtil.getAccessibleWarehouseGroupIds();
+
+        Specification<Warehouse> spec = WarehouseSpecification.belongsToGroups(groupIds);
+
+        return warehouseRepository.findAll(spec)
                 .stream()
                 .map(mapper::toResponse)
                 .collect(Collectors.toList());

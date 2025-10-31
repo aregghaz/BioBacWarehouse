@@ -16,6 +16,7 @@ import com.biobac.warehouse.response.ComponentBalanceProdResponse;
 import com.biobac.warehouse.response.IngredientDetailResponse;
 import com.biobac.warehouse.response.ProductDetailResponse;
 import com.biobac.warehouse.service.ComponentBalanceService;
+import com.biobac.warehouse.utils.GroupUtil;
 import com.biobac.warehouse.utils.specifications.IngredientBalanceSpecification;
 import com.biobac.warehouse.utils.specifications.IngredientDetailSpecification;
 import com.biobac.warehouse.utils.specifications.ProductBalanceSpecification;
@@ -43,6 +44,7 @@ public class ComponentBalanceServiceImpl implements ComponentBalanceService {
     private final ProductBalanceRepository productBalanceRepository;
     private final ProductDetailRepository productDetailRepository;
     private final IngredientDetailRepository ingredientDetailRepository;
+    private final GroupUtil groupUtil;
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;

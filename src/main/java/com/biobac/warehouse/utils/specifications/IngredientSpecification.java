@@ -1,9 +1,6 @@
 package com.biobac.warehouse.utils.specifications;
 
-import com.biobac.warehouse.entity.Ingredient;
-import com.biobac.warehouse.entity.IngredientGroup;
-import com.biobac.warehouse.entity.RecipeItem;
-import com.biobac.warehouse.entity.Unit;
+import com.biobac.warehouse.entity.*;
 import com.biobac.warehouse.request.FilterCriteria;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -98,6 +95,15 @@ public class IngredientSpecification {
             predicates.add(cb.isFalse(root.get("deleted")));
 
             return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
+    public static Specification<Ingredient> belongsToGroups(List<Long> groupIds) {
+        return (root, query, cb) -> {
+            if (groupIds == null || groupIds.isEmpty()) {
+                return cb.disjunction();
+            }
+            return root.get("ingredientGroup").get("id").in(groupIds);
         };
     }
 }

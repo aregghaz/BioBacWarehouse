@@ -62,6 +62,7 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
     private String mapSortField(String sortBy) {
         return switch (sortBy) {
             case "ingredientName" -> "ingredient.name";
+            case "ingredientGroupName" -> "ingredient.ingredientGroup.name";
             case "unitName" -> "ingredient.unit.name";
             default -> sortBy;
         };

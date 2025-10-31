@@ -10,6 +10,7 @@ import com.biobac.warehouse.request.*;
 import com.biobac.warehouse.response.*;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.ReceiveIngredientService;
+import com.biobac.warehouse.utils.GroupUtil;
 import com.biobac.warehouse.utils.SecurityUtil;
 import com.biobac.warehouse.utils.specifications.ReceiveIngredientSpecification;
 import jakarta.persistence.criteria.JoinType;
@@ -46,6 +47,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
     private final ReceiveGroupRepository receiveGroupRepository;
     private final ReceiveIngredientStatusRepository receiveIngredientStatusRepository;
     private final SecurityUtil securityUtil;
+    private final GroupUtil groupUtil;
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
