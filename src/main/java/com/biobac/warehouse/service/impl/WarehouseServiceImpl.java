@@ -8,6 +8,7 @@ import com.biobac.warehouse.entity.AttributeTargetType;
 import com.biobac.warehouse.entity.Warehouse;
 import com.biobac.warehouse.entity.WarehouseGroup;
 import com.biobac.warehouse.entity.WarehouseType;
+import com.biobac.warehouse.exception.DeleteException;
 import com.biobac.warehouse.exception.DuplicateException;
 import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.WarehouseMapper;
@@ -148,6 +149,9 @@ public class WarehouseServiceImpl implements WarehouseService {
     @Override
     public WarehouseResponse update(Long id, WarehouseRequest request) {
         Warehouse existing = warehouseRepository.findById(id).orElseThrow(() -> new NotFoundException("Warehouse not found with id: " + id));
+        if (existing.isDeleted()) {
+            throw new DeleteException("Can't update deleted warehouse");
+        }
         existing.setName(request.getName());
         existing.setLocation(request.getLocation());
         if (request.getWarehouseGroupId() != null) {

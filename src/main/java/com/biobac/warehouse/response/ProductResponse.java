@@ -28,6 +28,7 @@ public class ProductResponse {
     private String productGroupName;
     private List<UnitTypeConfigResponse> unitTypeConfigs;
     private List<AttributeResponse> attributes;
+    private boolean deleted;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 }

@@ -3,6 +3,7 @@ package com.biobac.warehouse.service.impl;
 import com.biobac.warehouse.client.AttributeClient;
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.entity.*;
+import com.biobac.warehouse.exception.DeleteException;
 import com.biobac.warehouse.exception.InvalidDataException;
 import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.IngredientMapper;
@@ -164,7 +165,7 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
     @Override
     @Transactional(readOnly = true)
     public IngredientResponse getById(Long id) {
-        Ingredient ingredient = ingredientRepository.findByIdAndDeletedFalse(id)
+        Ingredient ingredient = ingredientRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Ingredient not found"));
         return ingredientMapper.toResponse(ingredient);
     }
@@ -172,12 +173,11 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
     @Override
     @Transactional(readOnly = true)
     public List<IngredientResponse> getAll() {
+        List<Long> groupIds = groupUtil.getAccessibleIngredientGroupIds();
+        Specification<Ingredient> spec = IngredientSpecification.belongsToGroups(groupIds)
+                .and(IngredientSpecification.isDeleted());
 
-        List<Ingredient> ingredients = ingredientRepository.findAllByDeletedFalse();
-
-        List<Long> groupIds = groupUtil.getAccessibleWarehouseGroupIds();
-
-        return ingredients.stream()
+        return ingredientRepository.findAll(spec).stream()
                 .map(ingredientMapper::toResponse)
                 .toList();
     }
@@ -187,6 +187,9 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
     public IngredientResponse update(Long id, IngredientUpdateRequest request) {
         Ingredient existing = ingredientRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Ingredient not found"));
+        if (existing.isDeleted()) {
+            throw new DeleteException("Can't update deleted ingredient");
+        }
 
         if (request.getName() != null) {
             existing.setName(request.getName());
@@ -291,7 +294,7 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
                                                                             Integer size,
                                                                             String sortBy,
                                                                             String sortDir) {
-        List<Long> groupIds = groupUtil.getAccessibleWarehouseGroupIds();
+        List<Long> groupIds = groupUtil.getAccessibleIngredientGroupIds();
         Pageable pageable = buildPageable(page, size, sortBy, sortDir);
         Specification<Ingredient> spec = IngredientSpecification.buildSpecification(filters)
                 .and(IngredientSpecification.belongsToGroups(groupIds));

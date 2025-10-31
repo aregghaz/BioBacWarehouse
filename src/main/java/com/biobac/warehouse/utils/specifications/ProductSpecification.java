@@ -1,6 +1,5 @@
 package com.biobac.warehouse.utils.specifications;
 
-import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.entity.Product;
 import com.biobac.warehouse.entity.RecipeItem;
 import com.biobac.warehouse.entity.Unit;
@@ -39,7 +38,6 @@ public class ProductSpecification {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             Join<Product, RecipeItem> recipeItemJoin = null;
-            Join<Product, Ingredient> ingredientJoin = null;
             Join<Product, Unit> unitJoin = null;
 
             if (filters != null) {
@@ -78,10 +76,12 @@ public class ProductSpecification {
                     }
                 }
             }
-            // Always exclude soft-deleted records
-            predicates.add(cb.isFalse(root.get("deleted")));
             return cb.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    public static Specification<Product> isDeleted() {
+        return ((root, query, criteriaBuilder) -> criteriaBuilder.isFalse(root.get("deleted")));
     }
 
     public static Specification<Product> belongsToGroups(List<Long> groupIds) {

@@ -91,11 +91,12 @@ public class IngredientSpecification {
                 }
             }
 
-            // Always exclude soft-deleted records
-            predicates.add(cb.isFalse(root.get("deleted")));
-
             return cb.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    public static Specification<Ingredient> isDeleted() {
+        return ((root, query, criteriaBuilder) -> criteriaBuilder.isFalse(root.get("deleted")));
     }
 
     public static Specification<Ingredient> belongsToGroups(List<Long> groupIds) {

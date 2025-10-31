@@ -1,7 +1,6 @@
 package com.biobac.warehouse.mapper;
 
 import com.biobac.warehouse.client.AttributeClient;
-import com.biobac.warehouse.client.CompanyClient;
 import com.biobac.warehouse.entity.AttributeTargetType;
 import com.biobac.warehouse.entity.Product;
 import com.biobac.warehouse.response.*;
@@ -13,10 +12,6 @@ import java.util.Objects;
 
 @Component
 public class ProductMapper {
-
-    @Autowired
-    protected CompanyClient companyClient;
-
     @Autowired
     protected AttributeClient attributeClient;
 
@@ -25,6 +20,7 @@ public class ProductMapper {
         ProductResponse response = new ProductResponse();
         response.setId(product.getId());
         response.setName(product.getName());
+        response.setDeleted(product.isDeleted());
         response.setExpiration(product.getExpiration());
         response.setDescription(product.getDescription());
         response.setSku(product.getSku());

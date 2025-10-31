@@ -14,6 +14,7 @@ public class IngredientResponse {
     private String name;
     private String description;
     private boolean active;
+    private boolean deleted;
     private Long ingredientGroupId;
     private String ingredientGroupName;
     private Integer expiration;

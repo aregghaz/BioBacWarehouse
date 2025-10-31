@@ -1,8 +1,12 @@
 package com.biobac.warehouse.utils;
 
 import com.biobac.warehouse.client.UserClient;
+import com.biobac.warehouse.entity.IngredientGroup;
+import com.biobac.warehouse.entity.ProductGroup;
 import com.biobac.warehouse.entity.WarehouseGroup;
 import com.biobac.warehouse.exception.ExternalServiceException;
+import com.biobac.warehouse.repository.IngredientGroupRepository;
+import com.biobac.warehouse.repository.ProductGroupRepository;
 import com.biobac.warehouse.repository.WarehouseGroupRepository;
 import com.biobac.warehouse.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
@@ -18,13 +22,27 @@ public class GroupUtil {
     private final UserClient userClient;
     private final SecurityUtil securityUtil;
     private final WarehouseGroupRepository warehouseGroupRepository;
+    private final ProductGroupRepository productGroupRepository;
+    private final IngredientGroupRepository ingredientGroupRepository;
 
     public List<Long> getAccessibleProductGroupIds() {
-        return getAccessibleGroupIds(userClient::getProductGroupIds, "product");
+        List<Long> groupIds;
+        if (accessToAllGroups()) {
+            groupIds = productGroupRepository.findAll().stream().map(ProductGroup::getId).toList();
+        } else {
+            groupIds = getAccessibleGroupIds(userClient::getProductGroupIds, "product");
+        }
+        return groupIds;
     }
 
     public List<Long> getAccessibleIngredientGroupIds() {
-        return getAccessibleGroupIds(userClient::getIngredientGroupIds, "ingredient");
+        List<Long> groupIds;
+        if (accessToAllGroups()) {
+            groupIds = ingredientGroupRepository.findAll().stream().map(IngredientGroup::getId).toList();
+        } else {
+            groupIds = getAccessibleGroupIds(userClient::getProductGroupIds, "ingredient");
+        }
+        return groupIds;
     }
 
     public List<Long> getAccessibleWarehouseGroupIds() {
@@ -32,7 +50,7 @@ public class GroupUtil {
         if (accessToAllGroups()) {
             groupIds = warehouseGroupRepository.findAll().stream().map(WarehouseGroup::getId).toList();
         } else {
-            groupIds = getAccessibleWarehouseGroupIds();
+            groupIds = getAccessibleGroupIds(userClient::getWarehouseGroupIds, "warehouse");
         }
         return groupIds;
     }

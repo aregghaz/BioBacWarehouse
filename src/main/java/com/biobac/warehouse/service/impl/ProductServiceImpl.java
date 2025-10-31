@@ -356,7 +356,11 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
     @Override
     @Transactional(readOnly = true)
     public List<ProductResponse> getAll() {
-        return productRepository.findAllByDeletedFalse().stream().map(productMapper::toResponse).collect(Collectors.toList());
+        List<Long> groupIds = groupUtil.getAccessibleProductGroupIds();
+
+        Specification<Product> spec = ProductSpecification.belongsToGroups(groupIds)
+                .and(ProductSpecification.isDeleted());
+        return productRepository.findAll(spec).stream().map(productMapper::toResponse).collect(Collectors.toList());
     }
 
     @Override
@@ -366,8 +370,10 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
                                                                          Integer size,
                                                                          String sortBy,
                                                                          String sortDir) {
+        List<Long> groupIds = groupUtil.getAccessibleProductGroupIds();
         Pageable pageable = buildPageable(page, size, sortBy, sortDir);
-        Specification<Product> spec = ProductSpecification.buildSpecification(filters);
+        Specification<Product> spec = ProductSpecification.buildSpecification(filters)
+                .and(ProductSpecification.belongsToGroups(groupIds));
         Page<Product> productPage = productRepository.findAll(spec, pageable);
 
         List<ProductResponse> content = productPage.getContent()
