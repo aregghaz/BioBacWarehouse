@@ -1,7 +1,9 @@
 package com.biobac.warehouse.utils;
 
 import com.biobac.warehouse.client.UserClient;
+import com.biobac.warehouse.entity.WarehouseGroup;
 import com.biobac.warehouse.exception.ExternalServiceException;
+import com.biobac.warehouse.repository.WarehouseGroupRepository;
 import com.biobac.warehouse.response.ApiResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
@@ -15,6 +17,7 @@ public class GroupUtil {
 
     private final UserClient userClient;
     private final SecurityUtil securityUtil;
+    private final WarehouseGroupRepository warehouseGroupRepository;
 
     public List<Long> getAccessibleProductGroupIds() {
         return getAccessibleGroupIds(userClient::getProductGroupIds, "product");
@@ -25,7 +28,17 @@ public class GroupUtil {
     }
 
     public List<Long> getAccessibleWarehouseGroupIds() {
-        return getAccessibleGroupIds(userClient::getWarehouseGroupIds, "warehouse");
+        List<Long> groupIds;
+        if (accessToAllGroups()) {
+            groupIds = warehouseGroupRepository.findAll().stream().map(WarehouseGroup::getId).toList();
+        } else {
+            groupIds = getAccessibleWarehouseGroupIds();
+        }
+        return groupIds;
+    }
+
+    private boolean accessToAllGroups() {
+        return securityUtil.hasPermission("ALL_GROUP_ACCESS");
     }
 
     private List<Long> getAccessibleGroupIds(Function<Long, ApiResponse<List<Long>>> fetcher, String type) {

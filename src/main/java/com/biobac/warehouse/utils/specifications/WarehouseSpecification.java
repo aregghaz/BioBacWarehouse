@@ -1,6 +1,7 @@
 package com.biobac.warehouse.utils.specifications;
 
 import com.biobac.warehouse.entity.Warehouse;
+import com.biobac.warehouse.entity.WarehouseGroup;
 import com.biobac.warehouse.entity.WarehouseType;
 import com.biobac.warehouse.request.FilterCriteria;
 import jakarta.persistence.criteria.Join;
@@ -19,18 +20,23 @@ public class WarehouseSpecification {
 
     private static String isTypeField(String field) {
         Map<String, String> typeField = Map.of(
-                "type", "id",
-                "typeId", "id",
-                "typeIds", "id",
-                "typeName", "id"
+                "warehouseTypeId", "id"
         );
         return typeField.getOrDefault(field, null);
+    }
+
+    private static String isGroupField(String field) {
+        Map<String, String> groupField = Map.of(
+                "warehouseGroupId", "id"
+        );
+        return groupField.getOrDefault(field, null);
     }
 
     public static Specification<Warehouse> buildSpecification(Map<String, FilterCriteria> filters) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             Join<Warehouse, WarehouseType> warehouseTypeJoin = null;
+            Join<Warehouse, WarehouseGroup> warehouseGroupJoin = null;
 
             if (filters != null) {
                 for (Map.Entry<String, FilterCriteria> entry : filters.entrySet()) {
@@ -38,9 +44,14 @@ public class WarehouseSpecification {
                     Path<?> path;
                     if (isTypeField(field) != null) {
                         if (warehouseTypeJoin == null) {
-                            warehouseTypeJoin = root.join("types", JoinType.LEFT);
+                            warehouseTypeJoin = root.join("warehouseType", JoinType.LEFT);
                         }
                         path = warehouseTypeJoin.get(isTypeField(field));
+                    } else if (isGroupField(field) != null) {
+                        if (warehouseGroupJoin == null) {
+                            warehouseGroupJoin = root.join("warehouseGroup", JoinType.LEFT);
+                        }
+                        path = warehouseGroupJoin.get(isGroupField(field));
                     } else {
                         path = root.get(field);
                     }
@@ -64,6 +75,10 @@ public class WarehouseSpecification {
             }
             return cb.and(predicates.toArray(new Predicate[0]));
         };
+    }
+
+    public static Specification<Warehouse> isDeleted() {
+        return ((root, query, criteriaBuilder) -> criteriaBuilder.isFalse(root.get("deleted")));
     }
 
     public static Specification<Warehouse> belongsToGroups(List<Long> groupIds) {

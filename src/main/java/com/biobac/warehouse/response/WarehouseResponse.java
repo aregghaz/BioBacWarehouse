@@ -20,4 +20,5 @@ public class WarehouseResponse {
     private List<AttributeResponse> attributes;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private boolean deleted;
 }

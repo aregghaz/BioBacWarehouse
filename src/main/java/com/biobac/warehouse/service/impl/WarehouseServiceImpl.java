@@ -8,7 +8,7 @@ import com.biobac.warehouse.entity.AttributeTargetType;
 import com.biobac.warehouse.entity.Warehouse;
 import com.biobac.warehouse.entity.WarehouseGroup;
 import com.biobac.warehouse.entity.WarehouseType;
-import com.biobac.warehouse.exception.DeleteException;
+import com.biobac.warehouse.exception.DuplicateException;
 import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.WarehouseMapper;
 import com.biobac.warehouse.repository.WarehouseGroupRepository;
@@ -21,10 +21,8 @@ import com.biobac.warehouse.response.WarehouseResponse;
 import com.biobac.warehouse.service.WarehouseService;
 import com.biobac.warehouse.utils.GroupUtil;
 import com.biobac.warehouse.utils.specifications.WarehouseSpecification;
-import jakarta.validation.ConstraintViolationException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -175,19 +173,13 @@ public class WarehouseServiceImpl implements WarehouseService {
     @Transactional
     @Override
     public void delete(Long id) {
-        if (!warehouseRepository.existsById(id)) {
-            throw new NotFoundException("Warehouse not found with id: " + id);
+        Warehouse warehouse = warehouseRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Warehouse not found"));
+        if (warehouse.isDeleted()) {
+            throw new DuplicateException("Warehouse already deleted");
         }
-        try {
-            attributeClient.deleteValues(id, AttributeTargetType.WAREHOUSE.name());
-            warehouseRepository.deleteById(id);
-            warehouseRepository.flush();
-        } catch (Exception exception) {
-            if (isConstraintViolation(exception)) {
-                throw new DeleteException("Warehouse cannot be deleted because it contains inventory items.");
-            }
-            throw exception;
-        }
+        warehouse.setDeleted(true);
+        warehouseRepository.save(warehouse);
     }
 
     @Transactional(readOnly = true)
@@ -195,29 +187,12 @@ public class WarehouseServiceImpl implements WarehouseService {
     public List<WarehouseResponse> getAll() {
         List<Long> groupIds = groupUtil.getAccessibleWarehouseGroupIds();
 
-        Specification<Warehouse> spec = WarehouseSpecification.belongsToGroups(groupIds);
+        Specification<Warehouse> spec = WarehouseSpecification.belongsToGroups(groupIds)
+                .and(WarehouseSpecification.isDeleted());
 
         return warehouseRepository.findAll(spec)
                 .stream()
                 .map(mapper::toResponse)
                 .collect(Collectors.toList());
-    }
-
-    private boolean isConstraintViolation(Throwable ex) {
-        Throwable cause = ex;
-        while (cause != null) {
-            if (cause instanceof DataIntegrityViolationException) {
-                return true;
-            }
-            if (cause instanceof ConstraintViolationException) {
-                return true;
-            }
-            String msg = cause.getMessage();
-            if (msg != null && msg.toLowerCase().contains("constraint")) {
-                return true;
-            }
-            cause = cause.getCause();
-        }
-        return false;
     }
 }

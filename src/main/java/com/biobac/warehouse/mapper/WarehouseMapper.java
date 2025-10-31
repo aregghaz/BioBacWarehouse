@@ -52,6 +52,7 @@ public class WarehouseMapper {
         WarehouseResponse response = new WarehouseResponse();
         response.setId(warehouse.getId());
         response.setName(warehouse.getName());
+        response.setDeleted(warehouse.isDeleted());
         response.setAttributeGroupIds(warehouse.getAttributeGroupIds());
         response.setLocation(warehouse.getLocation());
         if (warehouse.getWarehouseGroup() != null) {
