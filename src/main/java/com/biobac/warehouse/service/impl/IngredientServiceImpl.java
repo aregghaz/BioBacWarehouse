@@ -326,14 +326,11 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
         Ingredient ingredient = ingredientRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Ingredient not found"));
 
-        attributeClient.deleteValues(id, AttributeTargetType.INGREDIENT.name());
-
-        double totalBefore = 0.0;
 
         ingredient.setDeleted(true);
         ingredientRepository.save(ingredient);
 
-        ingredientHistoryService.recordQuantityChange(LocalDate.now(), ingredient, totalBefore, 0.0, "ingredient deleted", null, null);
+        ingredientHistoryService.recordQuantityChange(LocalDate.now(), ingredient, null, null, "ingredient deleted", null, null);
     }
 
     @Override

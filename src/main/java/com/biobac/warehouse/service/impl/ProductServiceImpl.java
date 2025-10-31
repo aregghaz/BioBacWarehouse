@@ -402,31 +402,10 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
         Product product = productRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Product not found"));
 
-        attributeClient.deleteValues(id, AttributeTargetType.PRODUCT.name());
-
-        double totalBefore = 0.0; // Inventory items removed; no aggregated quantity available here
-
-        RecipeItem recipeItem = product.getRecipeItem();
-        if (recipeItem != null) {
-            product.setRecipeItem(null);
-            if (recipeItem.getProducts() != null) {
-                recipeItem.getProducts().remove(product);
-            }
-            recipeItemRepository.save(recipeItem);
-        }
-
-        List<RecipeComponent> productComponents = recipeComponentRepository.findByProductId(id);
-        if (productComponents != null && !productComponents.isEmpty()) {
-            for (RecipeComponent rc : productComponents) {
-                rc.setProduct(null);
-            }
-            recipeComponentRepository.saveAll(productComponents);
-        }
-
         product.setDeleted(true);
         productRepository.save(product);
 
-        productHistoryService.recordQuantityChange(product, totalBefore, 0.0, "DELETE", "Soft deleted");
+        productHistoryService.recordQuantityChange(product, null, null, "DELETE", "Soft deleted");
     }
 
     @Override
