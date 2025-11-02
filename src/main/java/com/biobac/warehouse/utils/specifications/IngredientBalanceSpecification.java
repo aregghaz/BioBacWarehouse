@@ -1,6 +1,9 @@
 package com.biobac.warehouse.utils.specifications;
 
-import com.biobac.warehouse.entity.*;
+import com.biobac.warehouse.entity.Ingredient;
+import com.biobac.warehouse.entity.IngredientBalance;
+import com.biobac.warehouse.entity.IngredientGroup;
+import com.biobac.warehouse.entity.Warehouse;
 import com.biobac.warehouse.request.FilterCriteria;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -15,10 +18,17 @@ import java.util.Map;
 import static com.biobac.warehouse.utils.SpecificationUtil.*;
 
 public class IngredientBalanceSpecification {
-    private static String isProductField(String field) {
+    private static String isIngredientField(String field) {
         Map<String, String> productField = Map.of(
-                "productId", "id",
-                "productName", "name"
+                "ingredientId", "id",
+                "ingredientMinimalBalance", "minimalBalance"
+        );
+        return productField.getOrDefault(field, null);
+    }
+
+    private static String isIngredientGroupField(String field) {
+        Map<String, String> productField = Map.of(
+                "ingredientGroupId", "id"
         );
         return productField.getOrDefault(field, null);
     }
@@ -42,9 +52,9 @@ public class IngredientBalanceSpecification {
     public static Specification<IngredientBalance> buildSpecification(Map<String, FilterCriteria> filters) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-            Join<ManufactureProduct, Product> productJoin = null;
-            Join<ManufactureProduct, Warehouse> warehouseJoin = null;
-            Join<ManufactureProduct, Unit> unitJoin = null;
+            Join<IngredientBalance, Ingredient> ingredientJoin = null;
+            Join<IngredientBalance, Warehouse> warehouseJoin = null;
+            Join<Ingredient, IngredientGroup> ingredientGroupJoin = null;
 
             if (filters != null) {
                 for (Map.Entry<String, FilterCriteria> entry : filters.entrySet()) {
@@ -53,21 +63,21 @@ public class IngredientBalanceSpecification {
                     FilterCriteria criteria = entry.getValue();
                     Predicate predicate = null;
 
-                    if (isProductField(field) != null) {
-                        if (productJoin == null) {
-                            productJoin = root.join("product", JoinType.LEFT);
+                    if (isIngredientField(field) != null) {
+                        if (ingredientJoin == null) {
+                            ingredientJoin = root.join("ingredient", JoinType.LEFT);
                         }
-                        path = productJoin.get(isProductField(field));
+                        path = ingredientJoin.get(isIngredientField(field));
+                    } else if (isIngredientGroupField(field) != null) {
+                        if (ingredientGroupJoin == null) {
+                            ingredientGroupJoin = root.join("ingredient", JoinType.LEFT).join("ingredientGroup", JoinType.LEFT);
+                        }
+                        path = ingredientGroupJoin.get(isIngredientGroupField(field));
                     } else if (isWarehouseField(field) != null) {
                         if (warehouseJoin == null) {
                             warehouseJoin = root.join("warehouse", JoinType.LEFT);
                         }
                         path = warehouseJoin.get(isWarehouseField(field));
-                    } else if (isUnitField(field) != null) {
-                        if (unitJoin == null) {
-                            unitJoin = root.join("unit", JoinType.LEFT);
-                        }
-                        path = unitJoin.get(isUnitField(field));
                     } else {
                         path = root.get(field);
                     }

@@ -18,7 +18,8 @@ public class ProductBalanceSpecification {
     private static String isProductField(String field) {
         Map<String, String> productField = Map.of(
                 "productId", "id",
-                "productName", "name"
+                "productName", "name",
+                "productMinimalBalance", "minimalBalance"
         );
         return productField.getOrDefault(field, null);
     }
@@ -29,6 +30,13 @@ public class ProductBalanceSpecification {
                 "unitName", "name"
         );
         return unitField.getOrDefault(field, null);
+    }
+
+    private static String isProductGroupField(String field) {
+        Map<String, String> productField = Map.of(
+                "productGroupId", "id"
+        );
+        return productField.getOrDefault(field, null);
     }
 
     private static String isWarehouseField(String field) {
@@ -42,9 +50,10 @@ public class ProductBalanceSpecification {
     public static Specification<ProductBalance> buildSpecification(Map<String, FilterCriteria> filters) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-            Join<ManufactureProduct, Product> productJoin = null;
-            Join<ManufactureProduct, Warehouse> warehouseJoin = null;
-            Join<ManufactureProduct, Unit> unitJoin = null;
+            Join<ProductBalance, Product> productJoin = null;
+            Join<ProductBalance, Warehouse> warehouseJoin = null;
+            Join<ProductBalance, Unit> unitJoin = null;
+            Join<Product, ProductGroup> productGroupJoin = null;
 
             if (filters != null) {
                 for (Map.Entry<String, FilterCriteria> entry : filters.entrySet()) {
@@ -58,6 +67,11 @@ public class ProductBalanceSpecification {
                             productJoin = root.join("product", JoinType.LEFT);
                         }
                         path = productJoin.get(isProductField(field));
+                    } else if (isProductGroupField(field) != null) {
+                        if (productGroupJoin == null) {
+                            productGroupJoin = root.join("product", JoinType.LEFT).join("productGroup", JoinType.LEFT);
+                        }
+                        path = productGroupJoin.get(isProductGroupField(field));
                     } else if (isWarehouseField(field) != null) {
                         if (warehouseJoin == null) {
                             warehouseJoin = root.join("warehouse", JoinType.LEFT);
