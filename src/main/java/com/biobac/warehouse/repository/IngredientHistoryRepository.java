@@ -38,4 +38,28 @@ public interface IngredientHistoryRepository extends JpaRepository<IngredientHis
             @Param("ingredientId") Long ingredientId,
             @Param("start") LocalDate start
     );
+
+    @Query(value = """
+    select sum(ih.quantity_change) as sum
+    from ingredient_history ih
+             join ingredient i on i.id = ih.ingredient_id
+    where ih.increase = true
+      and ih.timestamp between :from and :to
+      and i.id = :ingredient_id
+    """, nativeQuery = true)
+    Double sumIncreasedCount(@Param("ingredient_id") Long ingredientId,
+                             @Param("from") LocalDate from,
+                             @Param("to") LocalDate to);
+
+    @Query(value = """
+    select sum(ih.quantity_change) as sum
+    from ingredient_history ih
+             join ingredient i on i.id = ih.ingredient_id
+    where ih.increase = false
+      and ih.timestamp between :from and :to
+      and i.id = :ingredient_id
+    """, nativeQuery = true)
+    Double sumDecreasedCount(@Param("ingredient_id") Long ingredientId,
+                             @Param("from") LocalDate from,
+                             @Param("to") LocalDate to);
 }

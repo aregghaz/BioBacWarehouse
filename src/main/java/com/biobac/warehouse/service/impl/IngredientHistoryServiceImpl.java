@@ -152,22 +152,10 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
         Map<Long, List<IngredientHistory>> historiesByIngredient = matching.stream()
                 .collect(Collectors.groupingBy(h -> h.getIngredient().getId()));
 
-        LocalDate startDate = null;
-        LocalDate endDate = null;
-        if (filters != null) {
-            FilterCriteria ts = filters.get("timestamp");
-            if (ts != null && ts.getOperator() != null) {
-                String op = ts.getOperator();
-                Object val = ts.getValue();
-                try {
-                    if ("between".equals(op) && val instanceof List<?> list && list.size() == 2) {
-                        startDate = DateUtil.parseDate(String.valueOf(list.get(0)));
-                        endDate = DateUtil.parseDate(String.valueOf(list.get(1)));
-                    }
-                } catch (Exception ignore) {
-                }
-            }
-        }
+        List<LocalDate> dates = parseDates(filters);
+
+        LocalDate startDate = dates.get(0);
+        LocalDate endDate = dates.get(1);
 
         Map<Long, IngredientHistory> representative = historiesByIngredient.entrySet().stream()
                 .collect(Collectors.toMap(
@@ -181,8 +169,6 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
                                 .findFirst().orElse(null)
                 ));
 
-        final LocalDate fStartDate = startDate;
-        final LocalDate fEndDate = endDate;
 
         List<Long> sortedIngredientIds = representative.keySet().stream().sorted((id1, id2) -> {
             IngredientHistory h1 = representative.get(id1);
@@ -224,18 +210,24 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
 
             Double initial = 0.0;
             Double eventual = 0.0;
-            if (fEndDate != null && fStartDate != null) {
-                IngredientHistory lastInRange = ingredientHistoryRepository.findLastInRange(id, fStartDate, fEndDate);
-                IngredientHistory firstInRange = ingredientHistoryRepository.findFirstBeforeRange(id, fStartDate);
+            Double increaseCount = 0.0;
+            Double decreasedCount = 0.0;
+            if (startDate != null && endDate != null) {
+                IngredientHistory lastInRange = ingredientHistoryRepository.findLastInRange(id, startDate, endDate);
+                IngredientHistory firstInRange = ingredientHistoryRepository.findFirstBeforeRange(id, startDate);
+                increaseCount = getSumOfIncreasedCount(id, filters);
+                decreasedCount = getSumOfDecreasedCount(id, filters);
                 if (lastInRange != null && lastInRange.getQuantityResult() != null) {
                     eventual = lastInRange.getQuantityResult();
                 }
-                if(firstInRange != null && firstInRange.getQuantityResult() != null) {
+                if (firstInRange != null && firstInRange.getQuantityResult() != null) {
                     initial = firstInRange.getQuantityResult();
                 }
             }
 
             IngredientHistoryResponse response = ingredientHistoryMapper.toResponse(representativeHistory != null ? representativeHistory : ingredientHistoryRepository.findLatestByIngredientId(id));
+            response.setIncreasedCount(increaseCount);
+            response.setDecreasedCount(decreasedCount);
             response.setInitialCount(initial);
             response.setEventualCount(eventual);
             return response;
@@ -245,7 +237,7 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
         PaginationMetadata metadata = PaginationMetadata.builder()
                 .page(safePage)
                 .size(safeSize)
-                .totalElements((long) totalIngredients)
+                .totalElements(totalIngredients)
                 .totalPages(totalPages)
                 .last(safePage >= totalPages - 1)
                 .filter(filters)
@@ -304,37 +296,50 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
     @Override
     @Transactional(readOnly = true)
     public Double getInitialForIngredient(Long ingredientId, Map<String, FilterCriteria> filters) {
-        Specification<IngredientHistory> spec = (root, query, cb) -> cb.equal(root.join("ingredient", JoinType.LEFT).get("id"), ingredientId);
-        if (filters != null && !filters.isEmpty()) {
-            spec = spec.and(IngredientHistorySpecification.buildSpecification(filters));
-        }
-
-        List<IngredientHistory> list = ingredientHistoryRepository.findAll(
-                spec, Sort.by("timestamp").ascending().and(Sort.by("id").ascending())
-        );
-        if (!list.isEmpty()) {
-            IngredientHistory first = list.get(0);
-            return first.getQuantityResult() != null ? first.getQuantityResult() : 0.0;
-        }
-        return 0.0;
+        List<LocalDate> dates = parseDates(filters);
+        IngredientHistory firstInRange = ingredientHistoryRepository.findFirstBeforeRange(ingredientId, dates.get(0));
+        return firstInRange != null ? firstInRange.getQuantityResult() : 0.0;
     }
 
     @Override
     @Transactional(readOnly = true)
     public Double getEventualForIngredient(Long ingredientId, Map<String, FilterCriteria> filters) {
-        Specification<IngredientHistory> spec = (root, query, cb) -> cb.equal(root.join("ingredient", JoinType.LEFT).get("id"), ingredientId);
-        if (filters != null && !filters.isEmpty()) {
-            spec = spec.and(IngredientHistorySpecification.buildSpecification(filters));
-        }
+        List<LocalDate> dates = parseDates(filters);
+        IngredientHistory firstInRange = ingredientHistoryRepository.findLastInRange(ingredientId, dates.get(0), dates.get(1));
+        return firstInRange.getQuantityResult();
+    }
 
-        List<IngredientHistory> list = ingredientHistoryRepository.findAll(
-                spec,
-                Sort.by("timestamp").descending().and(Sort.by("id").descending())
-        );
-        if (!list.isEmpty()) {
-            IngredientHistory last = list.get(0);
-            return last.getQuantityResult() != null ? last.getQuantityResult() : 0.0;
+    @Transactional(readOnly = true)
+    @Override
+    public Double getSumOfIncreasedCount(Long id, Map<String, FilterCriteria> filters) {
+        List<LocalDate> dates = parseDates(filters);
+        return ingredientHistoryRepository.sumIncreasedCount(id, dates.get(0), dates.get(1));
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public Double getSumOfDecreasedCount(Long id, Map<String, FilterCriteria> filters) {
+        List<LocalDate> dates = parseDates(filters);
+        return ingredientHistoryRepository.sumDecreasedCount(id, dates.get(0), dates.get(1));
+    }
+
+    private List<LocalDate> parseDates(Map<String, FilterCriteria> filters) {
+        LocalDate startDate = null;
+        LocalDate endDate = null;
+        if (filters != null) {
+            FilterCriteria ts = filters.get("timestamp");
+            if (ts != null && ts.getOperator() != null) {
+                String op = ts.getOperator();
+                Object val = ts.getValue();
+                try {
+                    if ("between".equals(op) && val instanceof List<?> list && list.size() == 2) {
+                        startDate = DateUtil.parseDate(String.valueOf(list.get(0)));
+                        endDate = DateUtil.parseDate(String.valueOf(list.get(1)));
+                    }
+                } catch (Exception ignore) {
+                }
+            }
         }
-        return 0.0;
+        return List.of(startDate, endDate);
     }
 }

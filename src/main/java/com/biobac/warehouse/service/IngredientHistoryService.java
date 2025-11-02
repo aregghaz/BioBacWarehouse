@@ -6,7 +6,6 @@ import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.IngredientHistoryResponse;
 import com.biobac.warehouse.response.IngredientHistorySingleResponse;
 import org.springframework.data.util.Pair;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -31,4 +30,8 @@ public interface IngredientHistoryService {
     Double getInitialForIngredient(Long ingredientId, Map<String, FilterCriteria> filters);
 
     Double getEventualForIngredient(Long ingredientId, Map<String, FilterCriteria> filters);
+
+    Double getSumOfIncreasedCount(Long id, Map<String, FilterCriteria> filters);
+
+    Double getSumOfDecreasedCount(Long id, Map<String, FilterCriteria> filters);
 }

@@ -13,4 +13,6 @@ public class IngredientHistoryResponse {
     private String unitName;
     private Double initialCount;
     private Double eventualCount;
+    private Double increasedCount;
+    private Double decreasedCount;
 }

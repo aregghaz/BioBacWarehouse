@@ -70,8 +70,6 @@ public class ComponentBalanceSpecification {
             Join<ComponentBalance, Warehouse> balanceWarehouseJoin = null;
             Join<Ingredient, IngredientGroup> ingredientGroupJoin = null;
             Join<Product, ProductGroup> productGroupJoin = null;
-            Join<Product, InventoryItem> productInventoryItemJoin = null;
-            Join<Ingredient, InventoryItem> ingredientInventoryItemJoin = null;
 
             List<Predicate> predicates = new ArrayList<>();
 
@@ -109,10 +107,6 @@ public class ComponentBalanceSpecification {
                             if (balanceProductJoin == null) {
                                 balanceProductJoin = root.join("product", JoinType.LEFT);
                             }
-                            if (productInventoryItemJoin == null) {
-                                productInventoryItemJoin = balanceProductJoin.join("inventoryItems", JoinType.LEFT);
-                            }
-                            path = productInventoryItemJoin.get("expirationDate");
                             if ("localDate".equals(field)) {
                                 effectiveValue = LocalDate.now()
                                         .format(DateTimeFormatter.ofPattern(DateUtil.DATE_FORMAT));
@@ -141,10 +135,6 @@ public class ComponentBalanceSpecification {
                             if (balanceIngredientJoin == null) {
                                 balanceIngredientJoin = root.join("ingredient", JoinType.LEFT);
                             }
-                            if (ingredientInventoryItemJoin == null) {
-                                ingredientInventoryItemJoin = balanceIngredientJoin.join("inventoryItems", JoinType.LEFT);
-                            }
-                            path = ingredientInventoryItemJoin.get("expirationDate");
                             if ("localDate".equals(field)) {
                                 effectiveValue = LocalDate.now()
                                         .format(DateTimeFormatter.ofPattern(DateUtil.DATE_FORMAT));

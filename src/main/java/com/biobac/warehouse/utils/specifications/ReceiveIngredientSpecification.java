@@ -1,9 +1,7 @@
 package com.biobac.warehouse.utils.specifications;
 
-import com.biobac.warehouse.entity.*;
+import com.biobac.warehouse.entity.ReceiveIngredient;
 import com.biobac.warehouse.request.FilterCriteria;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.JoinType;
 import jakarta.persistence.criteria.Path;
 import jakarta.persistence.criteria.Predicate;
 import org.springframework.data.jpa.domain.Specification;
@@ -43,9 +41,6 @@ public class ReceiveIngredientSpecification {
     public static Specification<ReceiveIngredient> buildSpecification(Map<String, FilterCriteria> filters) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-            Join<InventoryItem, Ingredient> ingredientJoin = null;
-            Join<InventoryItem, Warehouse> warehouseJoin = null;
-            Join<InventoryItem, Unit> unitJoin = null;
 
             if (filters != null) {
                 for (Map.Entry<String, FilterCriteria> entry : filters.entrySet()) {
@@ -54,24 +49,9 @@ public class ReceiveIngredientSpecification {
                     FilterCriteria criteria = entry.getValue();
                     Predicate predicate = null;
 
-                    if (isIngredientField(field) != null) {
-                        if (ingredientJoin == null) {
-                            ingredientJoin = root.join("ingredient", JoinType.LEFT);
-                        }
-                        path = ingredientJoin.get(isIngredientField(field));
-                    } else if (isWarehouseField(field) != null) {
-                        if (warehouseJoin == null) {
-                            warehouseJoin = root.join("warehouse", JoinType.LEFT);
-                        }
-                        path = warehouseJoin.get(isWarehouseField(field));
-                    } else if (isUnitField(field) != null) {
-                        if (unitJoin == null) {
-                            unitJoin = root.join("unit", JoinType.LEFT);
-                        }
-                        path = unitJoin.get(isUnitField(field));
-                    } else {
-                        path = root.get(field);
-                    }
+
+                    path = root.get(field);
+
 
                     switch (criteria.getOperator()) {
                         case "equals" -> predicate = buildEquals(cb, path, criteria.getValue());

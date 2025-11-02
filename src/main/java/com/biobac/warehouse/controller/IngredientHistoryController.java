@@ -37,11 +37,13 @@ public class IngredientHistoryController {
         Double total = ingredientHistoryService.getTotalForIngredient(ingredientId);
         Double initial = ingredientHistoryService.getInitialForIngredient(ingredientId, filters);
         Double eventual = ingredientHistoryService.getEventualForIngredient(ingredientId, filters);
+        Double increase = ingredientHistoryService.getSumOfIncreasedCount(ingredientId, filters);
+        Double decrease = ingredientHistoryService.getSumOfDecreasedCount(ingredientId, filters);
         Ingredient ingredient = ingredientRepository.findById(ingredientId)
                 .orElseThrow(() -> new NotFoundException("Ingredient not found"));
         String ingredientName = ingredient.getName();
         String unitName = ingredient.getUnit().getName();
-        HistoryMetadata metadata = new HistoryMetadata(result.getSecond(), total, initial, eventual, unitName, ingredientName);
+        HistoryMetadata metadata = new HistoryMetadata(result.getSecond(), total, initial, eventual, increase, decrease, unitName, ingredientName);
         return ResponseUtil.success("Ingredient history retrieved successfully", result.getFirst(), metadata);
     }
 
