@@ -4,7 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -17,6 +17,6 @@ public class ComponentBalanceProdResponse {
     private String warehouseName;
     private Double productMinimalBalance;
     private Double balance;
-    private LocalDate productExpirationDate;
+    private LocalDateTime productExpirationDate;
     private String productUnitName;
 }

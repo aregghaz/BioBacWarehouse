@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Getter
@@ -19,9 +19,9 @@ public class ProductDetail {
     @JoinColumn(name = "product_balance_id")
     private ProductBalance productBalance;
 
-    private LocalDate expirationDate;
+    private LocalDateTime expirationDate;
 
-    private LocalDate manufacturingDate;
+    private LocalDateTime manufacturingDate;
 
     private Double quantity;
 

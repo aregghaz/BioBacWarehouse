@@ -8,6 +8,7 @@ import com.biobac.warehouse.mapper.ProductHistoryMapper;
 import com.biobac.warehouse.repository.ProductHistoryRepository;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.service.ProductHistoryService;
+import com.biobac.warehouse.utils.GroupUtil;
 import com.biobac.warehouse.utils.specifications.ProductHistorySpecification;
 import jakarta.persistence.criteria.JoinType;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ public class ProductHistoryServiceImpl implements ProductHistoryService {
 
     private final ProductHistoryRepository productHistoryRepository;
     private final ProductHistoryMapper productHistoryMapper;
+    private final GroupUtil groupUtil;
 
     @Override
     @Transactional
@@ -78,9 +80,11 @@ public class ProductHistoryServiceImpl implements ProductHistoryService {
     @Override
     @Transactional(readOnly = true)
     public Pair<List<ProductHistoryDto>, PaginationMetadata> getHistory(Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
+        List<Long> productGroupIds = groupUtil.getAccessibleProductGroupIds();
         Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
         Pageable pageable = PageRequest.of(page, size, sort);
-        Specification<ProductHistory> spec = ProductHistorySpecification.buildSpecification(filters);
+        Specification<ProductHistory> spec = ProductHistorySpecification.buildSpecification(filters)
+                .and(ProductHistorySpecification.belongsToProductGroups(productGroupIds));
         Page<ProductHistory> pageResult = productHistoryRepository.findAll(spec, pageable);
 
         List<ProductHistoryDto> content = pageResult.getContent()

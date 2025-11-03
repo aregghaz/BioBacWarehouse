@@ -1,9 +1,6 @@
 package com.biobac.warehouse.utils.specifications;
 
-import com.biobac.warehouse.entity.ManufactureProduct;
-import com.biobac.warehouse.entity.Product;
-import com.biobac.warehouse.entity.Unit;
-import com.biobac.warehouse.entity.Warehouse;
+import com.biobac.warehouse.entity.*;
 import com.biobac.warehouse.request.FilterCriteria;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -91,6 +88,24 @@ public class ManufactureSpecification {
                 }
             }
             return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
+    public static Specification<ManufactureProduct> belongsToWarehouseGroups(List<Long> groupIds) {
+        return (root, query, cb) -> {
+            if (groupIds == null || groupIds.isEmpty()) {
+                return cb.disjunction();
+            }
+            return root.get("warehouse").get("warehouseGroup").get("id").in(groupIds);
+        };
+    }
+
+    public static Specification<ManufactureProduct> belongsToProductGroups(List<Long> groupIds) {
+        return (root, query, cb) -> {
+            if (groupIds == null || groupIds.isEmpty()) {
+                return cb.disjunction();
+            }
+            return root.get("product").get("productGroup").get("id").in(groupIds);
         };
     }
 }

@@ -10,6 +10,7 @@ import com.biobac.warehouse.repository.IngredientGroupRepository;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.IngredientGroupResponse;
 import com.biobac.warehouse.service.IngredientGroupService;
+import com.biobac.warehouse.utils.GroupUtil;
 import com.biobac.warehouse.utils.specifications.IngredientGroupSpecification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +33,7 @@ import java.util.stream.Collectors;
 public class IngredientGroupServiceImpl implements IngredientGroupService {
     private final IngredientGroupRepository repository;
     private final IngredientGroupMapper mapper;
+    private final GroupUtil groupUtil;
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
@@ -54,7 +56,9 @@ public class IngredientGroupServiceImpl implements IngredientGroupService {
     @Override
     @Transactional(readOnly = true)
     public List<IngredientGroupResponse> getPagination() {
-        return repository.findAll().stream()
+        List<Long> groupIds = groupUtil.getAccessibleIngredientGroupIds();
+        Specification<IngredientGroup> spec = IngredientGroupSpecification.belongsToGroups(groupIds);
+        return repository.findAll(spec).stream()
                 .map(mapper::toDto)
                 .collect(Collectors.toList());
     }
@@ -66,9 +70,11 @@ public class IngredientGroupServiceImpl implements IngredientGroupService {
                                                                                  Integer size,
                                                                                  String sortBy,
                                                                                  String sortDir) {
+        List<Long> groupIds = groupUtil.getAccessibleIngredientGroupIds();
         Pageable pageable = buildPageable(page, size, sortBy, sortDir);
 
-        Specification<IngredientGroup> spec = IngredientGroupSpecification.buildSpecification(filters);
+        Specification<IngredientGroup> spec = IngredientGroupSpecification.buildSpecification(filters)
+                .and(IngredientGroupSpecification.belongsToGroups(groupIds));
 
         Page<IngredientGroup> ingredientGroupPage = repository.findAll(spec, pageable);
 

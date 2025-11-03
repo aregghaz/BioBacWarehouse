@@ -4,7 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -14,8 +14,8 @@ public class ReceiveIngredientUpdateRequest {
     private Long ingredientId;
     private Long companyId;
     private BigDecimal price;
-    private LocalDate importDate;
-    private LocalDate manufacturingDate;
+    private LocalDateTime importDate;
+    private LocalDateTime manufacturingDate;
     private Double quantity;
     private Long statusId;
 }

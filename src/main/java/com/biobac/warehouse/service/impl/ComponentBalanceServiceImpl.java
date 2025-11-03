@@ -95,8 +95,12 @@ public class ComponentBalanceServiceImpl implements ComponentBalanceService {
                                                                                         Integer size,
                                                                                         String sortBy,
                                                                                         String sortDir) {
+        List<Long> warehouseGroupIds = groupUtil.getAccessibleWarehouseGroupIds();
+        List<Long> ingredientGroupIds = groupUtil.getAccessibleIngredientGroupIds();
         Pageable pageable = buildPageable(page, size, sortBy, sortDir);
         Specification<IngredientBalance> spec = IngredientBalanceSpecification.buildSpecification(filters)
+                .and(IngredientBalanceSpecification.belongsToIngredientGroups(ingredientGroupIds))
+                .and(IngredientBalanceSpecification.belongsToWarehouseGroups(warehouseGroupIds))
                 .and((root, query, cb) -> cb.isNotNull(root.get("ingredient")));
 
         Page<IngredientBalance> componentBalancePage = ingredientBalanceRepository.findAll(spec, pageable);
@@ -128,8 +132,12 @@ public class ComponentBalanceServiceImpl implements ComponentBalanceService {
                                                                                           Integer size,
                                                                                           String sortBy,
                                                                                           String sortDir) {
+        List<Long> warehouseGroupIds = groupUtil.getAccessibleWarehouseGroupIds();
+        List<Long> productGroupIds = groupUtil.getAccessibleProductGroupIds();
         Pageable pageable = buildPageable(page, size, sortBy, sortDir);
         Specification<ProductBalance> spec = ProductBalanceSpecification.buildSpecification(filters)
+                .and(ProductBalanceSpecification.belongsToWarehouseGroups(warehouseGroupIds))
+                .and(ProductBalanceSpecification.belongsToProductGroups(productGroupIds))
                 .and((root, query, cb) -> cb.isNotNull(root.get("product")));
         Page<ProductBalance> componentBalancePage = productBalanceRepository.findAll(spec, pageable);
 

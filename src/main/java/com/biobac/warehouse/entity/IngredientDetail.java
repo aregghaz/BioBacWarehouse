@@ -6,6 +6,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Getter
@@ -19,11 +20,11 @@ public class IngredientDetail {
     @JoinColumn(name = "ingredient_balance_id")
     private IngredientBalance ingredientBalance;
 
-    private LocalDate importDate;
+    private LocalDateTime importDate;
 
-    private LocalDate expirationDate;
+    private LocalDateTime expirationDate;
 
-    private LocalDate manufacturingDate;
+    private LocalDateTime manufacturingDate;
 
     private Double quantity;
 

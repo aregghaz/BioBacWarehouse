@@ -40,7 +40,7 @@ public class GroupUtil {
         if (accessToAllGroups()) {
             groupIds = ingredientGroupRepository.findAll().stream().map(IngredientGroup::getId).toList();
         } else {
-            groupIds = getAccessibleGroupIds(userClient::getProductGroupIds, "ingredient");
+            groupIds = getAccessibleGroupIds(userClient::getIngredientGroupIds, "ingredient");
         }
         return groupIds;
     }

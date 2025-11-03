@@ -6,7 +6,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -15,11 +15,11 @@ public class ReceiveIngredientFinalizeRequest {
 
     @NotNull(message = "Import date is required")
     @PastOrPresent(message = "Import date cannot be in the future")
-    private LocalDate importDate;
+    private LocalDateTime importDate;
 
     @NotNull(message = "Manufacturing date is required")
     @PastOrPresent(message = "Manufacturing date cannot be in the future")
-    private LocalDate manufacturingDate;
+    private LocalDateTime manufacturingDate;
 
     @NotNull(message = "Received quantity is required")
     private Double receivedQuantity;

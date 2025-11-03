@@ -65,4 +65,13 @@ public class IngredientHistorySpecification {
             return cb.and(predicates.toArray(new Predicate[0]));
         };
     }
+
+    public static Specification<IngredientHistory> belongsToIngredientGroups(List<Long> groupIds) {
+        return (root, query, cb) -> {
+            if (groupIds == null || groupIds.isEmpty()) {
+                return cb.disjunction();
+            }
+            return root.get("ingredient").get("ingredientGroup").get("id").in(groupIds);
+        };
+    }
 }

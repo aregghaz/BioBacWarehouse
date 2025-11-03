@@ -6,6 +6,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -24,7 +25,7 @@ public class ManufactureProduct extends BaseAuditable {
 
     private LocalDate expirationDate;
 
-    private LocalDate manufacturingDate;
+    private LocalDateTime manufacturingDate;
 
     private Double quantity;
 

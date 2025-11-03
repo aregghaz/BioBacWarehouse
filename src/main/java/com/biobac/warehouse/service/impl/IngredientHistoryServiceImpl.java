@@ -11,6 +11,7 @@ import com.biobac.warehouse.response.IngredientHistoryResponse;
 import com.biobac.warehouse.response.IngredientHistorySingleResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.utils.DateUtil;
+import com.biobac.warehouse.utils.GroupUtil;
 import com.biobac.warehouse.utils.specifications.IngredientHistorySpecification;
 import jakarta.persistence.criteria.JoinType;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +25,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -36,6 +37,7 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
     private final IngredientHistoryRepository ingredientHistoryRepository;
     private final IngredientHistoryMapper ingredientHistoryMapper;
     private final IngredientBalanceRepository ingredientBalanceRepository;
+    private final GroupUtil groupUtil;
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
@@ -70,7 +72,7 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
 
     @Override
     @Transactional
-    public IngredientHistorySingleResponse recordQuantityChange(LocalDate timestamp, Ingredient ingredient, Double quantityBefore,
+    public IngredientHistorySingleResponse recordQuantityChange(LocalDateTime timestamp, Ingredient ingredient, Double quantityBefore,
                                                                 Double quantityAfter, String notes, BigDecimal lastPrice, Long lastCompanyId) {
         IngredientHistory history = new IngredientHistory();
         history.setIngredient(ingredient);
@@ -141,21 +143,24 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
             String sortBy,
             String sortDir) {
 
+        List<Long> ingredientGroupIds = groupUtil.getAccessibleIngredientGroupIds();
+
         int safePage = (page == null || page < 0) ? DEFAULT_PAGE : page;
         int safeSize = (size == null || size <= 0) ? DEFAULT_SIZE : size;
         String safeSortBy = (sortBy == null || sortBy.isBlank()) ? "ingredientName" : sortBy.trim();
         String safeSortDir = (sortDir == null || sortDir.isBlank()) ? DEFAULT_SORT_DIR : sortDir.trim();
 
-        Specification<IngredientHistory> spec = IngredientHistorySpecification.buildSpecification(filters);
+        Specification<IngredientHistory> spec = IngredientHistorySpecification.buildSpecification(filters)
+                .and(IngredientHistorySpecification.belongsToIngredientGroups(ingredientGroupIds));
 
         List<IngredientHistory> matching = ingredientHistoryRepository.findAll(spec);
         Map<Long, List<IngredientHistory>> historiesByIngredient = matching.stream()
                 .collect(Collectors.groupingBy(h -> h.getIngredient().getId()));
 
-        List<LocalDate> dates = parseDates(filters);
+        List<LocalDateTime> dates = parseDates(filters);
 
-        LocalDate startDate = dates.get(0);
-        LocalDate endDate = dates.get(1);
+        LocalDateTime startDate = dates.get(0);
+        LocalDateTime endDate = dates.get(1);
 
         Map<Long, IngredientHistory> representative = historiesByIngredient.entrySet().stream()
                 .collect(Collectors.toMap(
@@ -296,7 +301,7 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
     @Override
     @Transactional(readOnly = true)
     public Double getInitialForIngredient(Long ingredientId, Map<String, FilterCriteria> filters) {
-        List<LocalDate> dates = parseDates(filters);
+        List<LocalDateTime> dates = parseDates(filters);
         IngredientHistory firstInRange = ingredientHistoryRepository.findFirstBeforeRange(ingredientId, dates.get(0));
         return firstInRange != null ? firstInRange.getQuantityResult() : 0.0;
     }
@@ -304,7 +309,7 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
     @Override
     @Transactional(readOnly = true)
     public Double getEventualForIngredient(Long ingredientId, Map<String, FilterCriteria> filters) {
-        List<LocalDate> dates = parseDates(filters);
+        List<LocalDateTime> dates = parseDates(filters);
         IngredientHistory firstInRange = ingredientHistoryRepository.findLastInRange(ingredientId, dates.get(0), dates.get(1));
         return firstInRange.getQuantityResult();
     }
@@ -312,20 +317,20 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
     @Transactional(readOnly = true)
     @Override
     public Double getSumOfIncreasedCount(Long id, Map<String, FilterCriteria> filters) {
-        List<LocalDate> dates = parseDates(filters);
+        List<LocalDateTime> dates = parseDates(filters);
         return ingredientHistoryRepository.sumIncreasedCount(id, dates.get(0), dates.get(1));
     }
 
     @Transactional(readOnly = true)
     @Override
     public Double getSumOfDecreasedCount(Long id, Map<String, FilterCriteria> filters) {
-        List<LocalDate> dates = parseDates(filters);
+        List<LocalDateTime> dates = parseDates(filters);
         return ingredientHistoryRepository.sumDecreasedCount(id, dates.get(0), dates.get(1));
     }
 
-    private List<LocalDate> parseDates(Map<String, FilterCriteria> filters) {
-        LocalDate startDate = null;
-        LocalDate endDate = null;
+    private List<LocalDateTime> parseDates(Map<String, FilterCriteria> filters) {
+        LocalDateTime startDate = null;
+        LocalDateTime endDate = null;
         if (filters != null) {
             FilterCriteria ts = filters.get("timestamp");
             if (ts != null && ts.getOperator() != null) {
@@ -333,8 +338,8 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
                 Object val = ts.getValue();
                 try {
                     if ("between".equals(op) && val instanceof List<?> list && list.size() == 2) {
-                        startDate = DateUtil.parseDate(String.valueOf(list.get(0)));
-                        endDate = DateUtil.parseDate(String.valueOf(list.get(1)));
+                        startDate = DateUtil.parseDateTime(String.valueOf(list.get(0)));
+                        endDate = DateUtil.parseDateTime(String.valueOf(list.get(1)));
                     }
                 } catch (Exception ignore) {
                 }

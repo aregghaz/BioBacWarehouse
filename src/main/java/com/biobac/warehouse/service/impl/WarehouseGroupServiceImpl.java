@@ -10,6 +10,8 @@ import com.biobac.warehouse.repository.WarehouseGroupRepository;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.WarehouseGroupResponse;
 import com.biobac.warehouse.service.WarehouseGroupService;
+import com.biobac.warehouse.utils.GroupUtil;
+import com.biobac.warehouse.utils.specifications.WarehouseGroupSpecification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -29,9 +31,9 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class WarehouseGroupServiceImpl implements WarehouseGroupService {
-
     private final WarehouseGroupRepository repository;
     private final WarehouseGroupMapper mapper;
+    private final GroupUtil groupUtil;
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
@@ -53,8 +55,10 @@ public class WarehouseGroupServiceImpl implements WarehouseGroupService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<WarehouseGroupResponse> getPagination() {
-        return repository.findAll().stream()
+    public List<WarehouseGroupResponse> getAll() {
+        List<Long> groupIds = groupUtil.getAccessibleWarehouseGroupIds();
+        Specification<WarehouseGroup> spec = WarehouseGroupSpecification.belongsToGroups(groupIds);
+        return repository.findAll(spec).stream()
                 .map(mapper::toDto)
                 .collect(Collectors.toList());
     }
@@ -66,13 +70,13 @@ public class WarehouseGroupServiceImpl implements WarehouseGroupService {
                                                                                 Integer size,
                                                                                 String sortBy,
                                                                                 String sortDir) {
+        List<Long> groupIds = groupUtil.getAccessibleWarehouseGroupIds();
         Pageable pageable = buildPageable(page, size, sortBy, sortDir);
 
-        Specification<WarehouseGroup> spec = null; // No filters implemented for now
+        Specification<WarehouseGroup> spec = WarehouseGroupSpecification.buildSpecification(filters)
+                .and(WarehouseGroupSpecification.belongsToGroups(groupIds));
 
-        Page<WarehouseGroup> groupPage = (spec == null)
-                ? repository.findAll(pageable)
-                : repository.findAll(spec, pageable);
+        Page<WarehouseGroup> groupPage = repository.findAll(spec, pageable);
 
         List<WarehouseGroupResponse> content = groupPage.getContent().stream()
                 .map(mapper::toTableResponse)
@@ -122,7 +126,7 @@ public class WarehouseGroupServiceImpl implements WarehouseGroupService {
     public void delete(Long id) {
         WarehouseGroup warehouseGroup = repository.findById(id)
                 .orElseThrow(() -> new NotFoundException("WarehouseGroup not found with id: " + id));
-        for (Warehouse warehouse : warehouseGroup.getWarehouses()){
+        for (Warehouse warehouse : warehouseGroup.getWarehouses()) {
             warehouse.setWarehouseGroup(null);
         }
         repository.delete(warehouseGroup);

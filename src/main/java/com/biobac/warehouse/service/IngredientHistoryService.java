@@ -8,13 +8,13 @@ import com.biobac.warehouse.response.IngredientHistorySingleResponse;
 import org.springframework.data.util.Pair;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
 public interface IngredientHistoryService {
 
-    IngredientHistorySingleResponse recordQuantityChange(LocalDate timestamp, Ingredient ingredient, Double quantityResult,
+    IngredientHistorySingleResponse recordQuantityChange(LocalDateTime timestamp, Ingredient ingredient, Double quantityResult,
                                                          Double quantityChange, String notes, BigDecimal lastPrice, Long lastCompanyId);
 
 

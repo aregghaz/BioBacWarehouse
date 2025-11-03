@@ -6,7 +6,7 @@ import jakarta.validation.constraints.PastOrPresent;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -19,7 +19,7 @@ public class ManufactureProductRequest {
 
     @NotNull(message = "Manufacturing date is required")
     @PastOrPresent(message = "Manufacturing date cannot be in the future")
-    private LocalDate manufacturingDate;
+    private LocalDateTime manufacturingDate;
 
     @NotNull(message = "Quantity is required")
     @DecimalMin(value = "0.0", inclusive = false, message = "Quantity must be greater than 0")

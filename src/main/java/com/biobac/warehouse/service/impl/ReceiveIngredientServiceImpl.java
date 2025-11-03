@@ -321,9 +321,14 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                                                                                    Integer size,
                                                                                    String sortBy,
                                                                                    String sortDir) {
+        List<Long> warehouseGroupIds = groupUtil.getAccessibleWarehouseGroupIds();
+        List<Long> ingredientGroupIds = groupUtil.getAccessibleIngredientGroupIds();
+
         Pageable pageable = buildPageable(page, size, sortBy, sortDir);
 
-        Specification<ReceiveIngredient> spec = ReceiveIngredientSpecification.buildSpecification(filters);
+        Specification<ReceiveIngredient> spec = ReceiveIngredientSpecification.buildSpecification(filters)
+                .and(ReceiveIngredientSpecification.belongsToWarehouseGroups(warehouseGroupIds))
+                .and(ReceiveIngredientSpecification.belongsToIngredientGroups(ingredientGroupIds));
 
         Page<ReceiveIngredient> pageResult = receiveIngredientRepository.findAll(spec, pageable);
 
@@ -373,6 +378,8 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                                                                                    Integer size,
                                                                                    String sortBy,
                                                                                    String sortDir) {
+        List<Long> warehouseGroupIds = groupUtil.getAccessibleWarehouseGroupIds();
+        List<Long> ingredientGroupIds = groupUtil.getAccessibleIngredientGroupIds();
         Pageable pageable = buildPageable(page, size, sortBy, sortDir);
 
         Specification<ReceiveIngredient> spec = ReceiveIngredientSpecification.buildSpecification(filters)
@@ -383,7 +390,9 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                     } else {
                         return cb.notEqual(statusJoin.get("name"), STATUS_COMPLETED);
                     }
-                });
+                })
+                .and(ReceiveIngredientSpecification.belongsToWarehouseGroups(warehouseGroupIds))
+                .and(ReceiveIngredientSpecification.belongsToIngredientGroups(ingredientGroupIds));
 
         Page<ReceiveIngredient> pageResult = receiveIngredientRepository.findAll(spec, pageable);
 

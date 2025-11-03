@@ -4,7 +4,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Getter
 @Setter
@@ -16,7 +16,7 @@ public class ManufactureProductResponse extends AuditableResponse {
     private String unitName;
     private String productName;
     private Long productId;
-    private LocalDate expirationDate;
-    private LocalDate manufacturingDate;
+    private LocalDateTime expirationDate;
+    private LocalDateTime manufacturingDate;
     private BigDecimal price;
 }

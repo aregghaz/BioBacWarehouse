@@ -10,6 +10,7 @@ import com.biobac.warehouse.repository.ProductGroupRepository;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.ProductGroupResponse;
 import com.biobac.warehouse.service.ProductGroupService;
+import com.biobac.warehouse.utils.GroupUtil;
 import com.biobac.warehouse.utils.specifications.ProductGroupSpecification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,6 +33,7 @@ import java.util.stream.Collectors;
 public class ProductGroupServiceImpl implements ProductGroupService {
     private final ProductGroupRepository repository;
     private final ProductGroupMapper mapper;
+    private final GroupUtil groupUtil;
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
@@ -54,7 +56,9 @@ public class ProductGroupServiceImpl implements ProductGroupService {
     @Override
     @Transactional(readOnly = true)
     public List<ProductGroupResponse> getPagination() {
-        return repository.findAll().stream()
+        List<Long> groupIds = groupUtil.getAccessibleProductGroupIds();
+        Specification<ProductGroup> spec = ProductGroupSpecification.belongsToGroups(groupIds);
+        return repository.findAll(spec).stream()
                 .map(mapper::toDto)
                 .collect(Collectors.toList());
     }
@@ -66,9 +70,11 @@ public class ProductGroupServiceImpl implements ProductGroupService {
                                                                               Integer size,
                                                                               String sortBy,
                                                                               String sortDir) {
+        List<Long> groupIds = groupUtil.getAccessibleProductGroupIds();
         Pageable pageable = buildPageable(page, size, sortBy, sortDir);
 
-        Specification<ProductGroup> spec = ProductGroupSpecification.buildSpecification(filters);
+        Specification<ProductGroup> spec = ProductGroupSpecification.buildSpecification(filters)
+                .and(ProductGroupSpecification.belongsToGroups(groupIds));
 
         Page<ProductGroup> productGroupPage = repository.findAll(spec, pageable);
 
@@ -96,8 +102,7 @@ public class ProductGroupServiceImpl implements ProductGroupService {
     @Override
     public ProductGroupResponse getById(Long id) {
         ProductGroup entity = repository.findById(id).orElseThrow(() -> new NotFoundException("ProductGroup not found with id: " + id));
-        ProductGroupResponse resp = mapper.toDto(entity);
-        return resp;
+        return mapper.toDto(entity);
     }
 
     @Transactional

@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Entity
@@ -24,11 +24,11 @@ public class ReceiveIngredient extends BaseAuditable {
 
     private Long companyId;
 
-    private LocalDate importDate;
+    private LocalDateTime importDate;
 
-    private LocalDate expirationDate;
+    private LocalDateTime expirationDate;
 
-    private LocalDate manufacturingDate;
+    private LocalDateTime manufacturingDate;
 
     private BigDecimal price;
 

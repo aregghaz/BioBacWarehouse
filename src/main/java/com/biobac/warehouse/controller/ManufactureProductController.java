@@ -27,13 +27,13 @@ public class ManufactureProductController {
     }
 
     @PostMapping("/all")
-    public ApiResponse<List<ManufactureProductResponse>> getByProductId(@RequestParam Long productId,
-                                                                        @RequestParam(required = false, defaultValue = "0") Integer page,
-                                                                        @RequestParam(required = false, defaultValue = "10") Integer size,
-                                                                        @RequestParam(required = false, defaultValue = "id") String sortBy,
-                                                                        @RequestParam(required = false, defaultValue = "asc") String sortDir,
-                                                                        @RequestBody Map<String, FilterCriteria> filters) {
-        Pair<List<ManufactureProductResponse>, PaginationMetadata> result = manufactureProductService.getByProductId(productId, filters, page, size, sortBy, sortDir);
+    public ApiResponse<List<ManufactureProductResponse>> getByProductId(
+            @RequestParam(required = false, defaultValue = "0") Integer page,
+            @RequestParam(required = false, defaultValue = "10") Integer size,
+            @RequestParam(required = false, defaultValue = "id") String sortBy,
+            @RequestParam(required = false, defaultValue = "asc") String sortDir,
+            @RequestBody Map<String, FilterCriteria> filters) {
+        Pair<List<ManufactureProductResponse>, PaginationMetadata> result = manufactureProductService.getByProductId(filters, page, size, sortBy, sortDir);
         return ResponseUtil.success("Manufactured Products retrieved successfully", result.getFirst(), result.getSecond());
     }
 }

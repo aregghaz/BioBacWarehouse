@@ -109,4 +109,22 @@ public class ReceiveIngredientSpecification {
             return cb.and(predicates.toArray(new Predicate[0]));
         };
     }
+
+    public static Specification<ReceiveIngredient> belongsToWarehouseGroups(List<Long> groupIds) {
+        return (root, query, cb) -> {
+            if (groupIds == null || groupIds.isEmpty()) {
+                return cb.disjunction();
+            }
+            return root.get("warehouse").get("warehouseGroup").get("id").in(groupIds);
+        };
+    }
+
+    public static Specification<ReceiveIngredient> belongsToIngredientGroups(List<Long> groupIds) {
+        return (root, query, cb) -> {
+            if (groupIds == null || groupIds.isEmpty()) {
+                return cb.disjunction();
+            }
+            return root.get("ingredient").get("ingredientGroup").get("id").in(groupIds);
+        };
+    }
 }

@@ -12,8 +12,9 @@ import com.biobac.warehouse.response.ManufactureProductResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.ManufactureProductService;
 import com.biobac.warehouse.service.ProductHistoryService;
+import com.biobac.warehouse.utils.DateUtil;
+import com.biobac.warehouse.utils.GroupUtil;
 import com.biobac.warehouse.utils.specifications.ManufactureSpecification;
-import jakarta.persistence.criteria.JoinType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -46,6 +47,7 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
     private final IngredientDetailRepository ingredientDetailRepository;
     private final ProductDetailRepository productDetailRepository;
     private final ManufactureComponentRepository manufactureComponentRepository;
+    private final GroupUtil groupUtil;
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
@@ -95,7 +97,7 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
         manufactureProduct.setManufacturingDate(request.getManufacturingDate());
         manufactureProduct.setQuantity(totalCount);
         if (product.getExpiration() != null) {
-            manufactureProduct.setExpirationDate(request.getManufacturingDate().plusDays(product.getExpiration()));
+            manufactureProduct.setExpirationDate(DateUtil.parseDate(request.getManufacturingDate()).plusDays(product.getExpiration()));
         } else {
             manufactureProduct.setExpirationDate(null);
         }
@@ -149,17 +151,17 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
 
     @Override
     @Transactional(readOnly = true)
-    public Pair<List<ManufactureProductResponse>, PaginationMetadata> getByProductId(Long productId, Map<String, FilterCriteria> filters,
+    public Pair<List<ManufactureProductResponse>, PaginationMetadata> getByProductId(Map<String, FilterCriteria> filters,
                                                                                      Integer page,
                                                                                      Integer size,
                                                                                      String sortBy,
                                                                                      String sortDir) {
-        productRepository.findById(productId).orElseThrow(() -> new NotFoundException("Product not found"));
-
+        List<Long> warehouseGroupIds = groupUtil.getAccessibleWarehouseGroupIds();
+        List<Long> productGroupIds = groupUtil.getAccessibleProductGroupIds();
         Pageable pageable = buildPageable(page, size, sortBy, sortDir);
-
         Specification<ManufactureProduct> spec = ManufactureSpecification.buildSpecification(filters)
-                .and((root, query, cb) -> root.join("product", JoinType.LEFT).get("id").in(productId));
+                .and(ManufactureSpecification.belongsToProductGroups(productGroupIds))
+                .and(ManufactureSpecification.belongsToWarehouseGroups(warehouseGroupIds));
 
         Page<ManufactureProduct> pageResult = manufactureProductRepository.findAll(spec, pageable);
 

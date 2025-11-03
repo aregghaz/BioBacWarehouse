@@ -25,16 +25,16 @@ public class WarehouseGroupController extends BaseController {
 
     @GetMapping
     public ApiResponse<List<WarehouseGroupResponse>> getAll() {
-        List<WarehouseGroupResponse> dtos = service.getPagination();
+        List<WarehouseGroupResponse> dtos = service.getAll();
         return ResponseUtil.success("Warehouse groups retrieved successfully", dtos);
     }
 
     @PostMapping("/all")
-    public ApiResponse<List<WarehouseGroupResponse>> getAll(@RequestParam(required = false, defaultValue = "0") Integer page,
-                                                            @RequestParam(required = false, defaultValue = "10") Integer size,
-                                                            @RequestParam(required = false, defaultValue = "id") String sortBy,
-                                                            @RequestParam(required = false, defaultValue = "asc") String sortDir,
-                                                            @RequestBody Map<String, FilterCriteria> filters) {
+    public ApiResponse<List<WarehouseGroupResponse>> getPagination(@RequestParam(required = false, defaultValue = "0") Integer page,
+                                                                   @RequestParam(required = false, defaultValue = "10") Integer size,
+                                                                   @RequestParam(required = false, defaultValue = "id") String sortBy,
+                                                                   @RequestParam(required = false, defaultValue = "asc") String sortDir,
+                                                                   @RequestBody Map<String, FilterCriteria> filters) {
         Pair<List<WarehouseGroupResponse>, PaginationMetadata> result = service.getPagination(filters, page, size, sortBy, sortDir);
         return ResponseUtil.success("Warehouse groups retrieved successfully", result.getFirst(), result.getSecond());
     }

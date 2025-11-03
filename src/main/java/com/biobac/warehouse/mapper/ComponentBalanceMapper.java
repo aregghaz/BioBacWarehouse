@@ -7,7 +7,7 @@ import com.biobac.warehouse.utils.SelfWorthPriceUtil;
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
@@ -25,6 +25,7 @@ public class ComponentBalanceMapper {
         response.setIngredientUnitName(entity.getIngredient().getUnit().getName());
         response.setTotalPrice(selfWorth.multiply(BigDecimal.valueOf(entity.getBalance())));
         response.setIngredientName(entity.getIngredient() == null ? null : entity.getIngredient().getName());
+        response.setIngredientId(entity.getIngredient() == null ? null : entity.getIngredient().getId());
         response.setWarehouseName(entity.getWarehouse() == null ? null : entity.getWarehouse().getName());
         response.setBalance(entity.getBalance());
         assert entity.getIngredient() != null;
@@ -60,10 +61,10 @@ public class ComponentBalanceMapper {
         return response;
     }
 
-    private <T> LocalDate getLastExpirationDate(List<T> details, Function<T, LocalDate> expirationMapper) {
-        LocalDate today = LocalDate.now();
+    private <T> LocalDateTime getLastExpirationDate(List<T> details, Function<T, LocalDateTime> expirationMapper) {
+        LocalDateTime today = LocalDateTime.now();
 
-        Optional<LocalDate> lastExpired = details.stream()
+        Optional<LocalDateTime> lastExpired = details.stream()
                 .map(expirationMapper)
                 .filter(Objects::nonNull)
                 .filter(d -> d.isBefore(today))
@@ -77,11 +78,11 @@ public class ComponentBalanceMapper {
                 .orElse(null));
     }
 
-    private LocalDate getProductLastExpirationDate(ProductBalance componentBalance) {
+    private LocalDateTime getProductLastExpirationDate(ProductBalance componentBalance) {
         return getLastExpirationDate(componentBalance.getDetails(), ProductDetail::getExpirationDate);
     }
 
-    private LocalDate getIngredientLastExpirationDate(IngredientBalance ingredientBalance) {
+    private LocalDateTime getIngredientLastExpirationDate(IngredientBalance ingredientBalance) {
         return getLastExpirationDate(ingredientBalance.getDetails(), IngredientDetail::getExpirationDate);
     }
 }

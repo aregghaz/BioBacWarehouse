@@ -104,4 +104,22 @@ public class ProductBalanceSpecification {
             return cb.and(predicates.toArray(new Predicate[0]));
         };
     }
+
+    public static Specification<ProductBalance> belongsToWarehouseGroups(List<Long> groupIds) {
+        return (root, query, cb) -> {
+            if (groupIds == null || groupIds.isEmpty()) {
+                return cb.disjunction();
+            }
+            return root.get("warehouse").get("warehouseGroup").get("id").in(groupIds);
+        };
+    }
+
+    public static Specification<ProductBalance> belongsToProductGroups(List<Long> groupIds) {
+        return (root, query, cb) -> {
+            if (groupIds == null || groupIds.isEmpty()) {
+                return cb.disjunction();
+            }
+            return root.get("product").get("productGroup").get("id").in(groupIds);
+        };
+    }
 }
