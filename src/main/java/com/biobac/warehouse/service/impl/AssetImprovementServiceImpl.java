@@ -2,9 +2,11 @@ package com.biobac.warehouse.service.impl;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.entity.Asset;
+import com.biobac.warehouse.entity.AssetAction;
 import com.biobac.warehouse.entity.AssetImprovement;
 import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.AssetImprovementMapper;
+import com.biobac.warehouse.repository.AssetActionRepository;
 import com.biobac.warehouse.repository.AssetImprovementRepository;
 import com.biobac.warehouse.repository.AssetRepository;
 import com.biobac.warehouse.request.AddImprovementRequest;
@@ -35,6 +37,7 @@ public class AssetImprovementServiceImpl implements AssetImprovementService {
     private final AssetImprovementRepository assetImprovementRepository;
     private final AssetRepository assetRepository;
     private final AssetImprovementMapper assetImprovementMapper;
+    private final AssetActionRepository assetActionRepository;
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
@@ -73,26 +76,24 @@ public class AssetImprovementServiceImpl implements AssetImprovementService {
     public AssetImprovementResponse addImprovement(Long assetId, AddImprovementRequest request) {
         Asset asset = assetRepository.findById(assetId)
                 .orElseThrow(() -> new NotFoundException("Asset not found"));
+        AssetAction action = assetActionRepository.findById(request.getActionId())
+                .orElseThrow(() -> new NotFoundException("Action ot found"));
 
         if (request.getAmount() == null) {
             throw new IllegalArgumentException("Improvement amount is required");
         }
+        BigDecimal changedAmount = request.getAmount().subtract(asset.getCurrentCost());
 
         AssetImprovement improvement = new AssetImprovement();
         improvement.setAsset(asset);
-        improvement.setAmount(request.getAmount());
+        improvement.setAction(action);
+        improvement.setAmount(changedAmount);
+        improvement.setExtendLife(request.getMonthsExtended() > asset.getUsefulLifeMonths());
         improvement.setDate(request.getDate() != null ? request.getDate() : LocalDate.now());
         improvement.setComment(request.getComment());
-        improvement.setExtendLife(Boolean.TRUE.equals(request.getExtendLife()));
-        improvement.setMonthsExtended(request.getMonthsExtended() != null ? request.getMonthsExtended() : 0);
-
-        BigDecimal currentCost = asset.getCurrentCost() == null ? BigDecimal.ZERO : asset.getCurrentCost();
-        asset.setCurrentCost(currentCost.add(request.getAmount()));
-
-        if (Boolean.TRUE.equals(improvement.getExtendLife()) && improvement.getMonthsExtended() != null && improvement.getMonthsExtended() > 0) {
-            Integer life = asset.getUsefulLifeMonths() == null ? 0 : asset.getUsefulLifeMonths();
-            asset.setUsefulLifeMonths(life + improvement.getMonthsExtended());
-        }
+        improvement.setMonthsExtended(request.getMonthsExtended() - asset.getUsefulLifeMonths());
+        asset.setCurrentCost(request.getAmount());
+        asset.setUsefulLifeMonths(request.getMonthsExtended());
         asset.recalcResidual();
 
         assetRepository.save(asset);

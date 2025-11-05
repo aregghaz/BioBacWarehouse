@@ -14,4 +14,5 @@ public class AddImprovementRequest {
     private String comment;
     private Boolean extendLife;
     private Integer monthsExtended;
+    private Long actionId;
 }

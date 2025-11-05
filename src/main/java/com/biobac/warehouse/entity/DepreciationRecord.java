@@ -8,9 +8,6 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 
 @Entity
-@Table(uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"asset_id", "period"})
-})
 @Getter
 @Setter
 public class DepreciationRecord extends BaseAuditable {

@@ -21,8 +21,8 @@ public class AssetController {
     private final AssetService assetService;
 
     @PostMapping
-    public ApiResponse<AssetResponse> register(@RequestBody AssetRegisterRequest request) {
-        AssetResponse response = assetService.register(request);
+    public ApiResponse<AssetResponse> create(@RequestBody AssetRegisterRequest request) {
+        AssetResponse response = assetService.create(request);
         return ResponseUtil.success("Asset registered successfully", response);
     }
 

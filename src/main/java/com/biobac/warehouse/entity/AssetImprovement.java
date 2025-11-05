@@ -29,4 +29,7 @@ public class AssetImprovement extends BaseAuditable {
     private Boolean extendLife = false;
 
     private Integer monthsExtended = 0;
+
+    @ManyToOne
+    private AssetAction action;
 }

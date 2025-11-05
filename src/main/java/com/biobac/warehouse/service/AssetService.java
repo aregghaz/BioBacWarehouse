@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 
 public interface AssetService {
-    AssetResponse register(AssetRegisterRequest request);
+    AssetResponse create(AssetRegisterRequest request);
 
     AssetResponse update(Long id, AssetRegisterRequest request);
 

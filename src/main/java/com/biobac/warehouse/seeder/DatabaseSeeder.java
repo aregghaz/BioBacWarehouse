@@ -6,6 +6,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
+import javax.swing.*;
 import java.util.List;
 
 @Component
@@ -16,6 +17,7 @@ public class DatabaseSeeder implements CommandLineRunner {
     private final AssetStatusRepository assetStatusRepository;
     private final DepreciationMethodRepository depreciationMethodRepository;
     private final ReceiveIngredientStatusRepository receiveIngredientStatusRepository;
+    private final AssetActionRepository assetActionRepository;
 
     @Override
     public void run(String... args) throws Exception {
@@ -68,6 +70,16 @@ public class DatabaseSeeder implements CommandLineRunner {
                     ReceiveIngredientStatus.builder().name("количество и цена не совпадает").build()
             );
             receiveIngredientStatusRepository.saveAll(statuses);
+        }
+
+        if (assetActionRepository.count() == 0) {
+            List<AssetAction> actions = List.of(
+                    AssetAction.builder().name("Переоценка").build(),
+                    AssetAction.builder().name("Изменение срок службы").build(),
+                    AssetAction.builder().name("Списано").build(),
+                    AssetAction.builder().name("Ежемесячная амортизация").build()
+            );
+            assetActionRepository.saveAll(actions);
         }
     }
 }

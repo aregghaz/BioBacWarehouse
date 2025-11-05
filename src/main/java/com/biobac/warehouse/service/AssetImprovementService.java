@@ -5,7 +5,6 @@ import com.biobac.warehouse.request.AddImprovementRequest;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.AssetImprovementResponse;
 import org.springframework.data.util.Pair;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
@@ -13,6 +12,5 @@ import java.util.Map;
 public interface AssetImprovementService {
     AssetImprovementResponse addImprovement(Long assetId, AddImprovementRequest request);
 
-    @Transactional(readOnly = true)
     Pair<List<AssetImprovementResponse>, PaginationMetadata> getPaginationByAssetId(Long assetId, Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir);
 }

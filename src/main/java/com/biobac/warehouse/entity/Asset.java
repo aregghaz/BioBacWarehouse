@@ -10,7 +10,7 @@ import java.time.LocalDate;
 @Entity
 @Getter
 @Setter
-public class Asset extends BaseAuditable{
+public class Asset extends BaseAuditable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -22,7 +22,7 @@ public class Asset extends BaseAuditable{
     private BigDecimal currentCost;
     private BigDecimal accumulatedDepreciation;
     private BigDecimal residualValue;
-    private Integer usefulLifeMonths;             
+    private Integer usefulLifeMonths;
 
     @Column(unique = true)
     private String code;
@@ -43,6 +43,8 @@ public class Asset extends BaseAuditable{
     private Warehouse warehouse;
 
     private String note;
+
+    private boolean deleted = false;
 
     public void recalcResidual() {
         if (currentCost == null) currentCost = BigDecimal.ZERO;

@@ -29,7 +29,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AssetServiceImpl implements AssetService {
     private final AssetCategoryRepository assetCategoryRepository;
-    private final AssetStatusRepository assetStatusRepository;
     private final AssetRepository assetRepository;
     private final DepartmentRepository departmentRepository;
     private final DepreciationMethodRepository depreciationMethodRepository;
@@ -70,7 +69,7 @@ public class AssetServiceImpl implements AssetService {
 
     @Override
     @Transactional
-    public AssetResponse register(AssetRegisterRequest request) {
+    public AssetResponse create(AssetRegisterRequest request) {
         assetRepository.findByCode(request.getCode())
                 .ifPresent(a -> {
                     throw new DuplicateException("Asset with code '" + request.getCode() + "' already exists");
@@ -84,15 +83,12 @@ public class AssetServiceImpl implements AssetService {
                 .orElseThrow(() -> new NotFoundException("Department not found"));
         Warehouse warehouse = warehouseRepository.findById(request.getWarehouseId())
                 .orElseThrow(() -> new NotFoundException("Warehouse not found"));
-        AssetStatus status = assetStatusRepository.findById(2L)
-                .orElseThrow(() -> new NotFoundException("Status not found"));
 
         Asset asset = assetMapper.toEntity(request);
         asset.setCategory(category);
         asset.setDepreciationMethod(depreciationMethod);
         asset.setDepartment(department);
         asset.setWarehouse(warehouse);
-        asset.setStatus(status);
         asset.setCurrentCost(request.getOriginalCost());
 
         Asset saved = assetRepository.save(asset);

@@ -1,9 +1,11 @@
 package com.biobac.warehouse.controller;
 
+import com.biobac.warehouse.entity.AssetAction;
 import com.biobac.warehouse.entity.AssetCategory;
 import com.biobac.warehouse.entity.AssetStatus;
 import com.biobac.warehouse.entity.DepreciationMethod;
 import com.biobac.warehouse.response.ApiResponse;
+import com.biobac.warehouse.response.SelectResponse;
 import com.biobac.warehouse.service.AssetInfoService;
 import com.biobac.warehouse.utils.ResponseUtil;
 import lombok.RequiredArgsConstructor;
@@ -35,5 +37,11 @@ public class AssetInfoController {
     public ApiResponse<List<DepreciationMethod>> getDepreciationMethods() {
         List<DepreciationMethod> statuses = assetInfoService.getAssetDepreciationMethods();
         return ResponseUtil.success("Methods retrieved successfully", statuses);
+    }
+
+    @GetMapping("/action")
+    public ApiResponse<List<AssetAction>> getActions() {
+        List<AssetAction> actions = assetInfoService.getAssetActions();
+        return ResponseUtil.success("Actions retrieved successfully", actions);
     }
 }
