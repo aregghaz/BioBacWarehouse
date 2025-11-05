@@ -731,7 +731,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
         if (ingredient == null || ingredient.getId() == null) {
             throw new InvalidDataException("Ingredient is required for component balance");
         }
-        return ingredientBalanceRepository.findByWarehouseIdAndIngredientId(warehouse.getId(), ingredient.getId())
+        return ingredientBalanceRepository.findByWarehouseAndIngredient(warehouse, ingredient)
                 .orElseGet(() -> {
                     IngredientBalance ib = new IngredientBalance();
                     ib.setWarehouse(warehouse);

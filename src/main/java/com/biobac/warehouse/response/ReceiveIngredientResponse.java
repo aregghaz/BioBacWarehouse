@@ -4,7 +4,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -22,8 +21,8 @@ public class ReceiveIngredientResponse extends AuditableResponse {
     private List<UnitTypeCalculatedResponse> unitTypeConfigs;
     private List<UnitTypeCalculatedResponse> receivedUnitTypeConfigs;
     private LocalDateTime importDate;
-    private LocalDate expirationDate;
-    private LocalDate manufacturingDate;
+    private LocalDateTime expirationDate;
+    private LocalDateTime manufacturingDate;
     private Long companyId;
     private String companyName;
     private BigDecimal price;

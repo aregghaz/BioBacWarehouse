@@ -192,7 +192,7 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
         if (ingredient == null || ingredient.getId() == null) {
             throw new InvalidDataException("Ingredient is required for component balance");
         }
-        return ingredientBalanceRepository.findByWarehouseIdAndIngredientId(warehouse.getId(), ingredient.getId())
+        return ingredientBalanceRepository.findByWarehouseAndIngredient(warehouse, ingredient)
                 .orElseGet(() -> {
                     IngredientBalance cb = new IngredientBalance();
                     cb.setWarehouse(warehouse);
@@ -209,7 +209,7 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
         if (product == null || product.getId() == null) {
             throw new InvalidDataException("Product is required for component balance");
         }
-        return productBalanceRepository.findByWarehouseIdAndProductId(warehouse.getId(), product.getId())
+        return productBalanceRepository.findByWarehouseAndProduct(warehouse, product)
                 .orElseGet(() -> {
                     ProductBalance cb = new ProductBalance();
                     cb.setWarehouse(warehouse);

@@ -4,8 +4,12 @@ import com.biobac.warehouse.entity.IngredientDetail;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 public interface IngredientDetailRepository extends JpaRepository<IngredientDetail, Long>, JpaSpecificationExecutor<IngredientDetail> {
     List<IngredientDetail> findByIngredientBalanceIdOrderByExpirationDateAsc(Long ingredientBalanceId);
+
+    Optional<IngredientDetail> findByIngredientBalanceIdAndExpirationDate(Long id, LocalDateTime expirationDate);
 }
