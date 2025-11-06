@@ -13,6 +13,10 @@ public interface IngredientHistoryMapper {
     @Mapping(source = "ingredient.name", target = "ingredientName")
     @Mapping(source = "ingredient.unit.name", target = "unitName")
     @Mapping(source = "ingredient.ingredientGroup.name", target = "ingredientGroupName")
+    @Mapping(source = "warehouse.id", target = "warehouseId")
+    @Mapping(source = "warehouse.name", target = "warehouseName")
+    @Mapping(source = "action.id", target = "actionId")
+    @Mapping(source = "action.name", target = "actionName")
     IngredientHistorySingleResponse toSingleResponse(IngredientHistory entity);
 
     @Mapping(source = "ingredient.id", target = "ingredientId")

@@ -5,9 +5,14 @@ import com.biobac.warehouse.dto.ProductHistoryDto;
 import com.biobac.warehouse.entity.Product;
 import com.biobac.warehouse.entity.ProductHistory;
 import com.biobac.warehouse.mapper.ProductHistoryMapper;
+import com.biobac.warehouse.repository.HistoryActionRepository;
+import com.biobac.warehouse.repository.ProductBalanceRepository;
 import com.biobac.warehouse.repository.ProductHistoryRepository;
 import com.biobac.warehouse.request.FilterCriteria;
+import com.biobac.warehouse.response.ProductHistoryResponse;
+import com.biobac.warehouse.response.ProductHistorySingleResponse;
 import com.biobac.warehouse.service.ProductHistoryService;
+import com.biobac.warehouse.utils.DateUtil;
 import com.biobac.warehouse.utils.GroupUtil;
 import com.biobac.warehouse.utils.specifications.ProductHistorySpecification;
 import jakarta.persistence.criteria.JoinType;
@@ -24,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -33,34 +39,72 @@ public class ProductHistoryServiceImpl implements ProductHistoryService {
     private final ProductHistoryRepository productHistoryRepository;
     private final ProductHistoryMapper productHistoryMapper;
     private final GroupUtil groupUtil;
+    private final HistoryActionRepository historyActionRepository;
+    private final ProductBalanceRepository productBalanceRepository;
+
+    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_SIZE = 20;
+    private static final String DEFAULT_SORT_BY = "id";
+    private static final String DEFAULT_SORT_DIR = "desc";
+
+    private Pageable buildPageable(Integer page, Integer size, String sortBy, String sortDir) {
+        int safePage = (page == null || page < 0) ? DEFAULT_PAGE : page;
+        int safeSize = (size == null || size <= 0) ? DEFAULT_SIZE : size;
+        if (safeSize > 1000) safeSize = 1000;
+
+        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? DEFAULT_SORT_BY : sortBy.trim();
+        String safeSortDir = (sortDir == null || sortDir.isBlank()) ? DEFAULT_SORT_DIR : sortDir.trim();
+
+        Sort sort = safeSortDir.equalsIgnoreCase("asc")
+                ? Sort.by(safeSortBy).ascending()
+                : Sort.by(safeSortBy).descending();
+
+        return PageRequest.of(safePage, safeSize, sort);
+    }
 
     @Override
     @Transactional
-    public ProductHistoryDto recordQuantityChange(Product product, Double quantityBefore, Double quantityAfter, String action, String notes) {
+    public ProductHistorySingleResponse recordQuantityChange(ProductHistoryDto dto) {
+        if (dto == null || dto.getProduct() == null) {
+            throw new IllegalArgumentException("Product and dto are required");
+        }
+        Product product = dto.getProduct();
+
         ProductHistory history = new ProductHistory();
         history.setProduct(product);
-        history.setTimestamp(LocalDateTime.now());
-        history.setAction(action);
-        history.setQuantityBefore(quantityBefore);
-        history.setQuantityAfter(quantityAfter);
-        history.setNotes(notes);
+        history.setWarehouse(dto.getWarehouse() != null ? dto.getWarehouse() : product.getDefaultWarehouse());
+
+        Double change = Optional.ofNullable(dto.getQuantityChange()).orElse(0.0);
+        history.setIncrease(change > 0);
+        history.setQuantityChange(change);
+
+        Double total = productBalanceRepository.sumBalanceByProductId(product.getId());
+        history.setQuantityResult(total != null ? total : 0.0);
+
+        history.setNotes(dto.getNotes());
+        history.setCompanyId(dto.getCompanyId());
+        history.setLastPrice(dto.getLastPrice());
+        history.setTimestamp(dto.getTimestamp() != null ? dto.getTimestamp() : LocalDateTime.now());
+
+        if (dto.getAction() != null) {
+            history.setAction(dto.getAction());
+        }
 
         ProductHistory saved = productHistoryRepository.save(history);
-        return productHistoryMapper.toDto(saved);
+        return productHistoryMapper.toSingleResponse(saved);
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Pair<List<ProductHistoryDto>, PaginationMetadata> getHistoryForProduct(Long productId, Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
-        Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
-        Pageable pageable = PageRequest.of(page, size, sort);
+    public Pair<List<ProductHistorySingleResponse>, PaginationMetadata> getHistoryForProduct(Long productId, Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
+        Pageable pageable = buildPageable(page, size, sortBy, sortDir);
         Specification<ProductHistory> spec = ProductHistorySpecification.buildSpecification(filters)
                 .and((root, query, cb) -> root.join("product", JoinType.LEFT).get("id").in(productId));
         Page<ProductHistory> pageResult = productHistoryRepository.findAll(spec, pageable);
 
-        List<ProductHistoryDto> content = pageResult.getContent()
+        List<ProductHistorySingleResponse> content = pageResult.getContent()
                 .stream()
-                .map(productHistoryMapper::toDto)
+                .map(productHistoryMapper::toSingleResponse)
                 .collect(Collectors.toList());
 
         PaginationMetadata metadata = new PaginationMetadata(
@@ -70,8 +114,8 @@ public class ProductHistoryServiceImpl implements ProductHistoryService {
                 pageResult.getTotalPages(),
                 pageResult.isLast(),
                 filters,
-                sortDir,
-                sortBy,
+                pageable.getSort().toString().contains("ASC") ? "asc" : "desc",
+                pageable.getSort().stream().findFirst().map(Sort.Order::getProperty).orElse(DEFAULT_SORT_BY),
                 "productHistoryTable"
         );
         return Pair.of(content, metadata);
@@ -79,17 +123,16 @@ public class ProductHistoryServiceImpl implements ProductHistoryService {
 
     @Override
     @Transactional(readOnly = true)
-    public Pair<List<ProductHistoryDto>, PaginationMetadata> getHistory(Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
+    public Pair<List<ProductHistorySingleResponse>, PaginationMetadata> getHistory(Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
         List<Long> productGroupIds = groupUtil.getAccessibleProductGroupIds();
-        Sort sort = sortDir.equalsIgnoreCase("asc") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
-        Pageable pageable = PageRequest.of(page, size, sort);
+        Pageable pageable = buildPageable(page, size, sortBy, sortDir);
         Specification<ProductHistory> spec = ProductHistorySpecification.buildSpecification(filters)
                 .and(ProductHistorySpecification.belongsToProductGroups(productGroupIds));
         Page<ProductHistory> pageResult = productHistoryRepository.findAll(spec, pageable);
 
-        List<ProductHistoryDto> content = pageResult.getContent()
+        List<ProductHistorySingleResponse> content = pageResult.getContent()
                 .stream()
-                .map(productHistoryMapper::toDto)
+                .map(productHistoryMapper::toSingleResponse)
                 .collect(Collectors.toList());
 
         PaginationMetadata metadata = new PaginationMetadata(
@@ -99,10 +142,178 @@ public class ProductHistoryServiceImpl implements ProductHistoryService {
                 pageResult.getTotalPages(),
                 pageResult.isLast(),
                 filters,
-                sortDir,
-                sortBy,
+                pageable.getSort().toString().contains("ASC") ? "asc" : "desc",
+                pageable.getSort().stream().findFirst().map(Sort.Order::getProperty).orElse(DEFAULT_SORT_BY),
                 "productsHistoryTable"
         );
         return Pair.of(content, metadata);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Pair<List<ProductHistoryResponse>, PaginationMetadata> getAll(Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
+        int safePage = (page == null || page < 0) ? DEFAULT_PAGE : page;
+        int safeSize = (size == null || size <= 0) ? DEFAULT_SIZE : size;
+        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? "productName" : sortBy.trim();
+        String safeSortDir = (sortDir == null || sortDir.isBlank()) ? DEFAULT_SORT_DIR : sortDir.trim();
+
+        List<Long> productGroupIds = groupUtil.getAccessibleProductGroupIds();
+        Specification<ProductHistory> spec = ProductHistorySpecification.buildSpecification(filters)
+                .and(ProductHistorySpecification.belongsToProductGroups(productGroupIds));
+
+        List<ProductHistory> matching = productHistoryRepository.findAll(spec);
+        Map<Long, List<ProductHistory>> historiesByProduct = matching.stream()
+                .collect(Collectors.groupingBy(h -> h.getProduct().getId()));
+
+        List<LocalDateTime> dates = parseDates(filters);
+        LocalDateTime startDate = dates.get(0);
+        LocalDateTime endDate = dates.get(1);
+
+        Map<Long, ProductHistory> representative = historiesByProduct.entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        e -> e.getValue().stream()
+                                .sorted((a, b) -> {
+                                    int cmp = b.getTimestamp().compareTo(a.getTimestamp());
+                                    if (cmp == 0) cmp = Long.compare(b.getId(), a.getId());
+                                    return cmp;
+                                })
+                                .findFirst().orElse(null)
+                ));
+
+        List<Long> sortedProductIds = representative.keySet().stream().sorted((id1, id2) -> {
+            ProductHistory h1 = representative.get(id1);
+            ProductHistory h2 = representative.get(id2);
+            int cmp;
+            switch (safeSortBy) {
+                case "productName":
+                    String n1 = h1 != null && h1.getProduct() != null && h1.getProduct().getName() != null ? h1.getProduct().getName() : "";
+                    String n2 = h2 != null && h2.getProduct() != null && h2.getProduct().getName() != null ? h2.getProduct().getName() : "";
+                    cmp = n1.compareToIgnoreCase(n2);
+                    break;
+                case "unitName":
+                    String u1 = h1 != null && h1.getProduct() != null && h1.getProduct().getUnit() != null && h1.getProduct().getUnit().getName() != null ? h1.getProduct().getUnit().getName() : "";
+                    String u2 = h2 != null && h2.getProduct() != null && h2.getProduct().getUnit() != null && h2.getProduct().getUnit().getName() != null ? h2.getProduct().getUnit().getName() : "";
+                    cmp = u1.compareToIgnoreCase(u2);
+                    break;
+                case "timestamp":
+                    if (h1 == null && h2 == null) cmp = 0;
+                    else if (h1 == null) cmp = -1;
+                    else if (h2 == null) cmp = 1;
+                    else {
+                        cmp = h1.getTimestamp().compareTo(h2.getTimestamp());
+                        if (cmp == 0) cmp = Long.compare(h1.getId(), h2.getId());
+                    }
+                    break;
+                default:
+                    cmp = Long.compare(id1, id2);
+            }
+            return safeSortDir.equalsIgnoreCase("asc") ? cmp : -cmp;
+        }).toList();
+
+        int totalProducts = sortedProductIds.size();
+        int fromIndex = Math.min(safePage * safeSize, totalProducts);
+        int toIndex = Math.min(fromIndex + safeSize, totalProducts);
+        List<Long> pageOfIds = sortedProductIds.subList(fromIndex, toIndex);
+
+        List<ProductHistoryResponse> responses = pageOfIds.stream().map(id -> {
+            ProductHistory representativeHistory = representative.get(id);
+
+            Double initial = 0.0;
+            Double eventual = 0.0;
+            Double increaseCount = 0.0;
+            Double decreasedCount = 0.0;
+            if (startDate != null && endDate != null) {
+                ProductHistory lastInRange = productHistoryRepository.findLastInRange(id, startDate, endDate);
+                ProductHistory firstInRange = productHistoryRepository.findFirstBeforeRange(id, startDate);
+                increaseCount = getSumOfIncreasedCount(id, filters);
+                decreasedCount = getSumOfDecreasedCount(id, filters);
+                if (lastInRange != null && lastInRange.getQuantityResult() != null) {
+                    eventual = lastInRange.getQuantityResult();
+                }
+                if (firstInRange != null && firstInRange.getQuantityResult() != null) {
+                    initial = firstInRange.getQuantityResult();
+                }
+            }
+
+            ProductHistoryResponse response = productHistoryMapper.toResponse(representativeHistory != null ? representativeHistory : productHistoryRepository.findLatestByProductId(id));
+            response.setIncreasedCount(increaseCount);
+            response.setDecreasedCount(decreasedCount);
+            response.setInitialCount(initial);
+            response.setEventualCount(eventual);
+            return response;
+        }).collect(Collectors.toList());
+
+        int totalPages = (int) Math.ceil((double) totalProducts / (double) safeSize);
+        PaginationMetadata metadata = PaginationMetadata.builder()
+                .page(safePage)
+                .size(safeSize)
+                .totalElements(totalProducts)
+                .totalPages(totalPages)
+                .last(safePage >= totalPages - 1)
+                .filter(filters)
+                .sortDir(safeSortDir)
+                .sortBy(safeSortBy)
+                .table("productHistoryTable")
+                .build();
+
+        return Pair.of(responses, metadata);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Double getTotalForProduct(Long productId) {
+        Double total = productBalanceRepository.sumBalanceByProductId(productId);
+        return total != null ? total : 0.0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Double getInitialForProduct(Long productId, Map<String, FilterCriteria> filters) {
+        List<LocalDateTime> dates = parseDates(filters);
+        ProductHistory first = productHistoryRepository.findFirstBeforeRange(productId, dates.get(0));
+        return first != null ? first.getQuantityResult() : 0.0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Double getEventualForProduct(Long productId, Map<String, FilterCriteria> filters) {
+        List<LocalDateTime> dates = parseDates(filters);
+        ProductHistory last = productHistoryRepository.findLastInRange(productId, dates.get(0), dates.get(1));
+        return last != null ? last.getQuantityResult() : 0.0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Double getSumOfIncreasedCount(Long id, Map<String, FilterCriteria> filters) {
+        List<LocalDateTime> dates = parseDates(filters);
+        return productHistoryRepository.sumIncreasedCount(id, dates.get(0), dates.get(1));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Double getSumOfDecreasedCount(Long id, Map<String, FilterCriteria> filters) {
+        List<LocalDateTime> dates = parseDates(filters);
+        return productHistoryRepository.sumDecreasedCount(id, dates.get(0), dates.get(1));
+    }
+
+    private List<LocalDateTime> parseDates(Map<String, FilterCriteria> filters) {
+        LocalDateTime startDate = null;
+        LocalDateTime endDate = null;
+        if (filters != null) {
+            FilterCriteria ts = filters.get("timestamp");
+            if (ts != null && ts.getOperator() != null) {
+                String op = ts.getOperator();
+                Object val = ts.getValue();
+                try {
+                    if ("between".equals(op) && val instanceof java.util.List<?> list && list.size() == 2) {
+                        startDate = DateUtil.parseDateTime(String.valueOf(list.get(0)));
+                        endDate = DateUtil.parseDateTime(String.valueOf(list.get(1)));
+                    }
+                } catch (Exception ignore) {
+                }
+            }
+        }
+        return List.of(startDate, endDate);
     }
 }

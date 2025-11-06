@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -19,15 +20,26 @@ public class ProductHistory extends BaseAuditable {
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
 
-    private LocalDateTime timestamp;
+    @ManyToOne
+    @JoinColumn(name = "warehouse_id")
+    private Warehouse warehouse;
 
-    private String action;
+    private boolean increase;
 
-    private Double quantityBefore;
+    private Double quantityResult;
 
-    private Double quantityAfter;
+    private Double quantityChange;
 
     private String notes;
 
+    private Long companyId;
+
+    private BigDecimal lastPrice;
+
     private Long userId;
+
+    private LocalDateTime timestamp;
+
+    @ManyToOne
+    private HistoryAction action;
 }

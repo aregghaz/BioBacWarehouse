@@ -18,6 +18,7 @@ public class DatabaseSeeder implements CommandLineRunner {
     private final DepreciationMethodRepository depreciationMethodRepository;
     private final ReceiveIngredientStatusRepository receiveIngredientStatusRepository;
     private final AssetActionRepository assetActionRepository;
+    private final HistoryActionRepository historyActionRepository;
 
     @Override
     public void run(String... args) throws Exception {
@@ -80,6 +81,16 @@ public class DatabaseSeeder implements CommandLineRunner {
                     AssetAction.builder().name("Ежемесячная амортизация").build()
             );
             assetActionRepository.saveAll(actions);
+        }
+
+        if (historyActionRepository.count() == 0) {
+            List<HistoryAction> actions = List.of(
+                    HistoryAction.builder().name("Перевод").build(),
+                    HistoryAction.builder().name("Изменения").build(),
+                    HistoryAction.builder().name("Прибавлено").build(),
+                    HistoryAction.builder().name("Убавлено").build()
+            );
+            historyActionRepository.saveAll(actions);
         }
     }
 }

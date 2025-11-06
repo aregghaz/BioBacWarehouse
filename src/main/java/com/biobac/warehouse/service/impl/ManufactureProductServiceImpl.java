@@ -1,6 +1,8 @@
 package com.biobac.warehouse.service.impl;
 
+import com.biobac.warehouse.dto.IngredientHistoryDto;
 import com.biobac.warehouse.dto.PaginationMetadata;
+import com.biobac.warehouse.dto.ProductHistoryDto;
 import com.biobac.warehouse.entity.*;
 import com.biobac.warehouse.exception.InvalidDataException;
 import com.biobac.warehouse.exception.NotFoundException;
@@ -47,6 +49,7 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
     private final IngredientDetailRepository ingredientDetailRepository;
     private final ProductDetailRepository productDetailRepository;
     private final ManufactureComponentRepository manufactureComponentRepository;
+    private final HistoryActionRepository historyActionRepository;
     private final GroupUtil groupUtil;
 
     private static final int DEFAULT_PAGE = 0;
@@ -137,13 +140,15 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
         if (totalCount > 0) {
             String warehouseNote = saved.getWarehouse() != null && saved.getWarehouse().getId() != null
                     ? " to warehouse id=" + saved.getWarehouse().getId() : "";
-            productHistoryService.recordQuantityChange(
-                    product,
-                    totalBefore,
-                    totalBefore + totalCount,
-                    "INCREASE",
-                    "Added new inventory item" + warehouseNote
-            );
+            ProductHistoryDto ph = new ProductHistoryDto();
+            HistoryAction action = historyActionRepository.findById(3L)
+                    .orElseThrow(() -> new NotFoundException("Action not found"));
+            ph.setProduct(product);
+            ph.setAction(action);
+            ph.setWarehouse(warehouse);
+            ph.setQuantityChange(totalCount);
+            ph.setNotes("Added new inventory item" + warehouseNote);
+            productHistoryService.recordQuantityChange(ph);
         }
 
         return manufactureProductMapper.toSingleResponse(saved);
@@ -265,15 +270,16 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
                 }
             }
             String note = String.format("Израсходовано -%s%s%s", requiredQty, where, productInfo);
-            ingredientHistoryService.recordQuantityChange(
-                    manufactureProduct.getManufacturingDate(),
-                    ingredient,
-                    before,
-                    after,
-                    note,
-                    null,
-                    null
-            );
+            HistoryAction action = historyActionRepository.findById(4L)
+                    .orElseThrow(() -> new NotFoundException("Action not found"));
+            IngredientHistoryDto ih = new IngredientHistoryDto();
+            ih.setAction(action);
+            ih.setIngredient(ingredient);
+            ih.setWarehouse(defWh);
+            ih.setTimestamp(manufactureProduct != null ? manufactureProduct.getManufacturingDate() : null);
+            ih.setQuantityChange(after - before);
+            ih.setNotes(note);
+            ingredientHistoryService.recordQuantityChange(ih);
             return cost;
         } finally {
             if (ingredientId != null) visitingIngredientIds.remove(ingredientId);
@@ -306,13 +312,15 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
             productBalanceRepository.save(cb);
 
             String where = " from warehouse " + defWh.getName();
-            productHistoryService.recordQuantityChange(
-                    product,
-                    before,
-                    after,
-                    "DECREASE",
-                    (reason != null ? reason : "Consumed for recipe requirements") + where
-            );
+            HistoryAction action = historyActionRepository.findById(4L)
+                    .orElseThrow(() -> new NotFoundException("Action not found"));
+            ProductHistoryDto phDec = new ProductHistoryDto();
+            phDec.setAction(action);
+            phDec.setProduct(product);
+            phDec.setWarehouse(defWh);
+            phDec.setQuantityChange(after - before);
+            phDec.setNotes((reason != null ? reason : "Consumed for recipe requirements") + where);
+            productHistoryService.recordQuantityChange(phDec);
             return cost;
         } finally {
             if (productId != null) visitingProductIds.remove(productId);

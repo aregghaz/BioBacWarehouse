@@ -72,24 +72,30 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
 
     @Override
     @Transactional
-    public IngredientHistorySingleResponse recordQuantityChange(LocalDateTime timestamp, Ingredient ingredient, Double quantityBefore,
-                                                                Double quantityAfter, String notes, BigDecimal lastPrice, Long lastCompanyId) {
+    public IngredientHistorySingleResponse recordQuantityChange(com.biobac.warehouse.dto.IngredientHistoryDto dto) {
+        if (dto == null || dto.getIngredient() == null) {
+            throw new IllegalArgumentException("Ingredient and dto are required");
+        }
+        Ingredient ingredient = dto.getIngredient();
         IngredientHistory history = new IngredientHistory();
         history.setIngredient(ingredient);
-        boolean increase = (quantityAfter != null ? quantityAfter : 0.0) - (quantityBefore != null ? quantityBefore : 0.0) > 0;
-        Double change = (quantityAfter != null ? quantityAfter : 0.0) - (quantityBefore != null ? quantityBefore : 0.0);
-        history.setIncrease(increase);
+        history.setWarehouse(dto.getWarehouse() != null ? dto.getWarehouse() : ingredient.getDefaultWarehouse());
+        Double change = dto.getQuantityChange() != null ? dto.getQuantityChange() : 0.0;
+        history.setIncrease(change > 0);
         history.setQuantityChange(change);
         Double total = ingredientBalanceRepository.sumBalanceByIngredientId(ingredient.getId());
         history.setQuantityResult(total != null ? total : 0.0);
-        history.setNotes(notes);
-        history.setCompanyId(lastCompanyId);
-        history.setLastPrice(lastPrice);
-        history.setTimestamp(timestamp);
-
+        history.setNotes(dto.getNotes());
+        history.setCompanyId(dto.getLastCompanyId());
+        history.setLastPrice(dto.getLastPrice());
+        history.setTimestamp(dto.getTimestamp() != null ? dto.getTimestamp() : LocalDateTime.now());
+        if (dto.getAction() != null) {
+            history.setAction(dto.getAction());
+        }
         IngredientHistory savedHistory = ingredientHistoryRepository.save(history);
         return ingredientHistoryMapper.toSingleResponse(savedHistory);
     }
+
 
     @Override
     @Transactional(readOnly = true)

@@ -330,7 +330,13 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
         ingredient.setDeleted(true);
         ingredientRepository.save(ingredient);
 
-        ingredientHistoryService.recordQuantityChange(LocalDateTime.now(), ingredient, null, null, "ingredient deleted", null, null);
+        com.biobac.warehouse.dto.IngredientHistoryDto ihDelete = new com.biobac.warehouse.dto.IngredientHistoryDto();
+        ihDelete.setIngredient(ingredient);
+        ihDelete.setWarehouse(ingredient.getDefaultWarehouse());
+        ihDelete.setQuantityChange(0.0);
+        ihDelete.setNotes("ingredient deleted");
+        ihDelete.setTimestamp(LocalDateTime.now());
+        ingredientHistoryService.recordQuantityChange(ihDelete);
     }
 
     @Override

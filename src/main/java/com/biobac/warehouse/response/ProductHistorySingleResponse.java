@@ -7,11 +7,11 @@ import java.time.LocalDateTime;
 
 @Getter
 @Setter
-public class IngredientHistorySingleResponse {
+public class ProductHistorySingleResponse {
     private Long id;
-    private Long ingredientId;
-    private String ingredientName;
-    private String ingredientGroupName;
+    private Long productId;
+    private String productName;
+    private String productGroupName;
     private String unitName;
     private Long warehouseId;
     private String warehouseName;

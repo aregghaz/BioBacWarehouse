@@ -1,25 +1,20 @@
 package com.biobac.warehouse.service;
 
+import com.biobac.warehouse.dto.IngredientHistoryDto;
 import com.biobac.warehouse.dto.PaginationMetadata;
-import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.IngredientHistoryResponse;
 import com.biobac.warehouse.response.IngredientHistorySingleResponse;
 import org.springframework.data.util.Pair;
 
-import java.math.BigDecimal;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
 public interface IngredientHistoryService {
 
-    IngredientHistorySingleResponse recordQuantityChange(LocalDateTime timestamp, Ingredient ingredient, Double quantityResult,
-                                                         Double quantityChange, String notes, BigDecimal lastPrice, Long lastCompanyId);
-
+    IngredientHistorySingleResponse recordQuantityChange(IngredientHistoryDto dto);
 
     Pair<List<IngredientHistorySingleResponse>, PaginationMetadata> getHistoryForIngredient(Long ingredientId, Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir);
-
 
     Pair<List<IngredientHistoryResponse>, PaginationMetadata> getAll(Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir);
 

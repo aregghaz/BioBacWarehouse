@@ -2,6 +2,7 @@ package com.biobac.warehouse.service.impl;
 
 import com.biobac.warehouse.client.AttributeClient;
 import com.biobac.warehouse.dto.PaginationMetadata;
+import com.biobac.warehouse.dto.ProductHistoryDto;
 import com.biobac.warehouse.entity.*;
 import com.biobac.warehouse.exception.DuplicateException;
 import com.biobac.warehouse.exception.InvalidDataException;
@@ -192,8 +193,6 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
         }
 
         Product saved = productRepository.save(product);
-
-        productHistoryService.recordQuantityChange(saved, 0.0, 0.0, "CREATED", "Added new product to system");
 
         if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
             attributeClient.createValues(saved.getId(), AttributeTargetType.PRODUCT.name(), request.getAttributes());
@@ -405,7 +404,12 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
         product.setDeleted(true);
         productRepository.save(product);
 
-        productHistoryService.recordQuantityChange(product, null, null, "DELETE", "Soft deleted");
+        ProductHistoryDto phDelete = new ProductHistoryDto();
+        phDelete.setProduct(product);
+        phDelete.setWarehouse(product.getDefaultWarehouse());
+        phDelete.setQuantityChange(0.0);
+        phDelete.setNotes("Soft deleted");
+        productHistoryService.recordQuantityChange(phDelete);
     }
 
     @Override

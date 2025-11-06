@@ -1,10 +1,14 @@
 package com.biobac.warehouse.dto;
 
+import com.biobac.warehouse.entity.HistoryAction;
+import com.biobac.warehouse.entity.Ingredient;
+import com.biobac.warehouse.entity.Warehouse;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -12,13 +16,13 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 public class IngredientHistoryDto {
-    private Long id;
-    private Long ingredientId;
-    private String ingredientName;
-    private String action;
-    private Double quantityBefore;
-    private Double quantityAfter;
+    private Ingredient ingredient;
+    private Warehouse warehouse;
+    private Double quantityResult;
+    private Double quantityChange;
     private String notes;
-    private LocalDateTime createdAt;
-    private LocalDateTime updatedAt;
+    private BigDecimal lastPrice;
+    private Long lastCompanyId;
+    private LocalDateTime timestamp;
+    private HistoryAction action;
 }

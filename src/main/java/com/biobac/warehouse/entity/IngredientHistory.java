@@ -20,6 +20,10 @@ public class IngredientHistory extends BaseAuditable {
     @JoinColumn(name = "ingredient_id", nullable = false)
     private Ingredient ingredient;
 
+    @ManyToOne
+    @JoinColumn(name = "warehouse_id")
+    private Warehouse warehouse;
+
     private boolean increase;
 
     private Double quantityResult;
@@ -35,4 +39,7 @@ public class IngredientHistory extends BaseAuditable {
     private Long userId;
 
     private LocalDateTime timestamp;
+
+    @ManyToOne
+    private HistoryAction action;
 }

@@ -26,10 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -260,15 +257,15 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
             current.setDetail(detail);
 
             if (r.getReceivedQuantity() > 0) {
-                ingredientHistoryService.recordQuantityChange(
-                        current.getImportDate(),
-                        ingredient,
-                        before,
-                        after,
-                        String.format("Получено +%s на склад %s", delta, warehouse.getName()),
-                        ingredient.getPrice(),
-                        current.getCompanyId()
-                );
+                com.biobac.warehouse.dto.IngredientHistoryDto dto = new com.biobac.warehouse.dto.IngredientHistoryDto();
+                dto.setIngredient(ingredient);
+                dto.setWarehouse(warehouse);
+                dto.setQuantityChange(delta);
+                dto.setNotes(String.format("Получено +%s на склад %s", delta, warehouse.getName()));
+                dto.setLastPrice(ingredient.getPrice());
+                dto.setLastCompanyId(current.getCompanyId());
+                dto.setTimestamp(current.getImportDate());
+                ingredientHistoryService.recordQuantityChange(dto);
             }
 
             current.setReceivedQuantity(alreadyReceived + delta);
@@ -478,9 +475,6 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
         for (ReceiveIngredientUpdateRequest r : request) {
             if (r.getId() != null) {
                 ReceiveIngredient current = byId.get(r.getId());
-                if (isCompleted(current) && canReceiveUpdate) {
-                    throw new InvalidDataException("Only pending receive ingredients can be updated");
-                }
                 BigDecimal price = r.getPrice() != null ? r.getPrice() : (current.getPrice() != null ? current.getPrice() : BigDecimal.ZERO);
                 double qty = r.getQuantity() != null ? r.getQuantity() : (current.getQuantity() != null ? current.getQuantity() : 0.0);
                 receivedExpense = receivedExpense.add(price.multiply(BigDecimal.valueOf(qty)));
@@ -493,7 +487,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
         }
 
         List<ReceiveIngredientResponse> responses = new ArrayList<>();
-        java.util.Set<Long> processedExistingIds = new java.util.HashSet<>();
+        Set<Long> processedExistingIds = new HashSet<>();
 
         for (ReceiveIngredientUpdateRequest r : request) {
             if (r.getId() == null) {
@@ -535,7 +529,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                 responses.add(receiveIngredientMapper.toSingleResponse(saved));
             } else {
                 ReceiveIngredient item = byId.get(r.getId());
-                if (canReceiveUpdate && r.getStatusId() != null) {
+                if (!canReceiveUpdate && r.getStatusId() != null) {
                     throw new InvalidDataException("Only admin can update status");
                 }
 
@@ -694,7 +688,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
 
         response.setIngredients(ingredientResponses);
         response.setPriceWithoutExpense(totalBase);
-        response.setTotalPrice(grandTotal.setScale(2, RoundingMode.HALF_EVEN));
+        response.setTotalPrice(grandTotal);
 
         List<ReceiveIngredientsPriceCalcResponse.Expenses> expenseResponses = new ArrayList<>();
         if (expenses != null) {
