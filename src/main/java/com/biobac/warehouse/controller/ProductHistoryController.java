@@ -2,6 +2,9 @@ package com.biobac.warehouse.controller;
 
 import com.biobac.warehouse.dto.HistoryMetadata;
 import com.biobac.warehouse.dto.PaginationMetadata;
+import com.biobac.warehouse.entity.Product;
+import com.biobac.warehouse.exception.NotFoundException;
+import com.biobac.warehouse.repository.ProductRepository;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.ApiResponse;
 import com.biobac.warehouse.response.ProductHistoryResponse;
@@ -22,8 +25,8 @@ import static com.biobac.warehouse.utils.DateUtil.parseDates;
 @RequestMapping("/api/product-history")
 @RequiredArgsConstructor
 public class ProductHistoryController {
-
     private final ProductHistoryService productHistoryService;
+    private final ProductRepository productRepository;
 
     @PostMapping("/product/{productId}")
     public ApiResponse<List<ProductHistorySingleResponse>> getHistoryForProduct(@PathVariable Long productId,
@@ -39,7 +42,11 @@ public class ProductHistoryController {
         Double eventual = productHistoryService.getEventualForProduct(productId, dates.get(1));
         Double increase = productHistoryService.getSumOfIncreasedCount(productId, dates.get(0), dates.get(1));
         Double decrease = productHistoryService.getSumOfDecreasedCount(productId, dates.get(0), dates.get(1));
-        HistoryMetadata metadata = new HistoryMetadata(result.getSecond(), total, initial, eventual, increase, decrease, null, null);
+        Product product = productRepository.findById(productId)
+                .orElseThrow(() -> new NotFoundException("Ingredient not found"));
+        String productName = product.getName();
+        String unitName = product.getUnit().getName();
+        HistoryMetadata metadata = new HistoryMetadata(result.getSecond(), total, initial, eventual, increase, decrease, unitName, productName);
         return ResponseUtil.success("Product history retrieved successfully", result.getFirst(), metadata);
     }
 
