@@ -4,10 +4,7 @@ import com.biobac.warehouse.entity.Product;
 import com.biobac.warehouse.entity.RecipeItem;
 import com.biobac.warehouse.entity.Unit;
 import com.biobac.warehouse.request.FilterCriteria;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.JoinType;
-import jakarta.persistence.criteria.Path;
-import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.*;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.ArrayList;
@@ -90,6 +87,19 @@ public class ProductSpecification {
                 return cb.disjunction();
             }
             return root.get("productGroup").get("id").in(groupIds);
+        };
+    }
+
+    public static Specification<Product> containIds(List<Long> ids) {
+        return (root, query, criteriaBuilder) -> {
+            if (ids == null || ids.isEmpty()) {
+                return criteriaBuilder.conjunction();
+            }
+            CriteriaBuilder.In<Long> inClause = criteriaBuilder.in(root.get("id"));
+            for (Long id : ids) {
+                inClause.value(id);
+            }
+            return inClause;
         };
     }
 }

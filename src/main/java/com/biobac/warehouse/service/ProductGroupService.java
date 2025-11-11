@@ -12,25 +12,19 @@ import java.util.Map;
 
 public interface ProductGroupService {
 
-    @Transactional(readOnly = true)
     List<ProductGroupResponse> getPagination();
 
-    @Transactional(readOnly = true)
     Pair<List<ProductGroupResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters,
                                                                        Integer page,
                                                                        Integer size,
                                                                        String sortBy,
                                                                        String sortDir);
 
-    @Transactional(readOnly = true)
     ProductGroupResponse getById(Long id);
 
-    @Transactional
     ProductGroupResponse create(ProductGroupDto dto);
 
-    @Transactional
     ProductGroupResponse update(Long id, ProductGroupDto dto);
 
-    @Transactional
     void delete(Long id);
 }

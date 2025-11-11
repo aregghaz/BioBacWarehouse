@@ -13,45 +13,35 @@ import java.util.List;
 import java.util.Map;
 
 public interface ReceiveIngredientService {
-    @Transactional(readOnly = true)
     Pair<List<ReceiveIngredientResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters,
                                                                             Integer page,
                                                                             Integer size,
                                                                             String sortBy,
                                                                             String sortDir);
 
-    @Transactional(readOnly = true)
     Pair<List<ReceiveIngredientResponse>, PaginationMetadata> getSucceeded(Map<String, FilterCriteria> filters,
                                                                            Integer page,
                                                                            Integer size,
                                                                            String sortBy,
                                                                            String sortDir);
 
-    @Transactional(readOnly = true)
     Pair<List<ReceiveIngredientResponse>, PaginationMetadata> getPending(Map<String, FilterCriteria> filters,
                                                                          Integer page,
                                                                          Integer size,
                                                                          String sortBy,
                                                                          String sortDir);
 
-    @Transactional(readOnly = true)
     ReceiveIngredientGroupResponse getByGroupId(Long groupId);
 
-    @Transactional
     List<ReceiveIngredientResponse> receive(List<ReceiveIngredientRequest> request, List<IngredientExpenseRequest> expenseRequests);
 
-    @Transactional
     List<ReceiveIngredientResponse> finalizeReceive(Long groupId, List<ReceiveIngredientFinalizeRequest> request);
 
-    @Transactional
     List<ReceiveIngredientResponse> update(Long groupId, List<ReceiveIngredientUpdateRequest> request, List<IngredientExpenseRequest> expenseRequests);
 
-    @Transactional
     void delete(Long groupId);
 
-    @Transactional(readOnly = true)
     ReceiveIngredientsPriceCalcResponse calcIngredientPrices(List<ReceiveIngredientsPriceCalcRequest> ingredients, List<IngredientExpenseRequest> expenses);
 
-    @Transactional(readOnly = true)
     List<SelectResponse> getStatusesSelect();
 }

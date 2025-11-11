@@ -15,8 +15,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.util.Pair;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+
+import static com.biobac.warehouse.utils.DateUtil.parseDates;
 
 @RestController
 @RequestMapping("/api/ingredient-history")
@@ -34,11 +37,12 @@ public class IngredientHistoryController {
                                                                                       @RequestParam(required = false, defaultValue = "desc") String sortDir,
                                                                                       @RequestBody Map<String, FilterCriteria> filters) {
         Pair<List<IngredientHistorySingleResponse>, PaginationMetadata> result = ingredientHistoryService.getHistoryForIngredient(ingredientId, filters, page, size, sortBy, sortDir);
+        List<LocalDateTime> dates = parseDates(filters);
         Double total = ingredientHistoryService.getTotalForIngredient(ingredientId);
-        Double initial = ingredientHistoryService.getInitialForIngredient(ingredientId, filters);
-        Double eventual = ingredientHistoryService.getEventualForIngredient(ingredientId, filters);
-        Double increase = ingredientHistoryService.getSumOfIncreasedCount(ingredientId, filters);
-        Double decrease = ingredientHistoryService.getSumOfDecreasedCount(ingredientId, filters);
+        Double initial = ingredientHistoryService.getInitialForIngredient(ingredientId, dates.get(0));
+        Double eventual = ingredientHistoryService.getEventualForIngredient(ingredientId, dates.get(1));
+        Double increase = ingredientHistoryService.getSumOfIncreasedCount(ingredientId, dates.get(0), dates.get(1));
+        Double decrease = ingredientHistoryService.getSumOfDecreasedCount(ingredientId, dates.get(0), dates.get(1));
         Ingredient ingredient = ingredientRepository.findById(ingredientId)
                 .orElseThrow(() -> new NotFoundException("Ingredient not found"));
         String ingredientName = ingredient.getName();
@@ -46,16 +50,6 @@ public class IngredientHistoryController {
         HistoryMetadata metadata = new HistoryMetadata(result.getSecond(), total, initial, eventual, increase, decrease, unitName, ingredientName);
         return ResponseUtil.success("Ingredient history retrieved successfully", result.getFirst(), metadata);
     }
-
-//    @PostMapping("/all")
-//    public ApiResponse<List<IngredientHistorySingleResponse>> getHistoryForDateRange(@RequestParam(required = false, defaultValue = "0") Integer page,
-//                                                                                     @RequestParam(required = false, defaultValue = "10") Integer size,
-//                                                                                     @RequestParam(required = false, defaultValue = "id") String sortBy,
-//                                                                                     @RequestParam(required = false, defaultValue = "asc") String sortDir,
-//                                                                                     @RequestBody Map<String, FilterCriteria> filters) {
-//        Pair<List<IngredientHistorySingleResponse>, PaginationMetadata> result = ingredientHistoryService.getHistory(filters, page, size, sortBy, sortDir);
-//        return ResponseUtil.success("Ingredients history retrieved successfully", result.getFirst(), result.getSecond());
-//    }
 
     @PostMapping("/all")
     public ApiResponse<List<IngredientHistoryResponse>> getAll(@RequestParam(required = false, defaultValue = "0") Integer page,

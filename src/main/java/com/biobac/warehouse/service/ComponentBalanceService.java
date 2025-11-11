@@ -2,12 +2,10 @@ package com.biobac.warehouse.service;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.request.FilterCriteria;
-import com.biobac.warehouse.response.ComponentBalanceIngResponse;
-import com.biobac.warehouse.response.ComponentBalanceProdResponse;
-import com.biobac.warehouse.response.IngredientDetailResponse;
-import com.biobac.warehouse.response.ProductDetailResponse;
+import com.biobac.warehouse.response.*;
 import org.springframework.data.util.Pair;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -30,9 +28,17 @@ public interface ComponentBalanceService {
                                                                                        String sortBy,
                                                                                        String sortDir);
 
-    Pair<List<IngredientDetailResponse>, PaginationMetadata> getIngredientDetailsByProductId(Long id, Map<String, FilterCriteria> filters,
-                                                                                          Integer page,
-                                                                                          Integer size,
-                                                                                          String sortBy,
-                                                                                          String sortDir);
+    Pair<List<IngredientDetailResponse>, PaginationMetadata> getIngredientDetailsByIngredientId(Long id, Map<String, FilterCriteria> filters,
+                                                                                                Integer page,
+                                                                                                Integer size,
+                                                                                                String sortBy,
+                                                                                                String sortDir);
+
+    ComponentBalanceQuantityResponse getIngredientBalance(Long ingredientId, Long warehouseId, LocalDateTime date);
+
+    ComponentBalanceQuantityResponse getProductBalance(Long productId, Long warehouseId, LocalDateTime date);
+
+    List<IngredientResponse> getRelatedIngredients(Long warehouseId);
+
+    List<ProductResponse> getRelatedProducts(Long warehouseId);
 }

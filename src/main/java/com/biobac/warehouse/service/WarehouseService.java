@@ -14,26 +14,19 @@ import java.util.List;
 import java.util.Map;
 
 public interface WarehouseService {
-
-    @Transactional(readOnly = true)
     Pair<List<WarehouseResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters,
                                                                     Integer page,
                                                                     Integer size,
                                                                     String sortBy,
                                                                     String sortDir);
 
-    @Transactional(readOnly = true)
     WarehouseResponse getById(Long id);
 
-    @Transactional
     WarehouseResponse create(WarehouseRequest dto);
 
-    @Transactional
     WarehouseResponse update(Long id, WarehouseRequest dto);
 
-    @Transactional
     void delete(Long id);
 
-    @Transactional(readOnly = true)
     List<WarehouseResponse> getAll();
 }

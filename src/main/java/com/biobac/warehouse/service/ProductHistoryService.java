@@ -7,6 +7,7 @@ import com.biobac.warehouse.response.ProductHistoryResponse;
 import com.biobac.warehouse.response.ProductHistorySingleResponse;
 import org.springframework.data.util.Pair;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -25,11 +26,13 @@ public interface ProductHistoryService {
 
     Double getTotalForProduct(Long productId);
 
-    Double getInitialForProduct(Long productId, Map<String, FilterCriteria> filters);
+    Double getInitialForProduct(Long productId, LocalDateTime start);
 
-    Double getEventualForProduct(Long productId, Map<String, FilterCriteria> filters);
+    Double getEventualForProduct(Long productId, LocalDateTime end);
 
-    Double getSumOfIncreasedCount(Long id, Map<String, FilterCriteria> filters);
+    Double getEventualForProduct(Long productId, Long warehouseId, LocalDateTime end);
 
-    Double getSumOfDecreasedCount(Long id, Map<String, FilterCriteria> filters);
+    Double getSumOfIncreasedCount(Long id, LocalDateTime start, LocalDateTime end);
+
+    Double getSumOfDecreasedCount(Long id, LocalDateTime start, LocalDateTime end);
 }

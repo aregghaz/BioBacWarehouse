@@ -2,10 +2,7 @@ package com.biobac.warehouse.utils.specifications;
 
 import com.biobac.warehouse.entity.*;
 import com.biobac.warehouse.request.FilterCriteria;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.JoinType;
-import jakarta.persistence.criteria.Path;
-import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.*;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.ArrayList;
@@ -105,6 +102,19 @@ public class IngredientSpecification {
                 return cb.disjunction();
             }
             return root.get("ingredientGroup").get("id").in(groupIds);
+        };
+    }
+
+    public static Specification<Ingredient> containIds(List<Long> ids) {
+        return (root, query, criteriaBuilder) -> {
+            if (ids == null || ids.isEmpty()) {
+                return criteriaBuilder.conjunction();
+            }
+            CriteriaBuilder.In<Long> inClause = criteriaBuilder.in(root.get("id"));
+            for (Long id : ids) {
+                inClause.value(id);
+            }
+            return inClause;
         };
     }
 }

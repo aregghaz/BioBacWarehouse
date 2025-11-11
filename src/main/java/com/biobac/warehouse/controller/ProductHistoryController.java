@@ -12,8 +12,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.util.Pair;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+
+import static com.biobac.warehouse.utils.DateUtil.parseDates;
 
 @RestController
 @RequestMapping("/api/product-history")
@@ -30,11 +33,12 @@ public class ProductHistoryController {
                                                                                 @RequestParam(required = false, defaultValue = "asc") String sortDir,
                                                                                 @RequestBody Map<String, FilterCriteria> filters) {
         Pair<List<ProductHistorySingleResponse>, PaginationMetadata> result = productHistoryService.getHistoryForProduct(productId, filters, page, size, sortBy, sortDir);
+        List<LocalDateTime> dates = parseDates(filters);
         Double total = productHistoryService.getTotalForProduct(productId);
-        Double initial = productHistoryService.getInitialForProduct(productId, filters);
-        Double eventual = productHistoryService.getEventualForProduct(productId, filters);
-        Double increase = productHistoryService.getSumOfIncreasedCount(productId, filters);
-        Double decrease = productHistoryService.getSumOfDecreasedCount(productId, filters);
+        Double initial = productHistoryService.getInitialForProduct(productId, dates.get(0));
+        Double eventual = productHistoryService.getEventualForProduct(productId, dates.get(1));
+        Double increase = productHistoryService.getSumOfIncreasedCount(productId, dates.get(0), dates.get(1));
+        Double decrease = productHistoryService.getSumOfDecreasedCount(productId, dates.get(0), dates.get(1));
         HistoryMetadata metadata = new HistoryMetadata(result.getSecond(), total, initial, eventual, increase, decrease, null, null);
         return ResponseUtil.success("Product history retrieved successfully", result.getFirst(), metadata);
     }

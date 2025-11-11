@@ -17,8 +17,13 @@ public interface ProductHistoryRepository extends JpaRepository<ProductHistory, 
     @Query(value = "SELECT * FROM product_history WHERE product_id = :productId ORDER BY timestamp DESC, id DESC LIMIT 1", nativeQuery = true)
     ProductHistory findLatestByProductId(@Param("productId") Long productId);
 
-    @Query(value = "SELECT * FROM product_history WHERE product_id = :productId AND timestamp >= :start AND timestamp <= :end ORDER BY timestamp DESC, id DESC LIMIT 1", nativeQuery = true)
-    ProductHistory findLastInRange(@Param("productId") Long productId, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+    // Last record up to a given end timestamp (inclusive)
+    @Query(value = "SELECT * FROM product_history WHERE product_id = :productId AND timestamp <= :end ORDER BY timestamp DESC, id DESC LIMIT 1", nativeQuery = true)
+    ProductHistory findLastInRange(@Param("productId") Long productId, @Param("end") LocalDateTime end);
+
+    // Last record up to a given end timestamp (inclusive) filtered by warehouse
+    @Query(value = "SELECT * FROM product_history WHERE product_id = :productId AND warehouse_id = :warehouseId AND timestamp <= :end ORDER BY timestamp DESC, id DESC LIMIT 1", nativeQuery = true)
+    ProductHistory findLastInRangeWithWarehouseId(@Param("productId") Long productId, @Param("warehouseId") Long warehouseId, @Param("end") LocalDateTime end);
 
     @Query(value = "SELECT * FROM product_history WHERE product_id = :productId AND timestamp < :start ORDER BY timestamp DESC, id DESC LIMIT 1", nativeQuery = true)
     ProductHistory findFirstBeforeRange(@Param("productId") Long productId, @Param("start") LocalDateTime start);

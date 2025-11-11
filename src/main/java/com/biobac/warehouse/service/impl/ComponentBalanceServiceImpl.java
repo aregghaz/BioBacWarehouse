@@ -1,26 +1,18 @@
 package com.biobac.warehouse.service.impl;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
-import com.biobac.warehouse.entity.IngredientBalance;
-import com.biobac.warehouse.entity.IngredientDetail;
-import com.biobac.warehouse.entity.ProductBalance;
-import com.biobac.warehouse.entity.ProductDetail;
+import com.biobac.warehouse.entity.*;
 import com.biobac.warehouse.mapper.ComponentBalanceMapper;
-import com.biobac.warehouse.repository.IngredientBalanceRepository;
-import com.biobac.warehouse.repository.IngredientDetailRepository;
-import com.biobac.warehouse.repository.ProductBalanceRepository;
-import com.biobac.warehouse.repository.ProductDetailRepository;
+import com.biobac.warehouse.mapper.IngredientMapper;
+import com.biobac.warehouse.mapper.ProductMapper;
+import com.biobac.warehouse.repository.*;
 import com.biobac.warehouse.request.FilterCriteria;
-import com.biobac.warehouse.response.ComponentBalanceIngResponse;
-import com.biobac.warehouse.response.ComponentBalanceProdResponse;
-import com.biobac.warehouse.response.IngredientDetailResponse;
-import com.biobac.warehouse.response.ProductDetailResponse;
+import com.biobac.warehouse.response.*;
 import com.biobac.warehouse.service.ComponentBalanceService;
+import com.biobac.warehouse.service.IngredientHistoryService;
+import com.biobac.warehouse.service.ProductHistoryService;
 import com.biobac.warehouse.utils.GroupUtil;
-import com.biobac.warehouse.utils.specifications.IngredientBalanceSpecification;
-import com.biobac.warehouse.utils.specifications.IngredientDetailSpecification;
-import com.biobac.warehouse.utils.specifications.ProductBalanceSpecification;
-import com.biobac.warehouse.utils.specifications.ProductDetailSpecification;
+import com.biobac.warehouse.utils.specifications.*;
 import jakarta.persistence.criteria.JoinType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -32,6 +24,7 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -45,6 +38,13 @@ public class ComponentBalanceServiceImpl implements ComponentBalanceService {
     private final ProductDetailRepository productDetailRepository;
     private final IngredientDetailRepository ingredientDetailRepository;
     private final GroupUtil groupUtil;
+    private final IngredientRepository ingredientRepository;
+    private final ProductRepository productRepository;
+    private final WarehouseRepository warehouseRepository;
+    private final IngredientHistoryService ingredientHistoryService;
+    private final ProductHistoryService productHistoryService;
+    private final IngredientMapper ingredientMapper;
+    private final ProductMapper productMapper;
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
@@ -199,7 +199,7 @@ public class ComponentBalanceServiceImpl implements ComponentBalanceService {
     }
 
     @Override
-    public Pair<List<IngredientDetailResponse>, PaginationMetadata> getIngredientDetailsByProductId(Long id, Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
+    public Pair<List<IngredientDetailResponse>, PaginationMetadata> getIngredientDetailsByIngredientId(Long id, Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
         Pageable pageable = buildPageable(page, size, sortBy, sortDir);
 
         Specification<IngredientDetail> spec = IngredientDetailSpecification.buildSpecification(filters)
@@ -234,5 +234,57 @@ public class ComponentBalanceServiceImpl implements ComponentBalanceService {
         );
 
         return Pair.of(content, metadata);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ComponentBalanceQuantityResponse getIngredientBalance(Long ingredientId, Long warehouseId, LocalDateTime date) {
+        Double balance = ingredientHistoryService.getEventualForIngredient(ingredientId, warehouseId, date);
+        ComponentBalanceQuantityResponse response = new ComponentBalanceQuantityResponse();
+        response.setBalance(balance);
+        return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ComponentBalanceQuantityResponse getProductBalance(Long productId, Long warehouseId, LocalDateTime date) {
+        Double balance = productHistoryService.getEventualForProduct(productId, warehouseId, date);
+        ComponentBalanceQuantityResponse response = new ComponentBalanceQuantityResponse();
+        response.setBalance(balance);
+        return response;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<IngredientResponse> getRelatedIngredients(Long warehouseId) {
+        List<Long> ids = ingredientBalanceRepository.findAll()
+                .stream()
+                .filter(i -> i.getWarehouse().getId().equals(warehouseId))
+                .map(f -> f.getIngredient().getId()).toList();
+
+        List<Long> ingredientGroupIds = groupUtil.getAccessibleIngredientGroupIds();
+        Specification<Ingredient> spec = IngredientSpecification.belongsToGroups(ingredientGroupIds)
+                .and(IngredientSpecification.isDeleted())
+                .and(IngredientSpecification.containIds(ids));
+
+        return ingredientRepository.findAll(spec)
+                .stream().map(ingredientMapper::toResponse).toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductResponse> getRelatedProducts(Long warehouseId) {
+        List<Long> ids = productBalanceRepository.findAll()
+                .stream()
+                .filter(i -> i.getWarehouse().getId().equals(warehouseId))
+                .map(f -> f.getProduct().getId()).toList();
+
+        List<Long> productGroupIds = groupUtil.getAccessibleProductGroupIds();
+        Specification<Product> spec = ProductSpecification.belongsToGroups(productGroupIds)
+                .and(ProductSpecification.isDeleted())
+                .and(ProductSpecification.containIds(ids));
+
+        return productRepository.findAll(spec)
+                .stream().map(productMapper::toResponse).toList();
     }
 }

@@ -12,7 +12,6 @@ import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.ProductHistoryResponse;
 import com.biobac.warehouse.response.ProductHistorySingleResponse;
 import com.biobac.warehouse.service.ProductHistoryService;
-import com.biobac.warehouse.utils.DateUtil;
 import com.biobac.warehouse.utils.GroupUtil;
 import com.biobac.warehouse.utils.specifications.ProductHistorySpecification;
 import jakarta.persistence.criteria.JoinType;
@@ -31,6 +30,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import static com.biobac.warehouse.utils.DateUtil.parseDates;
 
 @Service
 @RequiredArgsConstructor
@@ -224,10 +225,10 @@ public class ProductHistoryServiceImpl implements ProductHistoryService {
             Double increaseCount = 0.0;
             Double decreasedCount = 0.0;
             if (startDate != null && endDate != null) {
-                ProductHistory lastInRange = productHistoryRepository.findLastInRange(id, startDate, endDate);
+                ProductHistory lastInRange = productHistoryRepository.findLastInRange(id, endDate);
                 ProductHistory firstInRange = productHistoryRepository.findFirstBeforeRange(id, startDate);
-                increaseCount = getSumOfIncreasedCount(id, filters);
-                decreasedCount = getSumOfDecreasedCount(id, filters);
+                increaseCount = getSumOfIncreasedCount(id, startDate, endDate);
+                decreasedCount = getSumOfDecreasedCount(id, startDate, endDate);
                 if (lastInRange != null && lastInRange.getQuantityResult() != null) {
                     eventual = lastInRange.getQuantityResult();
                 }
@@ -269,51 +270,34 @@ public class ProductHistoryServiceImpl implements ProductHistoryService {
 
     @Override
     @Transactional(readOnly = true)
-    public Double getInitialForProduct(Long productId, Map<String, FilterCriteria> filters) {
-        List<LocalDateTime> dates = parseDates(filters);
-        ProductHistory first = productHistoryRepository.findFirstBeforeRange(productId, dates.get(0));
+    public Double getInitialForProduct(Long productId, LocalDateTime start) {
+        ProductHistory first = productHistoryRepository.findFirstBeforeRange(productId, start);
         return first != null ? first.getQuantityResult() : 0.0;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Double getEventualForProduct(Long productId, Map<String, FilterCriteria> filters) {
-        List<LocalDateTime> dates = parseDates(filters);
-        ProductHistory last = productHistoryRepository.findLastInRange(productId, dates.get(0), dates.get(1));
+    public Double getEventualForProduct(Long productId, LocalDateTime end) {
+        ProductHistory last = productHistoryRepository.findLastInRange(productId, end);
         return last != null ? last.getQuantityResult() : 0.0;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Double getSumOfIncreasedCount(Long id, Map<String, FilterCriteria> filters) {
-        List<LocalDateTime> dates = parseDates(filters);
-        return productHistoryRepository.sumIncreasedCount(id, dates.get(0), dates.get(1));
+    public Double getEventualForProduct(Long productId, Long warehouseId, LocalDateTime end) {
+        ProductHistory last = productHistoryRepository.findLastInRangeWithWarehouseId(productId, warehouseId, end);
+        return last != null ? last.getQuantityResult() : 0.0;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Double getSumOfDecreasedCount(Long id, Map<String, FilterCriteria> filters) {
-        List<LocalDateTime> dates = parseDates(filters);
-        return productHistoryRepository.sumDecreasedCount(id, dates.get(0), dates.get(1));
+    public Double getSumOfIncreasedCount(Long id, LocalDateTime start, LocalDateTime end) {
+        return productHistoryRepository.sumIncreasedCount(id, start, end);
     }
 
-    private List<LocalDateTime> parseDates(Map<String, FilterCriteria> filters) {
-        LocalDateTime startDate = null;
-        LocalDateTime endDate = null;
-        if (filters != null) {
-            FilterCriteria ts = filters.get("timestamp");
-            if (ts != null && ts.getOperator() != null) {
-                String op = ts.getOperator();
-                Object val = ts.getValue();
-                try {
-                    if ("between".equals(op) && val instanceof java.util.List<?> list && list.size() == 2) {
-                        startDate = DateUtil.parseDateTime(String.valueOf(list.get(0)));
-                        endDate = DateUtil.parseDateTime(String.valueOf(list.get(1)));
-                    }
-                } catch (Exception ignore) {
-                }
-            }
-        }
-        return List.of(startDate, endDate);
+    @Override
+    @Transactional(readOnly = true)
+    public Double getSumOfDecreasedCount(Long id, LocalDateTime start, LocalDateTime end) {
+        return productHistoryRepository.sumDecreasedCount(id, start, end);
     }
 }

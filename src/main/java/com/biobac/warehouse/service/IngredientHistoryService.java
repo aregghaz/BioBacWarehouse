@@ -7,6 +7,7 @@ import com.biobac.warehouse.response.IngredientHistoryResponse;
 import com.biobac.warehouse.response.IngredientHistorySingleResponse;
 import org.springframework.data.util.Pair;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
@@ -22,11 +23,13 @@ public interface IngredientHistoryService {
 
     Double getTotalForIngredient(Long ingredientId);
 
-    Double getInitialForIngredient(Long ingredientId, Map<String, FilterCriteria> filters);
+    Double getInitialForIngredient(Long ingredientId, LocalDateTime start);
 
-    Double getEventualForIngredient(Long ingredientId, Map<String, FilterCriteria> filters);
+    Double getEventualForIngredient(Long ingredientId, LocalDateTime end);
 
-    Double getSumOfIncreasedCount(Long id, Map<String, FilterCriteria> filters);
+    Double getEventualForIngredient(Long ingredientId, Long warehouseId, LocalDateTime end);
 
-    Double getSumOfDecreasedCount(Long id, Map<String, FilterCriteria> filters);
+    Double getSumOfIncreasedCount(Long id, LocalDateTime start, LocalDateTime end);
+
+    Double getSumOfDecreasedCount(Long id, LocalDateTime start, LocalDateTime end);
 }

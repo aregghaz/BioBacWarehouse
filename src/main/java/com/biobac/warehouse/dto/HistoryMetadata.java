@@ -15,5 +15,5 @@ public class HistoryMetadata {
     private Double increase;
     private Double decrease;
     private String unitName;
-    private String ingredientName;
+    private String name;
 }

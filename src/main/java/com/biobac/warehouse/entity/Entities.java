@@ -12,8 +12,6 @@ public enum Entities {
     INGREDIENTCOMPONENT,
     INGREDIENTHISTORY,
     ATTRIBUTEGROUP,
-
-    // Fixed assets module
     ASSET,
     ASSETCATEGORY,
     ASSETSTATUS,

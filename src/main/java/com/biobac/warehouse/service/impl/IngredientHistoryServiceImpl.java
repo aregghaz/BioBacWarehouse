@@ -10,7 +10,6 @@ import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.IngredientHistoryResponse;
 import com.biobac.warehouse.response.IngredientHistorySingleResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
-import com.biobac.warehouse.utils.DateUtil;
 import com.biobac.warehouse.utils.GroupUtil;
 import com.biobac.warehouse.utils.specifications.IngredientHistorySpecification;
 import jakarta.persistence.criteria.JoinType;
@@ -24,11 +23,12 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import static com.biobac.warehouse.utils.DateUtil.parseDates;
 
 @Service
 @RequiredArgsConstructor
@@ -224,10 +224,10 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
             Double increaseCount = 0.0;
             Double decreasedCount = 0.0;
             if (startDate != null && endDate != null) {
-                IngredientHistory lastInRange = ingredientHistoryRepository.findLastInRange(id, startDate, endDate);
+                IngredientHistory lastInRange = ingredientHistoryRepository.findLastInRange(id, endDate);
                 IngredientHistory firstInRange = ingredientHistoryRepository.findFirstBeforeRange(id, startDate);
-                increaseCount = getSumOfIncreasedCount(id, filters);
-                decreasedCount = getSumOfDecreasedCount(id, filters);
+                increaseCount = getSumOfIncreasedCount(id, startDate, endDate);
+                decreasedCount = getSumOfDecreasedCount(id, startDate, endDate);
                 if (lastInRange != null && lastInRange.getQuantityResult() != null) {
                     eventual = lastInRange.getQuantityResult();
                 }
@@ -306,51 +306,35 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
 
     @Override
     @Transactional(readOnly = true)
-    public Double getInitialForIngredient(Long ingredientId, Map<String, FilterCriteria> filters) {
-        List<LocalDateTime> dates = parseDates(filters);
-        IngredientHistory firstInRange = ingredientHistoryRepository.findFirstBeforeRange(ingredientId, dates.get(0));
+    public Double getInitialForIngredient(Long ingredientId, LocalDateTime start) {
+        IngredientHistory firstInRange = ingredientHistoryRepository.findFirstBeforeRange(ingredientId, start);
         return firstInRange != null ? firstInRange.getQuantityResult() : 0.0;
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Double getEventualForIngredient(Long ingredientId, Map<String, FilterCriteria> filters) {
-        List<LocalDateTime> dates = parseDates(filters);
-        IngredientHistory firstInRange = ingredientHistoryRepository.findLastInRange(ingredientId, dates.get(0), dates.get(1));
-        return firstInRange.getQuantityResult();
+    public Double getEventualForIngredient(Long ingredientId, LocalDateTime end) {
+        IngredientHistory lastInRange = ingredientHistoryRepository.findLastInRange(ingredientId, end);
+        return lastInRange != null ? lastInRange.getQuantityResult() : 0.0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Double getEventualForIngredient(Long ingredientId, Long warehouseId, LocalDateTime end) {
+        IngredientHistory lastInRange = ingredientHistoryRepository.findLastInRangeWithWarehouseId(ingredientId, warehouseId, end);
+        return lastInRange != null ? lastInRange.getQuantityResult() : 0.0;
+    }
+
+
+    @Transactional(readOnly = true)
+    @Override
+    public Double getSumOfIncreasedCount(Long id, LocalDateTime start, LocalDateTime end) {
+        return ingredientHistoryRepository.sumIncreasedCount(id, start, end);
     }
 
     @Transactional(readOnly = true)
     @Override
-    public Double getSumOfIncreasedCount(Long id, Map<String, FilterCriteria> filters) {
-        List<LocalDateTime> dates = parseDates(filters);
-        return ingredientHistoryRepository.sumIncreasedCount(id, dates.get(0), dates.get(1));
-    }
-
-    @Transactional(readOnly = true)
-    @Override
-    public Double getSumOfDecreasedCount(Long id, Map<String, FilterCriteria> filters) {
-        List<LocalDateTime> dates = parseDates(filters);
-        return ingredientHistoryRepository.sumDecreasedCount(id, dates.get(0), dates.get(1));
-    }
-
-    private List<LocalDateTime> parseDates(Map<String, FilterCriteria> filters) {
-        LocalDateTime startDate = null;
-        LocalDateTime endDate = null;
-        if (filters != null) {
-            FilterCriteria ts = filters.get("timestamp");
-            if (ts != null && ts.getOperator() != null) {
-                String op = ts.getOperator();
-                Object val = ts.getValue();
-                try {
-                    if ("between".equals(op) && val instanceof List<?> list && list.size() == 2) {
-                        startDate = DateUtil.parseDateTime(String.valueOf(list.get(0)));
-                        endDate = DateUtil.parseDateTime(String.valueOf(list.get(1)));
-                    }
-                } catch (Exception ignore) {
-                }
-            }
-        }
-        return List.of(startDate, endDate);
+    public Double getSumOfDecreasedCount(Long id, LocalDateTime start, LocalDateTime end) {
+        return ingredientHistoryRepository.sumDecreasedCount(id, start, end);
     }
 }
