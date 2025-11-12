@@ -23,12 +23,14 @@ public class InventoryController {
 
     @PostMapping("/ingredient")
     public ApiResponse<String> changeIngredient(@RequestBody List<ChangeComponentDto> request) {
-        return ResponseUtil.success("Not Implemented");
+        inventoryService.changeIngredient(request);
+        return ResponseUtil.success("Ingredient Inventory created successfully");
     }
 
     @PostMapping("/product")
     public ApiResponse<String> changeProduct(@RequestBody List<ChangeComponentDto> request) {
-        return ResponseUtil.success("Not Implemented");
+        inventoryService.changeProduct(request);
+        return ResponseUtil.success("Product Inventory created successfully");
     }
 
     @PostMapping("/ingredient/all")
@@ -38,7 +40,7 @@ public class InventoryController {
                                                                  @RequestParam(required = false, defaultValue = "asc") String sortDir,
                                                                  @RequestBody Map<String, FilterCriteria> filters) {
         Pair<List<InventoryResponse>, PaginationMetadata> result = inventoryService.getPagination(filters, page, size, sortBy, sortDir, ComponentType.INGREDIENT);
-        return ResponseUtil.success("Transfers retrieved successfully", result.getFirst(), result.getSecond());
+        return ResponseUtil.success("Inventory item retrieved successfully", result.getFirst(), result.getSecond());
     }
 
     @PostMapping("/product/all")
@@ -48,6 +50,6 @@ public class InventoryController {
                                                               @RequestParam(required = false, defaultValue = "asc") String sortDir,
                                                               @RequestBody Map<String, FilterCriteria> filters) {
         Pair<List<InventoryResponse>, PaginationMetadata> result = inventoryService.getPagination(filters, page, size, sortBy, sortDir, ComponentType.PRODUCT);
-        return ResponseUtil.success("Transfers retrieved successfully", result.getFirst(), result.getSecond());
+        return ResponseUtil.success("Inventory item retrieved successfully", result.getFirst(), result.getSecond());
     }
 }

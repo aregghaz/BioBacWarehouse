@@ -1,5 +1,6 @@
 package com.biobac.warehouse.service.impl;
 
+import com.biobac.warehouse.dto.IngredientHistoryDto;
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.entity.*;
 import com.biobac.warehouse.exception.InvalidDataException;
@@ -257,12 +258,13 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
             current.setDetail(detail);
 
             if (r.getReceivedQuantity() > 0) {
-                com.biobac.warehouse.dto.IngredientHistoryDto dto = new com.biobac.warehouse.dto.IngredientHistoryDto();
+                IngredientHistoryDto dto = new IngredientHistoryDto();
                 dto.setIngredient(ingredient);
                 dto.setWarehouse(warehouse);
+                dto.setQuantityResult(balance.getBalance());
                 dto.setQuantityChange(delta);
                 dto.setNotes(String.format("Получено +%s на склад %s", delta, warehouse.getName()));
-                dto.setLastPrice(ingredient.getPrice());
+                dto.setLastPrice(r.getConfirmedPrice());
                 dto.setLastCompanyId(current.getCompanyId());
                 dto.setTimestamp(current.getImportDate());
                 ingredientHistoryService.recordQuantityChange(dto);
