@@ -9,7 +9,9 @@ import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.ManufactureProductMapper;
 import com.biobac.warehouse.repository.*;
 import com.biobac.warehouse.request.FilterCriteria;
+import com.biobac.warehouse.request.ManufactureCalculateRequest;
 import com.biobac.warehouse.request.ManufactureProductRequest;
+import com.biobac.warehouse.response.ManufactureCalculateResponse;
 import com.biobac.warehouse.response.ManufactureProductResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.ManufactureProductService;
@@ -29,10 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -51,6 +50,7 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
     private final ManufactureComponentRepository manufactureComponentRepository;
     private final HistoryActionRepository historyActionRepository;
     private final GroupUtil groupUtil;
+    private final IngredientRepository ingredientRepository;
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
@@ -188,6 +188,109 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
                 .build();
 
         return Pair.of(content, metadata);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ManufactureCalculateResponse> calculateProductions(List<ManufactureCalculateRequest> requests) {
+        if (requests == null || requests.isEmpty()) {
+            return List.of();
+        }
+
+        Map<String, ManufactureCalculateResponse> aggregated = new HashMap<>();
+
+        for (ManufactureCalculateRequest req : requests) {
+            Product product = productRepository.findById(req.getProductId())
+                    .orElseThrow(() -> new NotFoundException("Product not found"));
+
+            double productQty = req.getQuantity() != null ? req.getQuantity() : 1.0;
+
+            RecipeItem recipeItem = product.getRecipeItem();
+            if (recipeItem != null && recipeItem.getComponents() != null) {
+                for (RecipeComponent rc : recipeItem.getComponents()) {
+                    double totalQty = rc.getQuantity() * productQty;
+
+                    String key;
+                    Ingredient ingredient = rc.getIngredient();
+                    Product compProduct = rc.getProduct();
+
+                    if (ingredient != null) {
+                        key = "INGR-" + ingredient.getId();
+                        addToAggregated(aggregated, key, ingredient, null, totalQty);
+                    } else if (compProduct != null) {
+                        key = "PROD-" + compProduct.getId();
+                        addToAggregated(aggregated, key, null, compProduct, totalQty);
+                    }
+                }
+            }
+
+            List<ProductComponent> extras = product.getExtraComponents();
+            if (extras != null) {
+                for (ProductComponent pc : extras) {
+                    double totalQty = pc.getQuantity() * productQty;
+
+                    Ingredient ingredient = pc.getIngredient();
+                    Product child = pc.getChildProduct();
+
+                    String key;
+                    if (ingredient != null) {
+                        key = "INGR-" + ingredient.getId();
+                        addToAggregated(aggregated, key, ingredient, null, totalQty);
+                    } else if (child != null) {
+                        key = "PROD-" + child.getId();
+                        addToAggregated(aggregated, key, null, child, totalQty);
+                    }
+                }
+            }
+        }
+
+        for (ManufactureCalculateResponse resp : aggregated.values()) {
+            double balance = 0.0;
+
+            if (resp.getIngredientId() != null) {
+                Ingredient ingredient = ingredientRepository.findById(resp.getIngredientId())
+                        .orElse(null);
+                if (ingredient != null && ingredient.getDefaultWarehouse() != null) {
+                    balance = ingredientBalanceRepository
+                            .findByWarehouseAndIngredient(ingredient.getDefaultWarehouse(), ingredient)
+                            .map(IngredientBalance::getBalance)
+                            .orElse(0.0);
+                }
+            } else if (resp.getProductId() != null) {
+                Product compProduct = productRepository.findById(resp.getProductId())
+                        .orElse(null);
+                if (compProduct != null && compProduct.getDefaultWarehouse() != null) {
+                    balance = productBalanceRepository
+                            .findByWarehouseAndProduct(compProduct.getDefaultWarehouse(), compProduct)
+                            .map(ProductBalance::getBalance)
+                            .orElse(0.0);
+                }
+            }
+
+            resp.setBalanceQuantity(balance);
+        }
+
+        return new ArrayList<>(aggregated.values());
+    }
+
+    private void addToAggregated(Map<String, ManufactureCalculateResponse> map,
+                                 String key,
+                                 Ingredient ingredient,
+                                 Product product,
+                                 double qty) {
+        ManufactureCalculateResponse resp = map.getOrDefault(key, new ManufactureCalculateResponse());
+        double newQty = (resp.getRequiredQuantity() == null ? 0 : resp.getRequiredQuantity()) + qty;
+        resp.setRequiredQuantity(newQty);
+
+        if (ingredient != null) {
+            resp.setIngredientId(ingredient.getId());
+            resp.setComponentName(ingredient.getName());
+        } else if (product != null) {
+            resp.setProductId(product.getId());
+            resp.setComponentName(product.getName());
+        }
+
+        map.put(key, resp);
     }
 
     private IngredientBalance getOrCreateIngredientBalance(Warehouse warehouse, Ingredient ingredient) {

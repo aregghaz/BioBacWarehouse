@@ -2,7 +2,9 @@ package com.biobac.warehouse.service;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.request.FilterCriteria;
+import com.biobac.warehouse.request.ManufactureCalculateRequest;
 import com.biobac.warehouse.request.ManufactureProductRequest;
+import com.biobac.warehouse.response.ManufactureCalculateResponse;
 import com.biobac.warehouse.response.ManufactureProductResponse;
 import org.springframework.data.util.Pair;
 
@@ -18,4 +20,6 @@ public interface ManufactureProductService {
                                                                               Integer size,
                                                                               String sortBy,
                                                                               String sortDir);
+
+    List<ManufactureCalculateResponse> calculateProductions(List<ManufactureCalculateRequest> request);
 }
