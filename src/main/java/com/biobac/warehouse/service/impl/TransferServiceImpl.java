@@ -1,12 +1,16 @@
 package com.biobac.warehouse.service.impl;
 
+import com.biobac.warehouse.dto.IngredientHistoryDto;
 import com.biobac.warehouse.dto.PaginationMetadata;
+import com.biobac.warehouse.dto.ProductHistoryDto;
 import com.biobac.warehouse.dto.TransferComponentDto;
 import com.biobac.warehouse.entity.*;
 import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.repository.*;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.TransferResponse;
+import com.biobac.warehouse.service.IngredientHistoryService;
+import com.biobac.warehouse.service.ProductHistoryService;
 import com.biobac.warehouse.service.TransferService;
 import com.biobac.warehouse.utils.specifications.TransferSpecification;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +40,9 @@ public class TransferServiceImpl implements TransferService {
     private final ProductRepository productRepository;
     private final IngredientDetailRepository ingredientDetailRepository;
     private final ProductDetailRepository productDetailRepository;
+    private final IngredientHistoryService ingredientHistoryService;
+    private final ProductHistoryService productHistoryService;
+    private final HistoryActionRepository historyActionRepository;
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
@@ -130,6 +137,42 @@ public class TransferServiceImpl implements TransferService {
             t.setDate(Optional.ofNullable(c.getDate()).orElse(LocalDateTime.now()));
             t.setQuantity(requiredQty);
             transferRepository.save(t);
+
+            HistoryAction action = historyActionRepository.findById(1L)
+                    .orElseThrow(() -> new NotFoundException("Action not found"));
+            String productName = product.getName() != null ? product.getName() : ("#" + product.getId());
+            String fromWhName = from.getName() != null ? from.getName() : ("#" + from.getId());
+            String toWhName = to.getName() != null ? to.getName() : ("#" + to.getId());
+
+            String fromNote = String.format(
+                    "Перемещено %.2f единиц продукта \"%s\" со склада \"%s\" на склад \"%s\" (списание)",
+                    requiredQty, productName, fromWhName, toWhName
+            );
+
+            String toNote = String.format(
+                    "Получено %.2f единиц продукта \"%s\" со склада \"%s\" на склад \"%s\" (поступление)",
+                    requiredQty, productName, fromWhName, toWhName
+            );
+
+            ProductHistoryDto dtoFrom = new ProductHistoryDto();
+            dtoFrom.setProduct(product);
+            dtoFrom.setWarehouse(from);
+            dtoFrom.setTimestamp(c.getDate());
+            dtoFrom.setQuantityChange(-requiredQty);
+            dtoFrom.setQuantityResult(fromBalance.getBalance());
+            dtoFrom.setNotes(fromNote);
+            dtoFrom.setAction(action);
+            productHistoryService.recordQuantityChange(dtoFrom);
+
+            ProductHistoryDto dtoTo = new ProductHistoryDto();
+            dtoTo.setProduct(product);
+            dtoTo.setWarehouse(to);
+            dtoTo.setTimestamp(c.getDate());
+            dtoTo.setQuantityChange(requiredQty);
+            dtoTo.setQuantityResult(toBalance.getBalance());
+            dtoTo.setNotes(toNote);
+            dtoTo.setAction(action);
+            productHistoryService.recordQuantityChange(dtoTo);
         }
     }
 
@@ -206,6 +249,44 @@ public class TransferServiceImpl implements TransferService {
             t.setDate(Optional.ofNullable(c.getDate()).orElse(LocalDateTime.now()));
             t.setQuantity(requiredQty);
             transferRepository.save(t);
+
+            HistoryAction action = historyActionRepository.findById(1L)
+                    .orElseThrow(() -> new NotFoundException("Action not found"));
+
+            String ingredientName = ingredient.getName() != null ? ingredient.getName() : ("#" + ingredient.getId());
+            String fromWhName = from.getName() != null ? from.getName() : ("#" + from.getId());
+            String toWhName = to.getName() != null ? to.getName() : ("#" + to.getId());
+
+            String fromNote = String.format(
+                    "Перемещено %.2f единиц ингредиента \"%s\" со склада \"%s\" на склад \"%s\" (списание)",
+                    c.getQuantity(), ingredientName, fromWhName, toWhName
+            );
+
+            String toNote = String.format(
+                    "Получено %.2f единиц ингредиента \"%s\" со склада \"%s\" на склад \"%s\" (поступление)",
+                    c.getQuantity(), ingredientName, fromWhName, toWhName
+            );
+
+            IngredientHistoryDto dtoFrom = new IngredientHistoryDto();
+            dtoFrom.setIngredient(ingredient);
+            dtoFrom.setWarehouse(from);
+            dtoFrom.setTimestamp(c.getDate());
+            dtoFrom.setQuantityChange(-c.getQuantity());
+            dtoFrom.setQuantityResult(fromBalance.getBalance());
+            dtoFrom.setNotes(fromNote);
+            dtoFrom.setAction(action);
+            ingredientHistoryService.recordQuantityChange(dtoFrom);
+
+            IngredientHistoryDto dtoTo = new IngredientHistoryDto();
+            dtoTo.setIngredient(ingredient);
+            dtoTo.setWarehouse(to);
+            dtoTo.setTimestamp(c.getDate());
+            dtoTo.setQuantityChange(c.getQuantity());
+            dtoTo.setQuantityResult(toBalance.getBalance());
+            dtoTo.setNotes(toNote);
+            dtoTo.setAction(action);
+            ingredientHistoryService.recordQuantityChange(dtoTo);
+
         }
     }
 

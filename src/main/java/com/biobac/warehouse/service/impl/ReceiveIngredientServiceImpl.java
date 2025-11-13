@@ -266,7 +266,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                 dto.setNotes(String.format("Получено +%s на склад %s", delta, warehouse.getName()));
                 dto.setLastPrice(r.getConfirmedPrice());
                 dto.setLastCompanyId(current.getCompanyId());
-                dto.setTimestamp(current.getImportDate());
+                dto.setTimestamp(r.getImportDate());
                 ingredientHistoryService.recordQuantityChange(dto);
             }
 
@@ -690,7 +690,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
 
         response.setIngredients(ingredientResponses);
         response.setPriceWithoutExpense(totalBase);
-        response.setTotalPrice(grandTotal);
+        response.setTotalPrice(totalBase.add(totalExpenses));
 
         List<ReceiveIngredientsPriceCalcResponse.Expenses> expenseResponses = new ArrayList<>();
         if (expenses != null) {

@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -83,8 +84,11 @@ public class InventoryServiceImpl implements InventoryService {
                         return productBalanceRepository.save(newBalance);
                     });
 
-            balance.setBalance(balance.getBalance() + c.getQuantity());
+            double before = Optional.ofNullable(balance.getBalance()).orElse(0.0);
+            double change = Optional.ofNullable(c.getQuantity()).orElse(0.0);
+            double after = before + change;
 
+            balance.setBalance(after);
             productBalanceRepository.save(balance);
 
             Inventory inventory = new Inventory();
@@ -92,18 +96,40 @@ public class InventoryServiceImpl implements InventoryService {
             inventory.setWarehouse(warehouse);
             inventory.setType(ComponentType.PRODUCT);
             inventory.setDate(c.getDate());
-            inventory.setQuantity(c.getQuantity());
+            inventory.setQuantity(change);
             inventoryRepository.save(inventory);
 
-            ProductHistoryDto dto = new ProductHistoryDto();
+            String productName = product.getName() != null ? product.getName() : ("#" + product.getId());
+            String whName = warehouse.getName() != null ? warehouse.getName() : ("#" + warehouse.getId());
+
+            String note;
+            if (change > 0) {
+                note = String.format(
+                        "Инвентаризация: увеличено количество продукта \"%s\" на складе \"%s\" на %.2f (итог: %.2f)",
+                        productName, whName, change, after
+                );
+            } else if (change < 0) {
+                note = String.format(
+                        "Инвентаризация: уменьшено количество продукта \"%s\" на складе \"%s\" на %.2f (итог: %.2f)",
+                        productName, whName, Math.abs(change), after
+                );
+            } else {
+                note = String.format(
+                        "Инвентаризация продукта \"%s\" на складе \"%s\" — количество не изменилось (итог: %.2f)",
+                        productName, whName, after
+                );
+            }
+
             HistoryAction action = historyActionRepository.findById(2L)
                     .orElseThrow(() -> new NotFoundException("Action not found"));
+
+            ProductHistoryDto dto = new ProductHistoryDto();
             dto.setProduct(product);
             dto.setWarehouse(warehouse);
             dto.setTimestamp(c.getDate());
-            dto.setQuantityChange(c.getQuantity());
-            dto.setQuantityResult(balance.getBalance());
-            dto.setNotes("");
+            dto.setQuantityChange(change);
+            dto.setQuantityResult(after);
+            dto.setNotes(note);
             dto.setAction(action);
             productHistoryService.recordQuantityChange(dto);
         }
@@ -130,8 +156,11 @@ public class InventoryServiceImpl implements InventoryService {
                         return ingredientBalanceRepository.save(newBalance);
                     });
 
-            balance.setBalance(balance.getBalance() + c.getQuantity());
+            double before = Optional.ofNullable(balance.getBalance()).orElse(0.0);
+            double change = Optional.ofNullable(c.getQuantity()).orElse(0.0);
+            double after = before + change;
 
+            balance.setBalance(after);
 
             ingredientBalanceRepository.save(balance);
 
@@ -143,15 +172,37 @@ public class InventoryServiceImpl implements InventoryService {
             inventory.setQuantity(c.getQuantity());
             inventoryRepository.save(inventory);
 
-            IngredientHistoryDto dto = new IngredientHistoryDto();
+            String ingredientName = ingredient.getName() != null ? ingredient.getName() : ("#" + ingredient.getId());
+            String whName = warehouse.getName() != null ? warehouse.getName() : ("#" + warehouse.getId());
+
+            String note;
+            if (change > 0) {
+                note = String.format(
+                        "Инвентаризация: увеличено количество ингредиента \"%s\" на складе \"%s\" на %.2f (итог: %.2f)",
+                        ingredientName, whName, change, after
+                );
+            } else if (change < 0) {
+                note = String.format(
+                        "Инвентаризация: уменьшено количество ингредиента \"%s\" на складе \"%s\" на %.2f (итог: %.2f)",
+                        ingredientName, whName, Math.abs(change), after
+                );
+            } else {
+                note = String.format(
+                        "Инвентаризация ингредиента \"%s\" на складе \"%s\" — количество не изменилось (итог: %.2f)",
+                        ingredientName, whName, after
+                );
+            }
+
             HistoryAction action = historyActionRepository.findById(2L)
                     .orElseThrow(() -> new NotFoundException("Action not found"));
+
+            IngredientHistoryDto dto = new IngredientHistoryDto();
             dto.setIngredient(ingredient);
             dto.setWarehouse(warehouse);
             dto.setTimestamp(c.getDate());
-            dto.setQuantityChange(c.getQuantity());
-            dto.setQuantityResult(balance.getBalance());
-            dto.setNotes("");
+            dto.setQuantityChange(change);
+            dto.setQuantityResult(after);
+            dto.setNotes(note);
             dto.setAction(action);
             ingredientHistoryService.recordQuantityChange(dto);
         }

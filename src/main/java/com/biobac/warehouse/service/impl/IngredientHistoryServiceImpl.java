@@ -1,5 +1,6 @@
 package com.biobac.warehouse.service.impl;
 
+import com.biobac.warehouse.dto.IngredientHistoryDto;
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.entity.IngredientHistory;
@@ -72,7 +73,7 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
 
     @Override
     @Transactional
-    public IngredientHistorySingleResponse recordQuantityChange(com.biobac.warehouse.dto.IngredientHistoryDto dto) {
+    public IngredientHistorySingleResponse recordQuantityChange(IngredientHistoryDto dto) {
         if (dto == null || dto.getIngredient() == null) {
             throw new IllegalArgumentException("Ingredient and dto are required");
         }
@@ -80,11 +81,10 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
         IngredientHistory history = new IngredientHistory();
         history.setIngredient(ingredient);
         history.setWarehouse(dto.getWarehouse() != null ? dto.getWarehouse() : ingredient.getDefaultWarehouse());
-        Double change = dto.getQuantityChange() != null ? dto.getQuantityChange() : 0.0;
+        double change = dto.getQuantityChange() != null ? dto.getQuantityChange() : 0.0;
         history.setIncrease(change > 0);
         history.setQuantityChange(change);
-        Double total = ingredientBalanceRepository.sumBalanceByIngredientId(ingredient.getId());
-        history.setQuantityResult(total != null ? total : 0.0);
+        history.setQuantityResult(dto.getQuantityResult() != null ? dto.getQuantityResult() : 0.0);
         history.setNotes(dto.getNotes());
         history.setCompanyId(dto.getLastCompanyId());
         history.setLastPrice(dto.getLastPrice());

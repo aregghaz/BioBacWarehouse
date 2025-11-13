@@ -139,7 +139,9 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
 
         if (totalCount > 0) {
             String warehouseNote = saved.getWarehouse() != null && saved.getWarehouse().getId() != null
-                    ? " to warehouse id=" + saved.getWarehouse().getId() : "";
+                    ? " на складе " + saved.getWarehouse().getName()
+                    : "";
+
             ProductHistoryDto ph = new ProductHistoryDto();
             HistoryAction action = historyActionRepository.findById(3L)
                     .orElseThrow(() -> new NotFoundException("Action not found"));
@@ -147,9 +149,12 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
             ph.setAction(action);
             ph.setWarehouse(warehouse);
             ph.setQuantityChange(totalCount);
-            ph.setNotes("Added new inventory item" + warehouseNote);
+
+            ph.setNotes("Произведено" + warehouseNote + " в количестве " + totalCount);
+
             productHistoryService.recordQuantityChange(ph);
         }
+
 
         return manufactureProductMapper.toSingleResponse(saved);
     }
@@ -354,6 +359,7 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
             if (defWh == null || defWh.getId() == null) {
                 throw new InvalidDataException("Default warehouse is not set for ingredient " + ingredient.getName());
             }
+
             IngredientBalance ingredientBalance = getOrCreateIngredientBalance(defWh, ingredient);
             double before = ingredientBalance.getBalance() != null ? ingredientBalance.getBalance() : 0.0;
 
@@ -362,17 +368,21 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
             ingredientBalance.setBalance(after);
             ingredientBalanceRepository.save(ingredientBalance);
 
-            String where = " со склада " + defWh.getName();
+            String warehouseName = defWh.getName() != null ? defWh.getName() : ("#" + defWh.getId());
             String productInfo = "";
             if (manufactureProduct != null && manufactureProduct.getProduct() != null) {
                 String prodName = manufactureProduct.getProduct().getName();
                 Long mId = manufactureProduct.getId();
-                productInfo = " для продукта " + (prodName != null ? prodName : "#" + (manufactureProduct.getProduct().getId() != null ? manufactureProduct.getProduct().getId() : "?"));
+                productInfo = String.format(" для производства продукта \"%s\"", prodName != null ? prodName : "без названия");
                 if (mId != null) {
-                    productInfo += " (производство #" + mId + ")";
+                    productInfo += String.format(" (производство #%d)", mId);
                 }
             }
-            String note = String.format("Израсходовано -%s%s%s", requiredQty, where, productInfo);
+            String note = String.format(
+                    "Использовано %.2f единиц ингредиента со склада \"%s\"%s в количестве %.2f",
+                    requiredQty, warehouseName, productInfo, requiredQty
+            );
+
             HistoryAction action = historyActionRepository.findById(4L)
                     .orElseThrow(() -> new NotFoundException("Action not found"));
             IngredientHistoryDto ih = new IngredientHistoryDto();
@@ -382,6 +392,7 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
             ih.setTimestamp(manufactureProduct != null ? manufactureProduct.getManufacturingDate() : null);
             ih.setQuantityChange(after - before);
             ih.setNotes(note);
+
             ingredientHistoryService.recordQuantityChange(ih);
             return cost;
         } finally {
@@ -407,22 +418,43 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
             if (defWh == null || defWh.getId() == null) {
                 throw new InvalidDataException("Default warehouse is not set for product " + product.getName());
             }
+
             ProductBalance cb = getOrCreateProductBalance(defWh, product);
             double before = cb.getBalance() != null ? cb.getBalance() : 0.0;
+
             BigDecimal cost = deductFromProductDetails(cb, requiredQty, manufactureProduct);
             double after = before - requiredQty;
             cb.setBalance(after);
             productBalanceRepository.save(cb);
 
-            String where = " from warehouse " + defWh.getName();
+            String warehouseName = defWh.getName() != null ? defWh.getName() : ("#" + defWh.getId());
+            String productInfo = "";
+
+            if (manufactureProduct != null && manufactureProduct.getProduct() != null) {
+                String parentName = manufactureProduct.getProduct().getName();
+                Long mId = manufactureProduct.getId();
+                productInfo = String.format(" для производства продукта \"%s\"",
+                        parentName != null ? parentName : "без названия");
+                if (mId != null) {
+                    productInfo += String.format(" (производство #%d)", mId);
+                }
+            }
+
+            String note = String.format(
+                    "Израсходовано %.2f единиц продукта со склада \"%s\"%s в количестве %.2f",
+                    requiredQty, warehouseName, productInfo, requiredQty
+            );
+
             HistoryAction action = historyActionRepository.findById(4L)
                     .orElseThrow(() -> new NotFoundException("Action not found"));
+
             ProductHistoryDto phDec = new ProductHistoryDto();
             phDec.setAction(action);
             phDec.setProduct(product);
             phDec.setWarehouse(defWh);
             phDec.setQuantityChange(after - before);
-            phDec.setNotes((reason != null ? reason : "Consumed for recipe requirements") + where);
+            phDec.setNotes(note);
+
             productHistoryService.recordQuantityChange(phDec);
             return cost;
         } finally {
