@@ -46,6 +46,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
     private final ReceiveIngredientStatusRepository receiveIngredientStatusRepository;
     private final SecurityUtil securityUtil;
     private final GroupUtil groupUtil;
+    private final HistoryActionRepository historyActionRepository;
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
@@ -257,14 +258,17 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
             ingredientDetailRepository.save(detail);
             current.setDetail(detail);
 
+            HistoryAction action = historyActionRepository.findById(3L)
+                    .orElseThrow(() -> new NotFoundException("Action not found"));
+
             if (r.getReceivedQuantity() > 0) {
                 IngredientHistoryDto dto = new IngredientHistoryDto();
                 dto.setIngredient(ingredient);
                 dto.setWarehouse(warehouse);
-                dto.setQuantityResult(balance.getBalance());
                 dto.setQuantityChange(delta);
                 dto.setNotes(String.format("Получено +%s на склад %s", delta, warehouse.getName()));
                 dto.setLastPrice(r.getConfirmedPrice());
+                dto.setAction(action);
                 dto.setLastCompanyId(current.getCompanyId());
                 dto.setTimestamp(r.getImportDate());
                 ingredientHistoryService.recordQuantityChange(dto);
@@ -639,7 +643,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
         }
 
         BigDecimal totalBase = BigDecimal.ZERO;
-        BigDecimal totalWithoutExpense = BigDecimal.ZERO;
+        BigDecimal totalWithoutExpense;
         for (ReceiveIngredientsPriceCalcRequest r : ingredients) {
             if (r.getIngredientId() == null) throw new InvalidDataException("Ingredient id is required");
             BigDecimal price = r.getPrice() != null ? r.getPrice() : BigDecimal.ZERO;
@@ -651,11 +655,11 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                 .map(IngredientExpenseRequest::getAmount)
                 .filter(Objects::nonNull)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
+        totalWithoutExpense = totalBase;
 
         ReceiveIngredientsPriceCalcResponse response = new ReceiveIngredientsPriceCalcResponse();
         List<ReceiveIngredientsPriceCalcResponse.Ingredients> ingredientResponses = new ArrayList<>();
 
-        BigDecimal grandTotal = BigDecimal.ZERO;
         for (ReceiveIngredientsPriceCalcRequest r : ingredients) {
             Ingredient ingredient = ingredientRepository.findById(r.getIngredientId())
                     .orElseThrow(() -> new NotFoundException("Ingredient not found"));
@@ -675,7 +679,6 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
             }
             BigDecimal calculatedPrice = price.add(additionalPerUnit);
             BigDecimal total = calculatedPrice.multiply(BigDecimal.valueOf(qty)).setScale(2, RoundingMode.HALF_EVEN);
-            grandTotal = grandTotal.add(total);
 
             ReceiveIngredientsPriceCalcResponse.Ingredients ir = new ReceiveIngredientsPriceCalcResponse.Ingredients();
             ir.setIngredientId(ingredient.getId());
@@ -689,7 +692,7 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
         }
 
         response.setIngredients(ingredientResponses);
-        response.setPriceWithoutExpense(totalBase);
+        response.setPriceWithoutExpense(totalWithoutExpense);
         response.setTotalPrice(totalBase.add(totalExpenses));
 
         List<ReceiveIngredientsPriceCalcResponse.Expenses> expenseResponses = new ArrayList<>();

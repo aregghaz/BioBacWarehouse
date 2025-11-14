@@ -1,9 +1,6 @@
 package com.biobac.warehouse.utils.specifications;
 
-import com.biobac.warehouse.entity.Ingredient;
-import com.biobac.warehouse.entity.IngredientBalance;
-import com.biobac.warehouse.entity.IngredientGroup;
-import com.biobac.warehouse.entity.Warehouse;
+import com.biobac.warehouse.entity.*;
 import com.biobac.warehouse.request.FilterCriteria;
 import jakarta.persistence.criteria.Join;
 import jakarta.persistence.criteria.JoinType;
@@ -49,11 +46,19 @@ public class IngredientBalanceSpecification {
         return warehouseField.getOrDefault(field, null);
     }
 
+    private static String isDetailField(String field) {
+        Map<String, String> warehouseField = Map.of(
+                "expirationDate", "expirationDate"
+        );
+        return warehouseField.getOrDefault(field, null);
+    }
+
     public static Specification<IngredientBalance> buildSpecification(Map<String, FilterCriteria> filters) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             Join<IngredientBalance, Ingredient> ingredientJoin = null;
             Join<IngredientBalance, Warehouse> warehouseJoin = null;
+            Join<IngredientBalance, IngredientDetail> detailJoin = null;
             Join<Ingredient, IngredientGroup> ingredientGroupJoin = null;
 
             if (filters != null) {
@@ -68,6 +73,11 @@ public class IngredientBalanceSpecification {
                             ingredientJoin = root.join("ingredient", JoinType.LEFT);
                         }
                         path = ingredientJoin.get(isIngredientField(field));
+                    } else if (isDetailField(field) != null) {
+                        if(detailJoin == null) {
+                            detailJoin = root.join("details", JoinType.LEFT);
+                        }
+                        path = detailJoin.get(isDetailField(field));
                     } else if (isIngredientGroupField(field) != null) {
                         if (ingredientGroupJoin == null) {
                             ingredientGroupJoin = root.join("ingredient", JoinType.LEFT).join("ingredientGroup", JoinType.LEFT);

@@ -77,6 +77,10 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
         if (dto == null || dto.getIngredient() == null) {
             throw new IllegalArgumentException("Ingredient and dto are required");
         }
+        double quantityResult = ingredientHistoryRepository
+                .findFirstByWarehouseAndIngredientOrderByTimestampDescIdDesc(dto.getWarehouse(), dto.getIngredient())
+                .map(IngredientHistory::getQuantityResult)
+                .orElse(0.0);
         Ingredient ingredient = dto.getIngredient();
         IngredientHistory history = new IngredientHistory();
         history.setIngredient(ingredient);
@@ -84,7 +88,7 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
         double change = dto.getQuantityChange() != null ? dto.getQuantityChange() : 0.0;
         history.setIncrease(change > 0);
         history.setQuantityChange(change);
-        history.setQuantityResult(dto.getQuantityResult() != null ? dto.getQuantityResult() : 0.0);
+        history.setQuantityResult(quantityResult + change);
         history.setNotes(dto.getNotes());
         history.setCompanyId(dto.getLastCompanyId());
         history.setLastPrice(dto.getLastPrice());
@@ -100,17 +104,20 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
     @Override
     @Transactional(readOnly = true)
     public Pair<List<IngredientHistorySingleResponse>, PaginationMetadata> getHistoryForIngredient(Long ingredientId, Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
-        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? "id" : sortBy;
+        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? "timestamp" : sortBy;
         String safeSortDir = (sortDir == null || sortDir.isBlank()) ? "desc" : sortDir;
 
-        Sort sort = safeSortDir.equalsIgnoreCase("asc") ? Sort.by(safeSortBy).ascending() : Sort.by(safeSortBy).descending();
+        Sort sort = safeSortDir.equalsIgnoreCase("asc")
+                ? Sort.by(safeSortBy).ascending()
+                : Sort.by(safeSortBy).descending();
 
-        if (!safeSortBy.equalsIgnoreCase("id")) {
-            sort = sort.and(Sort.by("id").descending());
-        }
+        sort = sort.and(Sort.by("id").descending());
 
-        Pageable pageable = buildPageable(page, size, sortBy, sortDir);
-        pageable.getSort().and(sort);
+        Pageable pageable = PageRequest.of(
+                page != null ? page : 0,
+                size != null ? size : 20,
+                sort
+        );
 
         Specification<IngredientHistory> spec = IngredientHistorySpecification.buildSpecification(filters)
                 .and((root, query, cb) -> cb.equal(root.join("ingredient", JoinType.LEFT).get("id"), ingredientId));

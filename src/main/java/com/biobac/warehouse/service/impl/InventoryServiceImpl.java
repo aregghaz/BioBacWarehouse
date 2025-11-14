@@ -128,7 +128,6 @@ public class InventoryServiceImpl implements InventoryService {
             dto.setWarehouse(warehouse);
             dto.setTimestamp(c.getDate());
             dto.setQuantityChange(change);
-            dto.setQuantityResult(after);
             dto.setNotes(note);
             dto.setAction(action);
             productHistoryService.recordQuantityChange(dto);
@@ -201,7 +200,6 @@ public class InventoryServiceImpl implements InventoryService {
             dto.setWarehouse(warehouse);
             dto.setTimestamp(c.getDate());
             dto.setQuantityChange(change);
-            dto.setQuantityResult(after);
             dto.setNotes(note);
             dto.setAction(action);
             ingredientHistoryService.recordQuantityChange(dto);

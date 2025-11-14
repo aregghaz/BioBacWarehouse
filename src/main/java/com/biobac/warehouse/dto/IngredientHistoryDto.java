@@ -18,7 +18,6 @@ import java.time.LocalDateTime;
 public class IngredientHistoryDto {
     private Ingredient ingredient;
     private Warehouse warehouse;
-    private Double quantityResult;
     private Double quantityChange;
     private String notes;
     private BigDecimal lastPrice;

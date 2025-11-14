@@ -118,6 +118,8 @@ public class TransferServiceImpl implements TransferService {
                             ProductDetail newDetail = new ProductDetail();
                             newDetail.setProductBalance(toBalance);
                             newDetail.setExpirationDate(fromDetail.getExpirationDate());
+                            newDetail.setPrice(fromDetail.getPrice());
+                            newDetail.setManufacturingDate(fromDetail.getManufacturingDate());
                             newDetail.setQuantity(0.0);
                             return newDetail;
                         });
@@ -159,7 +161,6 @@ public class TransferServiceImpl implements TransferService {
             dtoFrom.setWarehouse(from);
             dtoFrom.setTimestamp(c.getDate());
             dtoFrom.setQuantityChange(-requiredQty);
-            dtoFrom.setQuantityResult(fromBalance.getBalance());
             dtoFrom.setNotes(fromNote);
             dtoFrom.setAction(action);
             productHistoryService.recordQuantityChange(dtoFrom);
@@ -169,7 +170,6 @@ public class TransferServiceImpl implements TransferService {
             dtoTo.setWarehouse(to);
             dtoTo.setTimestamp(c.getDate());
             dtoTo.setQuantityChange(requiredQty);
-            dtoTo.setQuantityResult(toBalance.getBalance());
             dtoTo.setNotes(toNote);
             dtoTo.setAction(action);
             productHistoryService.recordQuantityChange(dtoTo);
@@ -229,6 +229,9 @@ public class TransferServiceImpl implements TransferService {
                         .orElseGet(() -> {
                             IngredientDetail newDetail = new IngredientDetail();
                             newDetail.setIngredientBalance(toBalance);
+                            newDetail.setPrice(fromDetail.getPrice());
+                            newDetail.setImportDate(fromDetail.getImportDate());
+                            newDetail.setManufacturingDate(fromDetail.getManufacturingDate());
                             newDetail.setExpirationDate(fromDetail.getExpirationDate());
                             newDetail.setQuantity(0.0);
                             return newDetail;
@@ -272,7 +275,6 @@ public class TransferServiceImpl implements TransferService {
             dtoFrom.setWarehouse(from);
             dtoFrom.setTimestamp(c.getDate());
             dtoFrom.setQuantityChange(-c.getQuantity());
-            dtoFrom.setQuantityResult(fromBalance.getBalance());
             dtoFrom.setNotes(fromNote);
             dtoFrom.setAction(action);
             ingredientHistoryService.recordQuantityChange(dtoFrom);
@@ -282,7 +284,6 @@ public class TransferServiceImpl implements TransferService {
             dtoTo.setWarehouse(to);
             dtoTo.setTimestamp(c.getDate());
             dtoTo.setQuantityChange(c.getQuantity());
-            dtoTo.setQuantityResult(toBalance.getBalance());
             dtoTo.setNotes(toNote);
             dtoTo.setAction(action);
             ingredientHistoryService.recordQuantityChange(dtoTo);

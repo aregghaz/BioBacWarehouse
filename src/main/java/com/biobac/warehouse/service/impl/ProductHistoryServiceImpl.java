@@ -70,6 +70,10 @@ public class ProductHistoryServiceImpl implements ProductHistoryService {
             throw new IllegalArgumentException("Product and dto are required");
         }
         Product product = dto.getProduct();
+        double quantityResult = productHistoryRepository
+                .findFirstByWarehouseAndProductOrderByTimestampDescIdDesc(dto.getWarehouse(), dto.getProduct())
+                .map(ProductHistory::getQuantityResult)
+                .orElse(0.0);
 
         ProductHistory history = new ProductHistory();
         history.setProduct(product);
@@ -78,10 +82,7 @@ public class ProductHistoryServiceImpl implements ProductHistoryService {
         Double change = Optional.ofNullable(dto.getQuantityChange()).orElse(0.0);
         history.setIncrease(change > 0);
         history.setQuantityChange(change);
-
-        Double total = productBalanceRepository.sumBalanceByProductId(product.getId());
-        history.setQuantityResult(total != null ? total : 0.0);
-
+        history.setQuantityResult(quantityResult + change);
         history.setNotes(dto.getNotes());
         history.setCompanyId(dto.getCompanyId());
         history.setLastPrice(dto.getLastPrice());
@@ -98,7 +99,21 @@ public class ProductHistoryServiceImpl implements ProductHistoryService {
     @Override
     @Transactional(readOnly = true)
     public Pair<List<ProductHistorySingleResponse>, PaginationMetadata> getHistoryForProduct(Long productId, Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
-        Pageable pageable = buildPageable(page, size, sortBy, sortDir);
+        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? "timestamp" : sortBy;
+        String safeSortDir = (sortDir == null || sortDir.isBlank()) ? "desc" : sortDir;
+
+        Sort sort = safeSortDir.equalsIgnoreCase("asc")
+                ? Sort.by(safeSortBy).ascending()
+                : Sort.by(safeSortBy).descending();
+
+        sort = sort.and(Sort.by("id").descending());
+
+        Pageable pageable = PageRequest.of(
+                page != null ? page : 0,
+                size != null ? size : 20,
+                sort
+        );
+
         Specification<ProductHistory> spec = ProductHistorySpecification.buildSpecification(filters)
                 .and((root, query, cb) -> root.join("product", JoinType.LEFT).get("id").in(productId));
         Page<ProductHistory> pageResult = productHistoryRepository.findAll(spec, pageable);
@@ -108,6 +123,9 @@ public class ProductHistoryServiceImpl implements ProductHistoryService {
                 .map(productHistoryMapper::toSingleResponse)
                 .collect(Collectors.toList());
 
+        String metaSortDir = pageable.getSort().toString().contains("ASC") ? "asc" : "desc";
+        String metaSortBy = pageable.getSort().stream().findFirst().map(Sort.Order::getProperty).orElse("id");
+
         PaginationMetadata metadata = new PaginationMetadata(
                 pageResult.getNumber(),
                 pageResult.getSize(),
@@ -115,8 +133,8 @@ public class ProductHistoryServiceImpl implements ProductHistoryService {
                 pageResult.getTotalPages(),
                 pageResult.isLast(),
                 filters,
-                pageable.getSort().toString().contains("ASC") ? "asc" : "desc",
-                pageable.getSort().stream().findFirst().map(Sort.Order::getProperty).orElse(DEFAULT_SORT_BY),
+                metaSortDir,
+                metaSortBy,
                 "productHistoryTable"
         );
         return Pair.of(content, metadata);

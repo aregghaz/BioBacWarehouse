@@ -10,7 +10,8 @@ import java.math.BigDecimal;
 public class ManufactureCalculateResponse {
     private Double requiredQuantity;
     private Double balanceQuantity;
-    private BigDecimal price;
+    private BigDecimal requiredPrice;
+    private BigDecimal availablePrice;
     private String componentName;
     private Long ingredientId;
     private Long productId;

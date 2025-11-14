@@ -39,6 +39,13 @@ public class ProductBalanceSpecification {
         return productField.getOrDefault(field, null);
     }
 
+    private static String isDetailField(String field) {
+        Map<String, String> warehouseField = Map.of(
+                "expirationDate", "expirationDate"
+        );
+        return warehouseField.getOrDefault(field, null);
+    }
+
     private static String isWarehouseField(String field) {
         Map<String, String> warehouseField = Map.of(
                 "warehouseId", "id",
@@ -53,6 +60,7 @@ public class ProductBalanceSpecification {
             Join<ProductBalance, Product> productJoin = null;
             Join<ProductBalance, Warehouse> warehouseJoin = null;
             Join<ProductBalance, Unit> unitJoin = null;
+            Join<ProductBalance, ProductDetail> detailJoin = null;
             Join<Product, ProductGroup> productGroupJoin = null;
 
             if (filters != null) {
@@ -72,6 +80,11 @@ public class ProductBalanceSpecification {
                             productGroupJoin = root.join("product", JoinType.LEFT).join("productGroup", JoinType.LEFT);
                         }
                         path = productGroupJoin.get(isProductGroupField(field));
+                    } else if (isDetailField(field) != null) {
+                        if (detailJoin == null) {
+                            detailJoin = root.join("details", JoinType.LEFT);
+                        }
+                        path = detailJoin.get(isDetailField(field));
                     } else if (isWarehouseField(field) != null) {
                         if (warehouseJoin == null) {
                             warehouseJoin = root.join("warehouse", JoinType.LEFT);

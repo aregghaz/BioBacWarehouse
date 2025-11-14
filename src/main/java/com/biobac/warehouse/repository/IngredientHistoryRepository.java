@@ -1,6 +1,8 @@
 package com.biobac.warehouse.repository;
 
+import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.entity.IngredientHistory;
+import com.biobac.warehouse.entity.Warehouse;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
@@ -8,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 @Repository
 public interface IngredientHistoryRepository extends JpaRepository<IngredientHistory, Long>, JpaSpecificationExecutor<IngredientHistory> {
@@ -68,4 +71,6 @@ public interface IngredientHistoryRepository extends JpaRepository<IngredientHis
     Double sumDecreasedCount(@Param("ingredient_id") Long ingredientId,
                              @Param("from") LocalDateTime from,
                              @Param("to") LocalDateTime to);
+
+    Optional<IngredientHistory> findFirstByWarehouseAndIngredientOrderByTimestampDescIdDesc(Warehouse warehouse, Ingredient ingredient);
 }

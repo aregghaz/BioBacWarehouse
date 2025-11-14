@@ -16,8 +16,8 @@ import com.biobac.warehouse.response.ManufactureProductResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.ManufactureProductService;
 import com.biobac.warehouse.service.ProductHistoryService;
-import com.biobac.warehouse.utils.DateUtil;
 import com.biobac.warehouse.utils.GroupUtil;
+import com.biobac.warehouse.utils.SelfWorthPriceUtil;
 import com.biobac.warehouse.utils.specifications.ManufactureSpecification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -100,7 +100,7 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
         manufactureProduct.setManufacturingDate(request.getManufacturingDate());
         manufactureProduct.setQuantity(totalCount);
         if (product.getExpiration() != null) {
-            manufactureProduct.setExpirationDate(DateUtil.parseDate(request.getManufacturingDate()).plusDays(product.getExpiration()));
+            manufactureProduct.setExpirationDate(request.getManufacturingDate().plusDays(product.getExpiration()));
         } else {
             manufactureProduct.setExpirationDate(null);
         }
@@ -145,11 +145,11 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
             ProductHistoryDto ph = new ProductHistoryDto();
             HistoryAction action = historyActionRepository.findById(3L)
                     .orElseThrow(() -> new NotFoundException("Action not found"));
+            ph.setTimestamp(request.getManufacturingDate());
             ph.setProduct(product);
             ph.setAction(action);
             ph.setWarehouse(warehouse);
             ph.setQuantityChange(totalCount);
-
             ph.setNotes("Произведено" + warehouseNote + " в количестве " + totalCount);
 
             productHistoryService.recordQuantityChange(ph);
@@ -208,94 +208,133 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
             Product product = productRepository.findById(req.getProductId())
                     .orElseThrow(() -> new NotFoundException("Product not found"));
 
-            double productQty = req.getQuantity() != null ? req.getQuantity() : 1.0;
+            double multiplyQty = req.getQuantity() != null ? req.getQuantity() : 1.0;
 
             RecipeItem recipeItem = product.getRecipeItem();
             if (recipeItem != null && recipeItem.getComponents() != null) {
                 for (RecipeComponent rc : recipeItem.getComponents()) {
-                    double totalQty = rc.getQuantity() * productQty;
-
-                    String key;
-                    Ingredient ingredient = rc.getIngredient();
-                    Product compProduct = rc.getProduct();
-
-                    if (ingredient != null) {
-                        key = "INGR-" + ingredient.getId();
-                        addToAggregated(aggregated, key, ingredient, null, totalQty);
-                    } else if (compProduct != null) {
-                        key = "PROD-" + compProduct.getId();
-                        addToAggregated(aggregated, key, null, compProduct, totalQty);
-                    }
+                    addComponent(aggregated, rc.getIngredient(), rc.getProduct(),
+                            rc.getQuantity() * multiplyQty);
                 }
             }
 
             List<ProductComponent> extras = product.getExtraComponents();
             if (extras != null) {
                 for (ProductComponent pc : extras) {
-                    double totalQty = pc.getQuantity() * productQty;
-
-                    Ingredient ingredient = pc.getIngredient();
-                    Product child = pc.getChildProduct();
-
-                    String key;
-                    if (ingredient != null) {
-                        key = "INGR-" + ingredient.getId();
-                        addToAggregated(aggregated, key, ingredient, null, totalQty);
-                    } else if (child != null) {
-                        key = "PROD-" + child.getId();
-                        addToAggregated(aggregated, key, null, child, totalQty);
-                    }
+                    addComponent(aggregated, pc.getIngredient(), pc.getChildProduct(),
+                            pc.getQuantity() * multiplyQty);
                 }
             }
         }
 
         for (ManufactureCalculateResponse resp : aggregated.values()) {
-            double balance = 0.0;
 
-            if (resp.getIngredientId() != null) {
-                Ingredient ingredient = ingredientRepository.findById(resp.getIngredientId())
-                        .orElse(null);
-                if (ingredient != null && ingredient.getDefaultWarehouse() != null) {
-                    balance = ingredientBalanceRepository
-                            .findByWarehouseAndIngredient(ingredient.getDefaultWarehouse(), ingredient)
-                            .map(IngredientBalance::getBalance)
-                            .orElse(0.0);
-                }
-            } else if (resp.getProductId() != null) {
-                Product compProduct = productRepository.findById(resp.getProductId())
-                        .orElse(null);
-                if (compProduct != null && compProduct.getDefaultWarehouse() != null) {
-                    balance = productBalanceRepository
-                            .findByWarehouseAndProduct(compProduct.getDefaultWarehouse(), compProduct)
-                            .map(ProductBalance::getBalance)
-                            .orElse(0.0);
-                }
-            }
-
+            double balance = fetchBalance(resp);
             resp.setBalanceQuantity(balance);
+
+            BigDecimal unitPrice = fetchUnitPrice(resp);
+
+            BigDecimal requiredTotal = unitPrice
+                    .multiply(BigDecimal.valueOf(resp.getRequiredQuantity()))
+                    .setScale(2, RoundingMode.HALF_UP);
+
+            BigDecimal availableTotal = unitPrice
+                    .multiply(BigDecimal.valueOf(balance))
+                    .setScale(2, RoundingMode.HALF_UP);
+
+            resp.setRequiredPrice(requiredTotal);
+            resp.setAvailablePrice(availableTotal);
         }
 
         return new ArrayList<>(aggregated.values());
     }
 
-    private void addToAggregated(Map<String, ManufactureCalculateResponse> map,
-                                 String key,
-                                 Ingredient ingredient,
-                                 Product product,
-                                 double qty) {
-        ManufactureCalculateResponse resp = map.getOrDefault(key, new ManufactureCalculateResponse());
-        double newQty = (resp.getRequiredQuantity() == null ? 0 : resp.getRequiredQuantity()) + qty;
-        resp.setRequiredQuantity(newQty);
+    private void addComponent(Map<String, ManufactureCalculateResponse> map,
+                              Ingredient ingredient,
+                              Product product,
+                              double quantity) {
+
+        String key;
+        String name = null;
+
+        Long ingrId;
+        Long prodId;
 
         if (ingredient != null) {
-            resp.setIngredientId(ingredient.getId());
-            resp.setComponentName(ingredient.getName());
-        } else if (product != null) {
-            resp.setProductId(product.getId());
-            resp.setComponentName(product.getName());
+            prodId = null;
+            key = "INGR-" + ingredient.getId();
+            ingrId = ingredient.getId();
+            name = ingredient.getName();
+        } else {
+            ingrId = null;
+            key = "PROD-" + product.getId();
+            prodId = product.getId();
+            name = product.getName();
         }
 
-        map.put(key, resp);
+        String finalName = name;
+        ManufactureCalculateResponse resp =
+                map.computeIfAbsent(key, k -> {
+                    ManufactureCalculateResponse r = new ManufactureCalculateResponse();
+                    r.setRequiredQuantity(0.0);
+                    r.setIngredientId(ingrId);
+                    r.setProductId(prodId);
+                    r.setComponentName(finalName);
+                    return r;
+                });
+
+        resp.setRequiredQuantity(resp.getRequiredQuantity() + quantity);
+    }
+
+    private double fetchBalance(ManufactureCalculateResponse resp) {
+
+        if (resp.getIngredientId() != null) {
+            Ingredient ingredient = ingredientRepository.findById(resp.getIngredientId()).orElse(null);
+            if (ingredient != null && ingredient.getDefaultWarehouse() != null) {
+                return ingredientBalanceRepository
+                        .findByWarehouseAndIngredient(ingredient.getDefaultWarehouse(), ingredient)
+                        .map(IngredientBalance::getBalance)
+                        .orElse(0.0);
+            }
+        } else if (resp.getProductId() != null) {
+            Product product = productRepository.findById(resp.getProductId()).orElse(null);
+            if (product != null && product.getDefaultWarehouse() != null) {
+                return productBalanceRepository
+                        .findByWarehouseAndProduct(product.getDefaultWarehouse(), product)
+                        .map(ProductBalance::getBalance)
+                        .orElse(0.0);
+            }
+        }
+        return 0.0;
+    }
+
+    private BigDecimal fetchUnitPrice(ManufactureCalculateResponse resp) {
+
+        if (resp.getIngredientId() != null) {
+            Ingredient ingredient = ingredientRepository.findById(resp.getIngredientId()).orElse(null);
+            if (ingredient != null && ingredient.getDefaultWarehouse() != null) {
+                IngredientBalance bal = ingredientBalanceRepository
+                        .findByWarehouseAndIngredient(ingredient.getDefaultWarehouse(), ingredient)
+                        .orElse(null);
+                return bal != null
+                        ? SelfWorthPriceUtil.calculateIngredientPrice(bal)
+                        : ingredient.getPrice();
+            }
+        }
+
+        if (resp.getProductId() != null) {
+            Product product = productRepository.findById(resp.getProductId()).orElse(null);
+            if (product != null && product.getDefaultWarehouse() != null) {
+                ProductBalance bal = productBalanceRepository
+                        .findByWarehouseAndProduct(product.getDefaultWarehouse(), product)
+                        .orElse(null);
+                return bal != null
+                        ? SelfWorthPriceUtil.calculateProductPrice(bal)
+                        : BigDecimal.ZERO;
+            }
+        }
+
+        return BigDecimal.ZERO;
     }
 
     private IngredientBalance getOrCreateIngredientBalance(Warehouse warehouse, Ingredient ingredient) {

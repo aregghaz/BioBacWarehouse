@@ -1,6 +1,7 @@
 package com.biobac.warehouse.utils.specifications;
 
 import com.biobac.warehouse.entity.Product;
+import com.biobac.warehouse.entity.ProductGroup;
 import com.biobac.warehouse.entity.RecipeItem;
 import com.biobac.warehouse.entity.Unit;
 import com.biobac.warehouse.request.FilterCriteria;
@@ -31,10 +32,19 @@ public class ProductSpecification {
         return unitField.getOrDefault(field, null);
     }
 
+    private static String isProductGroupField(String field) {
+        Map<String, String> ingredientGroupField = Map.of(
+                "productGroupId", "id",
+                "productGroupName", "name"
+        );
+        return ingredientGroupField.getOrDefault(field, null);
+    }
+
     public static Specification<Product> buildSpecification(Map<String, FilterCriteria> filters) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             Join<Product, RecipeItem> recipeItemJoin = null;
+            Join<Product, ProductGroup> productGroupJoin = null;
             Join<Product, Unit> unitJoin = null;
 
             if (filters != null) {
@@ -49,6 +59,11 @@ public class ProductSpecification {
                             recipeItemJoin = root.join("recipeItem", JoinType.LEFT);
                         }
                         path = recipeItemJoin.get(isRecipeItemField(field));
+                    } else if (isProductGroupField(field) != null) {
+                        if (productGroupJoin == null) {
+                            productGroupJoin = root.join("productGroup", JoinType.LEFT);
+                        }
+                        path = productGroupJoin.get(isProductGroupField(field));
                     } else if (isUnitField(field) != null) {
                         if (unitJoin == null) {
                             unitJoin = root.join("unit", JoinType.LEFT);
