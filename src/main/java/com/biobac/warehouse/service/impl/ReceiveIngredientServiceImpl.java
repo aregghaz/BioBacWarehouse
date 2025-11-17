@@ -562,6 +562,34 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
                     item.setManufacturingDate(r.getManufacturingDate());
                 }
 
+                if (r.getReceivedQuantity() != null && !item.getReceivedQuantity().equals(r.getReceivedQuantity())) {
+                    item.setReceivedQuantity(r.getReceivedQuantity());
+                    IngredientDetail detail = item.getDetail();
+                    Double oldQuantity = detail.getQuantity();
+                    Double newQuantity = r.getReceivedQuantity();
+
+                    IngredientBalance balance = detail.getIngredientBalance();
+                    if (balance == null) {
+                        throw new NotFoundException("Balance not found");
+                    }
+                    detail.setQuantity(r.getReceivedQuantity());
+                    ingredientDetailRepository.save(detail);
+                    balance.setBalance(balance.getBalance() - oldQuantity + newQuantity);
+                    ingredientBalanceRepository.save(balance);
+
+                    HistoryAction action = historyActionRepository.findById(2L)
+                            .orElseThrow(() -> new NotFoundException("Action not found"));
+
+                    IngredientHistoryDto dto = new IngredientHistoryDto();
+                    dto.setIngredient(item.getIngredient());
+                    dto.setWarehouse(item.getWarehouse());
+                    dto.setTimestamp(r.getImportDate());
+                    dto.setAction(action);
+                    dto.setQuantityChange(newQuantity - oldQuantity);
+                    dto.setNotes("Количество изменено с " + oldQuantity + " на " + newQuantity + " из-за исправления ошибки.");
+                    ingredientHistoryService.recordQuantityChange(dto);
+                }
+
                 Ingredient effectiveIngredient = newIngredient;
                 if (item.getManufacturingDate() != null && effectiveIngredient != null && effectiveIngredient.getExpiration() != null) {
                     item.setExpirationDate(item.getManufacturingDate().plusDays(effectiveIngredient.getExpiration()));
