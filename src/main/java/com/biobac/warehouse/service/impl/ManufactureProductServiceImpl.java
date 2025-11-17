@@ -11,6 +11,7 @@ import com.biobac.warehouse.repository.*;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.request.ManufactureCalculateRequest;
 import com.biobac.warehouse.request.ManufactureProductRequest;
+import com.biobac.warehouse.response.ManufactureCalculateMetadata;
 import com.biobac.warehouse.response.ManufactureCalculateResponse;
 import com.biobac.warehouse.response.ManufactureProductResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
@@ -197,18 +198,27 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
 
     @Override
     @Transactional(readOnly = true)
-    public List<ManufactureCalculateResponse> calculateProductions(List<ManufactureCalculateRequest> requests) {
-        if (requests == null || requests.isEmpty()) {
-            return List.of();
-        }
-
+    public Pair<List<ManufactureCalculateResponse>, List<ManufactureCalculateMetadata>> calculateProductions(List<ManufactureCalculateRequest> requests) {
         Map<String, ManufactureCalculateResponse> aggregated = new HashMap<>();
+        List<ManufactureCalculateMetadata> metadata = new ArrayList<>();
 
         for (ManufactureCalculateRequest req : requests) {
             Product product = productRepository.findById(req.getProductId())
                     .orElseThrow(() -> new NotFoundException("Product not found"));
 
             double multiplyQty = req.getQuantity() != null ? req.getQuantity() : 1.0;
+
+            ManufactureCalculateResponse tmp = new ManufactureCalculateResponse();
+            tmp.setProductId(product.getId());
+            BigDecimal unitPriceForProduct = fetchUnitPrice(tmp);
+            if (unitPriceForProduct == null) unitPriceForProduct = BigDecimal.ZERO;
+            ManufactureCalculateMetadata md = new ManufactureCalculateMetadata();
+            md.setProductId(product.getId());
+            md.setProductName(product.getName());
+            md.setQuantity(multiplyQty);
+            md.setPrice(unitPriceForProduct);
+            md.setAmount(unitPriceForProduct.multiply(BigDecimal.valueOf(multiplyQty)).setScale(2, RoundingMode.HALF_UP));
+            metadata.add(md);
 
             RecipeItem recipeItem = product.getRecipeItem();
             if (recipeItem != null && recipeItem.getComponents() != null) {
@@ -244,9 +254,16 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
 
             resp.setRequiredPrice(requiredTotal);
             resp.setAvailablePrice(availableTotal);
+
+            double required = resp.getRequiredQuantity() != null ? resp.getRequiredQuantity() : 0.0;
+            double diff = required - balance;
+            resp.setDifferenceQuantity(diff > 0 ? diff : 0.0);
         }
 
-        return new ArrayList<>(aggregated.values());
+        List<ManufactureCalculateResponse> responses =
+                new ArrayList<>(aggregated.values());
+
+        return Pair.of(responses, metadata);
     }
 
     private void addComponent(Map<String, ManufactureCalculateResponse> map,

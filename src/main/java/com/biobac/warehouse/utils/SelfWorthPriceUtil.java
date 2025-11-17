@@ -11,7 +11,7 @@ import java.util.Comparator;
 import java.util.List;
 
 public class SelfWorthPriceUtil {
-    private static BigDecimal getLastPrice(List<IngredientDetail> details) {
+    private static BigDecimal getLastIngredientPrice(List<IngredientDetail> details) {
         return details.stream()
                 .filter(d -> d.getImportDate() != null && d.getPrice() != null)
                 .max(Comparator.comparing(IngredientDetail::getImportDate))
@@ -47,7 +47,7 @@ public class SelfWorthPriceUtil {
         if (totalQuantity.compareTo(BigDecimal.ZERO) > 0) {
             return totalValue.divide(totalQuantity, 2, RoundingMode.HALF_UP);
         } else {
-            return getLastPrice(details);
+            return getLastIngredientPrice(details);
         }
     }
 

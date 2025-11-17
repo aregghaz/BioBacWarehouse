@@ -152,7 +152,7 @@ public class TransferServiceImpl implements TransferService {
             );
 
             String toNote = String.format(
-                    "Получено %.2f единиц продукта \"%s\" со склада \"%s\" на склад \"%s\" (поступление)",
+                    "Перемещено %.2f единиц продукта \"%s\" со склада \"%s\" на склад \"%s\" (поступление)",
                     requiredQty, productName, fromWhName, toWhName
             );
 
@@ -266,7 +266,7 @@ public class TransferServiceImpl implements TransferService {
             );
 
             String toNote = String.format(
-                    "Получено %.2f единиц ингредиента \"%s\" со склада \"%s\" на склад \"%s\" (поступление)",
+                    "Перемещено %.2f единиц ингредиента \"%s\" со склада \"%s\" на склад \"%s\" (поступление)",
                     c.getQuantity(), ingredientName, fromWhName, toWhName
             );
 
