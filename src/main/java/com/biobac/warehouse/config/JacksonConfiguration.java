@@ -35,18 +35,17 @@ public class JacksonConfiguration {
 
     @Bean
     public Jackson2ObjectMapperBuilderCustomizer customBigDecimalFormatter() {
-        return builder -> {
-            builder.serializerByType(BigDecimal.class, new JsonSerializer<BigDecimal>() {
-                @Override
-                public void serialize(BigDecimal value, JsonGenerator gen, SerializerProvider serializers)
-                        throws IOException {
-                    if (value == null) {
-                        gen.writeNull();
-                        return;
-                    }
-                    gen.writeString(value.setScale(2, RoundingMode.HALF_UP).toPlainString());
+        return builder -> builder.serializerByType(BigDecimal.class, new JsonSerializer<BigDecimal>() {
+            @Override
+            public void serialize(BigDecimal value, JsonGenerator gen, SerializerProvider serializers)
+                    throws IOException {
+                if (value == null) {
+                    gen.writeNull();
+                    return;
                 }
-            });
-        };
+                BigDecimal scaled = value.setScale(2, RoundingMode.HALF_EVEN);
+                gen.writeNumber(scaled);
+            }
+        });
     }
 }
