@@ -1,6 +1,7 @@
 package com.biobac.warehouse.service;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
+import com.biobac.warehouse.entity.Ingredient;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.request.IngredientCreateRequest;
 import com.biobac.warehouse.request.IngredientUpdateRequest;
@@ -14,6 +15,8 @@ public interface IngredientService extends UnitTypeCalculator{
     IngredientResponse create(IngredientCreateRequest ingredient);
 
     IngredientResponse getById(Long id);
+
+    Ingredient getIngredientById(Long id);
 
     List<IngredientResponse> getAll();
 

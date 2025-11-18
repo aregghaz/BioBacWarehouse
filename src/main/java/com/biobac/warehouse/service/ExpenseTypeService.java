@@ -1,6 +1,7 @@
 package com.biobac.warehouse.service;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
+import com.biobac.warehouse.entity.ExpenseType;
 import com.biobac.warehouse.request.ExpenseTypeCreateRequest;
 import com.biobac.warehouse.request.ExpenseTypeUpdateRequest;
 import com.biobac.warehouse.request.FilterCriteria;
@@ -12,6 +13,8 @@ import java.util.Map;
 
 public interface ExpenseTypeService {
     ExpenseTypeResponse getById(Long id);
+
+    ExpenseType getExpenseTypeById(Long id);
 
     ExpenseTypeResponse create(ExpenseTypeCreateRequest request);
 

@@ -13,6 +13,7 @@ import com.biobac.warehouse.request.AddImprovementRequest;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.response.AssetImprovementResponse;
 import com.biobac.warehouse.service.AssetImprovementService;
+import com.biobac.warehouse.utils.PageUtil;
 import com.biobac.warehouse.utils.specifications.AssetImprovementSpecification;
 import jakarta.persistence.criteria.JoinType;
 import lombok.RequiredArgsConstructor;
@@ -38,38 +39,6 @@ public class AssetImprovementServiceImpl implements AssetImprovementService {
     private final AssetRepository assetRepository;
     private final AssetImprovementMapper assetImprovementMapper;
     private final AssetActionRepository assetActionRepository;
-
-    private static final int DEFAULT_PAGE = 0;
-    private static final int DEFAULT_SIZE = 20;
-    private static final String DEFAULT_SORT_BY = "timestamp";
-    private static final String DEFAULT_SORT_DIR = "desc";
-
-    private Pageable buildPageable(Integer page, Integer size, String sortBy, String sortDir) {
-        int safePage = (page == null || page < 0) ? DEFAULT_PAGE : page;
-        int safeSize = (size == null || size <= 0) ? DEFAULT_SIZE : size;
-        if (safeSize > 1000) safeSize = 1000;
-
-        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? DEFAULT_SORT_BY : sortBy.trim();
-        String safeSortDir = (sortDir == null || sortDir.isBlank()) ? DEFAULT_SORT_DIR : sortDir.trim();
-
-        String mappedSortBy = mapSortField(safeSortBy);
-
-        Sort sort = safeSortDir.equalsIgnoreCase("asc")
-                ? Sort.by(mappedSortBy).ascending()
-                : Sort.by(mappedSortBy).descending();
-
-        return PageRequest.of(safePage, safeSize, sort);
-    }
-
-    private String mapSortField(String sortBy) {
-        return switch (sortBy) {
-            case "categoryName" -> "category.name";
-            case "depreciationMethodName" -> "depreciationMethod.name";
-            case "departmentName" -> "department.name";
-            case "warehouseName" -> "warehouse.name";
-            default -> sortBy;
-        };
-    }
 
     @Override
     @Transactional
@@ -105,7 +74,7 @@ public class AssetImprovementServiceImpl implements AssetImprovementService {
     @Override
     @Transactional(readOnly = true)
     public Pair<List<AssetImprovementResponse>, PaginationMetadata> getPaginationByAssetId(Long assetId, Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir) {
-        Pageable pageable = buildPageable(page, size, sortBy, sortDir);
+        Pageable pageable = PageUtil.buildPageable(page, size, sortBy, sortDir);
 
         Specification<AssetImprovement> spec = AssetImprovementSpecification.buildSpecification(filters)
                 .and((root, query, cb) -> cb.equal(root.join("asset", JoinType.LEFT).get("id"), assetId));
@@ -125,7 +94,7 @@ public class AssetImprovementServiceImpl implements AssetImprovementService {
                 assetPage.isLast(),
                 filters,
                 pageable.getSort().toString().contains("ASC") ? "asc" : "desc",
-                pageable.getSort().stream().findFirst().map(Sort.Order::getProperty).orElse(DEFAULT_SORT_BY),
+                pageable.getSort().stream().findFirst().map(Sort.Order::getProperty).orElse(PageUtil.DEFAULT_SORT_BY),
                 "assetImprovementTable"
         );
 

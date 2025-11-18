@@ -171,6 +171,12 @@ public class IngredientServiceImpl implements IngredientService, UnitTypeCalcula
     }
 
     @Override
+    public Ingredient getIngredientById(Long id) {
+        return ingredientRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Ingredient not found with id: " + id));
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<IngredientResponse> getAll() {
         List<Long> groupIds = groupUtil.getAccessibleIngredientGroupIds();

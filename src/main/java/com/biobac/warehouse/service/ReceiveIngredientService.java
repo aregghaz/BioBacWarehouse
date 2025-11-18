@@ -13,23 +13,29 @@ import java.util.List;
 import java.util.Map;
 
 public interface ReceiveIngredientService {
-    Pair<List<ReceiveIngredientResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters,
-                                                                            Integer page,
-                                                                            Integer size,
-                                                                            String sortBy,
-                                                                            String sortDir);
+    Pair<List<ReceiveIngredientResponse>, PaginationMetadata> getPagination(
+            Map<String, FilterCriteria> filters,
+            Integer page,
+            Integer size,
+            String sortBy,
+            String sortDir
+    );
 
-    Pair<List<ReceiveIngredientResponse>, PaginationMetadata> getSucceeded(Map<String, FilterCriteria> filters,
-                                                                           Integer page,
-                                                                           Integer size,
-                                                                           String sortBy,
-                                                                           String sortDir);
+    Pair<List<ReceiveIngredientResponse>, PaginationMetadata> getSucceeded(
+            Map<String, FilterCriteria> filters,
+            Integer page,
+            Integer size,
+            String sortBy,
+            String sortDir
+    );
 
-    Pair<List<ReceiveIngredientResponse>, PaginationMetadata> getPending(Map<String, FilterCriteria> filters,
-                                                                         Integer page,
-                                                                         Integer size,
-                                                                         String sortBy,
-                                                                         String sortDir);
+    Pair<List<ReceiveIngredientResponse>, PaginationMetadata> getPending(
+            Map<String, FilterCriteria> filters,
+            Integer page,
+            Integer size,
+            String sortBy,
+            String sortDir
+    );
 
     ReceiveIngredientGroupResponse getByGroupId(Long groupId);
 

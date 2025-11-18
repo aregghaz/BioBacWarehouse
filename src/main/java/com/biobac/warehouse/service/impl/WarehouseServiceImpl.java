@@ -145,6 +145,12 @@ public class WarehouseServiceImpl implements WarehouseService {
         return mapper.toResponse(saved);
     }
 
+    @Override
+    public Warehouse getWarehouseById(Long id) {
+        return warehouseRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Warehouse not found with id: " + id));
+    }
+
     @Transactional
     @Override
     public WarehouseResponse update(Long id, WarehouseRequest request) {

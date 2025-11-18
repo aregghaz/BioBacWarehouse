@@ -57,6 +57,12 @@ public class ExpenseTypeServiceImpl implements ExpenseTypeService {
     }
 
     @Override
+    public ExpenseType getExpenseTypeById(Long id) {
+        return expenseTypeRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("ExpenseType not found with id: " + id));
+    }
+
+    @Override
     @Transactional
     public ExpenseTypeResponse create(ExpenseTypeCreateRequest request) {
         ExpenseType entity = new ExpenseType();

@@ -17,6 +17,7 @@ import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.ManufactureProductService;
 import com.biobac.warehouse.service.ProductHistoryService;
 import com.biobac.warehouse.utils.GroupUtil;
+import com.biobac.warehouse.utils.IngredientBalanceUtil;
 import com.biobac.warehouse.utils.SelfWorthPriceUtil;
 import com.biobac.warehouse.utils.specifications.ManufactureSpecification;
 import lombok.RequiredArgsConstructor;
@@ -51,6 +52,7 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
     private final HistoryActionRepository historyActionRepository;
     private final GroupUtil groupUtil;
     private final IngredientRepository ingredientRepository;
+    private final IngredientBalanceUtil ingredientBalanceUtil;
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
@@ -337,23 +339,6 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
         return BigDecimal.ZERO;
     }
 
-    private IngredientBalance getOrCreateIngredientBalance(Warehouse warehouse, Ingredient ingredient) {
-        if (warehouse == null || warehouse.getId() == null) {
-            throw new InvalidDataException("Warehouse is required for component balance (ingredient)");
-        }
-        if (ingredient == null || ingredient.getId() == null) {
-            throw new InvalidDataException("Ingredient is required for component balance");
-        }
-        return ingredientBalanceRepository.findByWarehouseAndIngredient(warehouse, ingredient)
-                .orElseGet(() -> {
-                    IngredientBalance cb = new IngredientBalance();
-                    cb.setWarehouse(warehouse);
-                    cb.setIngredient(ingredient);
-                    cb.setBalance(0.0);
-                    return ingredientBalanceRepository.save(cb);
-                });
-    }
-
     private ProductBalance getOrCreateProductBalance(Warehouse warehouse, Product product) {
         if (warehouse == null || warehouse.getId() == null) {
             throw new InvalidDataException("Warehouse is required for component balance (product)");
@@ -399,7 +384,7 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
                 throw new InvalidDataException("Default warehouse is not set for ingredient " + ingredient.getName());
             }
 
-            IngredientBalance ingredientBalance = getOrCreateIngredientBalance(defWh, ingredient);
+            IngredientBalance ingredientBalance = ingredientBalanceUtil.getOrCreateIngredientBalance(defWh, ingredient);
             double before = ingredientBalance.getBalance() != null ? ingredientBalance.getBalance() : 0.0;
 
             BigDecimal cost = deductFromIngredientDetails(ingredientBalance, requiredQty, manufactureProduct);
