@@ -1,40 +1,35 @@
 package com.biobac.warehouse.service;
 
 import com.biobac.warehouse.dto.IngredientHistoryDto;
-import com.biobac.warehouse.entity.Ingredient;
+import com.biobac.warehouse.dto.PaginationMetadata;
+import com.biobac.warehouse.request.FilterCriteria;
+import com.biobac.warehouse.response.IngredientHistoryResponse;
+import com.biobac.warehouse.response.IngredientHistorySingleResponse;
+import org.springframework.data.util.Pair;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 public interface IngredientHistoryService {
-    
-    /**
-     * Record a change in ingredient quantity
-     * 
-     * @param ingredient The ingredient that changed
-     * @param quantityBefore The quantity before the change
-     * @param quantityAfter The quantity after the change
-     * @param action The action that caused the change (e.g., "CREATED", "UPDATED", "USED_IN_RECIPE")
-     * @param notes Additional notes about the change
-     * @return The created history record as DTO
-     */
-    IngredientHistoryDto recordQuantityChange(Ingredient ingredient, Double quantityBefore, 
-                                             Double quantityAfter, String action, String notes);
-    
-    /**
-     * Get history for a specific ingredient
-     * 
-     * @param ingredientId The ID of the ingredient
-     * @return List of history records for the ingredient
-     */
-    List<IngredientHistoryDto> getHistoryForIngredient(Long ingredientId);
-    
-    /**
-     * Get history for a date range
-     * 
-     * @param startDate The start date/time
-     * @param endDate The end date/time
-     * @return List of history records within the date range
-     */
-    List<IngredientHistoryDto> getHistoryForDateRange(LocalDateTime startDate, LocalDateTime endDate);
+
+    IngredientHistorySingleResponse recordQuantityChange(IngredientHistoryDto dto);
+
+    Pair<List<IngredientHistorySingleResponse>, PaginationMetadata> getHistoryForIngredient(Long ingredientId, Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir);
+
+    Pair<List<IngredientHistoryResponse>, PaginationMetadata> getAll(Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir);
+
+    Pair<List<IngredientHistorySingleResponse>, PaginationMetadata> getHistory(Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir);
+
+    Double getTotalForIngredient(Long ingredientId);
+
+    Double getInitialForIngredient(Long ingredientId, LocalDateTime start);
+
+    Double getEventualForIngredient(Long ingredientId, LocalDateTime end);
+
+    Double getEventualForIngredient(Long ingredientId, Long warehouseId, LocalDateTime end);
+
+    Double getSumOfIncreasedCount(Long id, LocalDateTime start, LocalDateTime end);
+
+    Double getSumOfDecreasedCount(Long id, LocalDateTime start, LocalDateTime end);
 }

@@ -8,6 +8,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Collection;
 import java.util.List;
 
 public class SpecificationUtil {
@@ -114,7 +115,12 @@ public class SpecificationUtil {
 
     public static Predicate buildContains(CriteriaBuilder cb, Path<?> path, Object value) {
         if (value == null) return null;
-        String pattern = "%" + value.toString().toLowerCase().trim().replaceAll("\\s+", " ") + "%";
-        return cb.like(cb.lower(path.as(String.class)), pattern);
+
+        if (value instanceof Collection<?>) {
+            return path.in((Collection<?>) value);
+        } else {
+            String pattern = "%" + value.toString().toLowerCase().trim().replaceAll("\\s+", " ") + "%";
+            return cb.like(cb.lower(path.as(String.class)), pattern);
+        }
     }
 }

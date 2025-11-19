@@ -1,9 +1,10 @@
 package com.biobac.warehouse.response;
 
-import com.biobac.warehouse.dto.IngredientComponentDto;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Getter
@@ -12,10 +13,24 @@ public class IngredientResponse {
     private Long id;
     private String name;
     private String description;
-    private String unit;
     private boolean active;
-    private Double quantity;
-    private Long groupId;
-    private Long warehouseId;
-    private List<IngredientComponentDto> childIngredientComponents;
+    private boolean deleted;
+    private Long ingredientGroupId;
+    private String ingredientGroupName;
+    private Integer expiration;
+    private List<Long> attributeGroupIds;
+    private Long unitId;
+    private BigDecimal price;
+    private BigDecimal lastPrice;
+    private Long lastCompanyId;
+    private String lastCompanyName;
+    private String unitName;
+    private Double totalQuantity;
+    private Double minimalBalance;
+    private Long defaultWarehouseId;
+    private String defaultWarehouseName;
+    private List<UnitTypeConfigResponse> unitTypeConfigs;
+    private List<AttributeResponse> attributes;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

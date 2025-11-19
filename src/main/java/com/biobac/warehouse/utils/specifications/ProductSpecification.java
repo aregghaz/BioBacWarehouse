@@ -1,11 +1,11 @@
 package com.biobac.warehouse.utils.specifications;
 
-import com.biobac.warehouse.entity.*;
+import com.biobac.warehouse.entity.Product;
+import com.biobac.warehouse.entity.ProductGroup;
+import com.biobac.warehouse.entity.RecipeItem;
+import com.biobac.warehouse.entity.Unit;
 import com.biobac.warehouse.request.FilterCriteria;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.JoinType;
-import jakarta.persistence.criteria.Path;
-import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.*;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.ArrayList;
@@ -15,13 +15,6 @@ import java.util.Map;
 import static com.biobac.warehouse.utils.SpecificationUtil.*;
 
 public class ProductSpecification {
-    private static String isIngredientField(String field) {
-        Map<String, String> ingredientField = Map.of(
-                "ingredientId", "id",
-                "ingredientName", "name"
-        );
-        return ingredientField.getOrDefault(field, null);
-    }
 
     private static String isRecipeItemField(String field) {
         Map<String, String> recipeItemField = Map.of(
@@ -31,12 +24,28 @@ public class ProductSpecification {
         return recipeItemField.getOrDefault(field, null);
     }
 
+    private static String isUnitField(String field) {
+        Map<String, String> unitField = Map.of(
+                "unitId", "id",
+                "unitName", "name"
+        );
+        return unitField.getOrDefault(field, null);
+    }
+
+    private static String isProductGroupField(String field) {
+        Map<String, String> ingredientGroupField = Map.of(
+                "productGroupId", "id",
+                "productGroupName", "name"
+        );
+        return ingredientGroupField.getOrDefault(field, null);
+    }
+
     public static Specification<Product> buildSpecification(Map<String, FilterCriteria> filters) {
         return (root, query, cb) -> {
-            query.distinct(true);
             List<Predicate> predicates = new ArrayList<>();
             Join<Product, RecipeItem> recipeItemJoin = null;
-            Join<Product, Ingredient> ingredientJoin = null;
+            Join<Product, ProductGroup> productGroupJoin = null;
+            Join<Product, Unit> unitJoin = null;
 
             if (filters != null) {
                 for (Map.Entry<String, FilterCriteria> entry : filters.entrySet()) {
@@ -45,16 +54,21 @@ public class ProductSpecification {
                     Path<?> path;
                     Predicate predicate = null;
 
-                    if (isIngredientField(field) != null) {
-                        if (ingredientJoin == null) {
-                            ingredientJoin = root.join("ingredients", JoinType.LEFT);
-                        }
-                        path = ingredientJoin.get(isIngredientField(field));
-                    } else if (isRecipeItemField(field) != null) {
+                    if (isRecipeItemField(field) != null) {
                         if (recipeItemJoin == null) {
-                            recipeItemJoin = root.join("recipeItems", JoinType.LEFT);
+                            recipeItemJoin = root.join("recipeItem", JoinType.LEFT);
                         }
                         path = recipeItemJoin.get(isRecipeItemField(field));
+                    } else if (isProductGroupField(field) != null) {
+                        if (productGroupJoin == null) {
+                            productGroupJoin = root.join("productGroup", JoinType.LEFT);
+                        }
+                        path = productGroupJoin.get(isProductGroupField(field));
+                    } else if (isUnitField(field) != null) {
+                        if (unitJoin == null) {
+                            unitJoin = root.join("unit", JoinType.LEFT);
+                        }
+                        path = unitJoin.get(isUnitField(field));
                     } else {
                         path = root.get(field);
                     }
@@ -75,6 +89,32 @@ public class ProductSpecification {
                 }
             }
             return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
+    public static Specification<Product> isDeleted() {
+        return ((root, query, criteriaBuilder) -> criteriaBuilder.isFalse(root.get("deleted")));
+    }
+
+    public static Specification<Product> belongsToGroups(List<Long> groupIds) {
+        return (root, query, cb) -> {
+            if (groupIds == null || groupIds.isEmpty()) {
+                return cb.disjunction();
+            }
+            return root.get("productGroup").get("id").in(groupIds);
+        };
+    }
+
+    public static Specification<Product> containIds(List<Long> ids) {
+        return (root, query, criteriaBuilder) -> {
+            if (ids == null || ids.isEmpty()) {
+                return criteriaBuilder.conjunction();
+            }
+            CriteriaBuilder.In<Long> inClause = criteriaBuilder.in(root.get("id"));
+            for (Long id : ids) {
+                inClause.value(id);
+            }
+            return inClause;
         };
     }
 }

@@ -40,7 +40,15 @@ public class AuditLogServiceImpl implements AuditLogService {
         for (Field field : newObject.getClass().getDeclaredFields()) {
             field.setAccessible(true);
             try {
-                Object oldValue = field.get(oldObject);
+                Object oldValue = null;
+                try {
+                    Field oldField = oldObject.getClass().getDeclaredField(field.getName());
+                    oldField.setAccessible(true);
+                    oldValue = oldField.get(oldObject);
+                } catch (NoSuchFieldException ignored) {
+                    // If the old object doesn't have this field, treat old value as null
+                }
+
                 Object newValue = field.get(newObject);
 
                 if (!Objects.equals(oldValue, newValue)) {
@@ -53,7 +61,7 @@ public class AuditLogServiceImpl implements AuditLogService {
                                 username, "UPDATE");
                     }
                 }
-            } catch (IllegalAccessException e) {
+            } catch (IllegalAccessException | IllegalArgumentException e) {
                 System.out.println("Error accessing field: " + field.getName());
             }
         }

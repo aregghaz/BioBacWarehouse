@@ -1,6 +1,5 @@
 package com.biobac.warehouse.request;
 
-import com.biobac.warehouse.dto.RecipeItemDto;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -12,9 +11,14 @@ public class ProductUpdateRequest {
     private String name;
     private String description;
     private String sku;
-    private List<Long> ingredientIds;
-    private List<RecipeItemDto> recipeItems;
-    private Double quantity;
-    private Long warehouseId;
-    private Long companyId;
+    private Integer expiration;
+    private Long recipeItemId;
+    private Long unitId;
+    private Double minimalBalance;
+    private Long productGroupId;
+    private List<UnitTypeConfigRequest> unitTypeConfigs;
+    private List<Long> attributeGroupIds;
+    private List<AttributeUpsertRequest> attributes;
+    private List<ProductAdditionalComponents> extraComponents;
+    private Long defaultWarehouseId;
 }

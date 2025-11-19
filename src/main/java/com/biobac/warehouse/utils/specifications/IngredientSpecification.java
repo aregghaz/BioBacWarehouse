@@ -1,12 +1,8 @@
 package com.biobac.warehouse.utils.specifications;
 
-import com.biobac.warehouse.entity.Ingredient;
-import com.biobac.warehouse.entity.IngredientGroup;
+import com.biobac.warehouse.entity.*;
 import com.biobac.warehouse.request.FilterCriteria;
-import jakarta.persistence.criteria.Join;
-import jakarta.persistence.criteria.JoinType;
-import jakarta.persistence.criteria.Path;
-import jakarta.persistence.criteria.Predicate;
+import jakarta.persistence.criteria.*;
 import org.springframework.data.jpa.domain.Specification;
 
 import java.util.ArrayList;
@@ -17,36 +13,64 @@ import static com.biobac.warehouse.utils.SpecificationUtil.*;
 
 public class IngredientSpecification {
 
-    private static String isIngredientGroupField(String field) {
-        Map<String, String> ingredientGroupFields = Map.of(
-                "groupId", "id",
-                "groupName", "name",
-                "groupDescription", "description"
+    private static String isRecipeItemField(String field) {
+        Map<String, String> recipeItemField = Map.of(
+                "recipeItemId", "id",
+                "recipeItemName", "name"
         );
-        return ingredientGroupFields.getOrDefault(field, null);
+        return recipeItemField.getOrDefault(field, null);
+    }
+
+    private static String isUnitField(String field) {
+        Map<String, String> unitField = Map.of(
+                "unitId", "id",
+                "unitName", "name"
+        );
+        return unitField.getOrDefault(field, null);
+    }
+
+    private static String isIngredientGroupField(String field) {
+        Map<String, String> ingredientGroupField = Map.of(
+                "ingredientGroupId", "id",
+                "ingredientGroupName", "name"
+        );
+        return ingredientGroupField.getOrDefault(field, null);
     }
 
     public static Specification<Ingredient> buildSpecification(Map<String, FilterCriteria> filters) {
         return (root, query, cb) -> {
-            query.distinct(true);
             List<Predicate> predicates = new ArrayList<>();
+
+            Join<Ingredient, Unit> unitJoin = null;
+            Join<Ingredient, RecipeItem> recipeItemJoin = null;
+            Join<Ingredient, IngredientGroup> ingredientGroupJoin = null;
 
             if (filters != null) {
                 for (Map.Entry<String, FilterCriteria> entry : filters.entrySet()) {
                     String field = entry.getKey();
                     FilterCriteria criteria = entry.getValue();
-                    Predicate predicate = null;
-                    Join<Ingredient, IngredientGroup> groupJoin = null;
-
                     Path<?> path;
-                    if (isIngredientGroupField(field) != null) {
-                        if (groupJoin == null) {
-                            groupJoin = root.join("group", JoinType.LEFT);
+
+                    if (isRecipeItemField(field) != null) {
+                        if (recipeItemJoin == null) {
+                            recipeItemJoin = root.join("recipeItem", JoinType.LEFT);
                         }
-                        path = groupJoin.get(isIngredientGroupField(field));
+                        path = recipeItemJoin.get(isRecipeItemField(field));
+                    } else if (isUnitField(field) != null) {
+                        if (unitJoin == null) {
+                            unitJoin = root.join("unit", JoinType.LEFT);
+                        }
+                        path = unitJoin.get(isUnitField(field));
+                    } else if (isIngredientGroupField(field) != null) {
+                        if (ingredientGroupJoin == null) {
+                            ingredientGroupJoin = root.join("ingredientGroup", JoinType.LEFT);
+                        }
+                        path = ingredientGroupJoin.get(isIngredientGroupField(field));
                     } else {
                         path = root.get(field);
                     }
+
+                    Predicate predicate = null;
 
                     switch (criteria.getOperator()) {
                         case "equals" -> predicate = buildEquals(cb, path, criteria.getValue());
@@ -63,7 +87,34 @@ public class IngredientSpecification {
                     }
                 }
             }
+
             return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
+    public static Specification<Ingredient> isDeleted() {
+        return ((root, query, criteriaBuilder) -> criteriaBuilder.isFalse(root.get("deleted")));
+    }
+
+    public static Specification<Ingredient> belongsToGroups(List<Long> groupIds) {
+        return (root, query, cb) -> {
+            if (groupIds == null || groupIds.isEmpty()) {
+                return cb.disjunction();
+            }
+            return root.get("ingredientGroup").get("id").in(groupIds);
+        };
+    }
+
+    public static Specification<Ingredient> containIds(List<Long> ids) {
+        return (root, query, criteriaBuilder) -> {
+            if (ids == null || ids.isEmpty()) {
+                return criteriaBuilder.conjunction();
+            }
+            CriteriaBuilder.In<Long> inClause = criteriaBuilder.in(root.get("id"));
+            for (Long id : ids) {
+                inClause.value(id);
+            }
+            return inClause;
         };
     }
 }

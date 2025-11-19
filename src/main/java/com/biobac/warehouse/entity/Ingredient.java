@@ -5,32 +5,46 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
 @Entity
 @Getter
 @Setter
-public class Ingredient {
+public class Ingredient extends BaseAuditable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
     private String name;
+
     private String description;
-    private String unit;
-    private boolean active;
-    
+
+    private Double minimalBalance;
 
     @ManyToOne
-    private IngredientGroup group;
-    
-    @OneToMany(mappedBy = "parentIngredient")
-    private List<IngredientComponent> childIngredientComponents;
-    
-    @OneToMany(mappedBy = "ingredient")
-    private List<RecipeItem> recipeItems;
-    
-    @OneToMany(mappedBy = "ingredient", cascade = CascadeType.ALL)
-    private List<IngredientHistory> history = new ArrayList<>();
+    private IngredientGroup ingredientGroup;
 
+    private List<Long> attributeGroupIds;
+
+    private BigDecimal price;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "unit_id")
+    private Unit unit;
+
+    @OneToMany(mappedBy = "ingredient", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<IngredientUnitType> unitTypeConfigs = new ArrayList<>();
+
+    private Integer expiration;
+
+    @OneToMany(mappedBy = "ingredient")
+    private List<IngredientHistory> histories = new ArrayList<>();
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "default_warehouse_id")
+    private Warehouse defaultWarehouse;
+
+    private boolean deleted = false;
 }

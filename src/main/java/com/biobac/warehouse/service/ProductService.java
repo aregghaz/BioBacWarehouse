@@ -1,44 +1,27 @@
-
 package com.biobac.warehouse.service;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
-import com.biobac.warehouse.dto.ProductDto;
 import com.biobac.warehouse.request.FilterCriteria;
 import com.biobac.warehouse.request.ProductCreateRequest;
 import com.biobac.warehouse.request.ProductUpdateRequest;
-import com.biobac.warehouse.response.ProductTableResponse;
+import com.biobac.warehouse.response.ProductResponse;
 import org.springframework.data.util.Pair;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
 
-public interface ProductService {
+public interface ProductService extends UnitTypeCalculator {
+    ProductResponse create(ProductCreateRequest request);
 
-    @Transactional(readOnly = true)
-    List<ProductDto> getAll();
+    ProductResponse getById(Long id);
 
-    @Transactional(readOnly = true)
-    Pair<List<ProductTableResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters,
-                                                                       Integer page,
-                                                                       Integer size,
-                                                                       String sortBy,
-                                                                       String sortDir);
+    List<ProductResponse> getAll();
 
+    Pair<List<ProductResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir);
 
-    @Transactional(readOnly = true)
-    ProductDto getById(Long id);
+    ProductResponse update(Long id, ProductUpdateRequest request);
 
-
-    @Transactional
-    ProductDto create(ProductCreateRequest dto);
-
-    @Transactional
-    ProductDto update(Long id, ProductDto dto);
-
-    @Transactional
-    ProductDto update(Long id, ProductUpdateRequest dto);
-
-    @Transactional
     void delete(Long id);
+
+    List<ProductResponse> getAllExcludeRecipeIngredient(Long recipeItemId);
 }

@@ -1,11 +1,17 @@
 package com.biobac.warehouse.config;
 
+import com.fasterxml.jackson.core.JsonGenerator;
+import com.fasterxml.jackson.databind.JsonSerializer;
+import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.datatype.jsr310.deser.*;
 import com.fasterxml.jackson.datatype.jsr310.ser.*;
 import org.springframework.boot.autoconfigure.jackson.Jackson2ObjectMapperBuilderCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import java.io.IOException;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.format.DateTimeFormatter;
 
 import static com.biobac.warehouse.utils.DateUtil.*;
@@ -25,5 +31,21 @@ public class JacksonConfiguration {
             builder.deserializers(new LocalDateDeserializer(localDateFormatter));
             builder.deserializers(new LocalTimeDeserializer(localTimeFormatter));
         };
+    }
+
+    @Bean
+    public Jackson2ObjectMapperBuilderCustomizer customBigDecimalFormatter() {
+        return builder -> builder.serializerByType(BigDecimal.class, new JsonSerializer<BigDecimal>() {
+            @Override
+            public void serialize(BigDecimal value, JsonGenerator gen, SerializerProvider serializers)
+                    throws IOException {
+                if (value == null) {
+                    gen.writeNull();
+                    return;
+                }
+                BigDecimal scaled = value.setScale(2, RoundingMode.HALF_EVEN);
+                gen.writeNumber(scaled);
+            }
+        });
     }
 }

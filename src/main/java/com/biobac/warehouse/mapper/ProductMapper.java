@@ -1,156 +1,175 @@
 package com.biobac.warehouse.mapper;
 
-import com.biobac.warehouse.dto.ProductDto;
-import com.biobac.warehouse.entity.Ingredient;
-import com.biobac.warehouse.entity.InventoryItem;
+import com.biobac.warehouse.client.AttributeClient;
+import com.biobac.warehouse.entity.AttributeTargetType;
 import com.biobac.warehouse.entity.Product;
-import com.biobac.warehouse.repository.InventoryItemRepository;
-import com.biobac.warehouse.repository.IngredientRepository;
-import com.biobac.warehouse.request.ProductCreateRequest;
-import com.biobac.warehouse.request.ProductUpdateRequest;
-import com.biobac.warehouse.response.ProductResponse;
-import com.biobac.warehouse.response.ProductTableResponse;
-import org.mapstruct.BeanMapping;
-import org.mapstruct.Mapper;
-import org.mapstruct.Mapping;
-import org.mapstruct.Mappings;
-import org.mapstruct.MappingTarget;
-import org.mapstruct.NullValuePropertyMappingStrategy;
+import com.biobac.warehouse.response.*;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
 
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Objects;
 
-@Mapper(componentModel = "spring", uses = {RecipeItemMapper.class})
-public abstract class ProductMapper {
-
+@Component
+public class ProductMapper {
     @Autowired
-    private InventoryItemRepository inventoryItemRepository;
+    protected AttributeClient attributeClient;
 
-    @Autowired
-    private IngredientRepository ingredientRepository;
+    public ProductResponse toResponse(Product product) {
+        if (product == null) return null;
+        ProductResponse response = new ProductResponse();
+        response.setId(product.getId());
+        response.setName(product.getName());
+        response.setDeleted(product.isDeleted());
+        response.setExpiration(product.getExpiration());
+        response.setDescription(product.getDescription());
+        response.setSku(product.getSku());
+        response.setMinimalBalance(product.getMinimalBalance());
+        response.setDefaultWarehouseName(product.getDefaultWarehouse().getName());
+        response.setDefaultWarehouseId(product.getDefaultWarehouse().getId());
+        response.setAttributeGroupIds(product.getAttributeGroupIds());
+        response.setCreatedAt(product.getCreatedAt());
+        response.setUpdatedAt(product.getUpdatedAt());
 
-    @Mappings({
-            @Mapping(target = "id", source = "id"),
-            @Mapping(target = "name", source = "name"),
-            @Mapping(target = "description", source = "description"),
-            @Mapping(target = "sku", source = "sku"),
-            @Mapping(target = "ingredientIds", expression = "java(mapIngredientListToIdList(product.getIngredients()))"),
-            @Mapping(target = "recipeItems", source = "recipeItems"),
-            @Mapping(target = "quantity", ignore = true), // will be set manually in service
-            @Mapping(target = "warehouseId", ignore = true), // will be set manually in service
-            @Mapping(target = "companyId", source = "companyId")
-    })
-    public abstract ProductDto toDto(Product product);
+        if (product.getExtraComponents() != null && !product.getExtraComponents().isEmpty()) {
+            List<ExtraComponentsResponse> comps = product.getExtraComponents().stream()
+                    .map(comp -> {
+                        ExtraComponentsResponse resp = new ExtraComponentsResponse();
+                        resp.setIngredientId(comp.getIngredient() != null ? comp.getIngredient().getId() : null);
+                        resp.setProductId(comp.getChildProduct() != null ? comp.getChildProduct().getId() : null);
+                        resp.setName(comp.getIngredient() != null
+                                ? comp.getIngredient().getName()
+                                : Objects.requireNonNull(comp.getChildProduct()).getName());
 
-    @Mappings({
-            @Mapping(target = "id", source = "id"),
-            @Mapping(target = "name", source = "name"),
-            @Mapping(target = "description", source = "description"),
-            @Mapping(target = "sku", source = "sku"),
-            @Mapping(target = "companyId", source = "companyId"),
-            @Mapping(target = "ingredients", expression = "java(mapIdListToIngredientList(dto.getIngredientIds()))"),
-            @Mapping(target = "recipeItems", ignore = true),
-            @Mapping(target = "inventoryItems", ignore = true)
-    })
-    public abstract Product toEntity(ProductDto dto);
+                        double baseQuantity = comp.getQuantity();
+                        List<UnitTypeCalculatedResponse> unitTypes;
 
-    @Mappings({
-            @Mapping(target = "id", ignore = true),
-            @Mapping(target = "name", source = "name"),
-            @Mapping(target = "description", source = "description"),
-            @Mapping(target = "sku", source = "sku"),
-            @Mapping(target = "companyId", source = "companyId"),
-            @Mapping(target = "ingredients", expression = "java(mapIdListToIngredientList(dto.getIngredientIds()))"),
-            @Mapping(target = "recipeItems", ignore = true),
-            @Mapping(target = "inventoryItems", ignore = true)
-    })
-    public abstract Product toEntity(ProductCreateRequest dto);
+                        if (comp.getChildProduct() != null) {
+                            unitTypes = comp.getChildProduct().getUnitTypeConfigs().stream()
+                                    .map(utc -> {
+                                        UnitTypeCalculatedResponse calculatedResponse = new UnitTypeCalculatedResponse();
+                                        calculatedResponse.setUnitTypeName(utc.getUnitType().getName());
+                                        calculatedResponse.setUnitTypeId(utc.getId());
+                                        calculatedResponse.setBaseUnit(utc.isBaseType());
+                                        if (utc.isBaseType()) {
+                                            calculatedResponse.setSize(baseQuantity);
+                                        } else {
+                                            calculatedResponse.setSize(Math.ceil(baseQuantity / utc.getSize()));
+                                        }
+                                        return calculatedResponse;
+                                    })
+                                    .toList();
+                        } else {
+                            unitTypes = comp.getIngredient().getUnitTypeConfigs().stream()
+                                    .map(utc -> {
+                                        UnitTypeCalculatedResponse calculatedResponse = new UnitTypeCalculatedResponse();
+                                        calculatedResponse.setUnitTypeName(utc.getUnitType().getName());
+                                        calculatedResponse.setUnitTypeId(utc.getId());
+                                        calculatedResponse.setBaseUnit(utc.isBaseType());
+                                        if (utc.isBaseType()) {
+                                            calculatedResponse.setSize(baseQuantity);
+                                        } else {
+                                            calculatedResponse.setSize(Math.ceil(baseQuantity / utc.getSize()));
+                                        }
+                                        return calculatedResponse;
+                                    })
+                                    .toList();
+                        }
 
-    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    @Mappings({
-            @Mapping(target = "id", ignore = true),
-            @Mapping(target = "ingredients", expression = "java(mapIdListToIngredientList(dto.getIngredientIds()))"),
-            @Mapping(target = "recipeItems", ignore = true),
-            @Mapping(target = "inventoryItems", ignore = true)
-    })
-    public abstract void updateEntityFromDto(ProductDto dto, @MappingTarget Product entity);
+                        resp.setUnitTypeConfigs(unitTypes);
+                        return resp;
+                    })
+                    .toList();
 
-    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
-    @Mappings({
-            @Mapping(target = "id", ignore = true),
-            @Mapping(target = "ingredients", expression = "java(mapIdListToIngredientList(dto.getIngredientIds()))"),
-            @Mapping(target = "recipeItems", ignore = true),
-            @Mapping(target = "inventoryItems", ignore = true)
-    })
-    public abstract void updateEntityFromUpdateRequest(ProductUpdateRequest dto, @MappingTarget Product entity);
-
-    @Mappings({
-            @Mapping(target = "id", source = "id"),
-            @Mapping(target = "name", source = "name"),
-            @Mapping(target = "description", source = "description"),
-            @Mapping(target = "sku", source = "sku"),
-            @Mapping(target = "ingredientIds", expression = "java(mapIngredientListToIdList(entity.getIngredients()))"),
-            @Mapping(target = "recipeItems", source = "recipeItems"),
-            @Mapping(target = "quantity", ignore = true), // will be set manually in service
-            @Mapping(target = "warehouseName", expression = "java(getWarehouseName(entity))")
-    })
-    public abstract ProductTableResponse toTableResponse(Product entity);
-
-    @Mappings({
-            @Mapping(target = "id", source = "id"),
-            @Mapping(target = "name", source = "name"),
-            @Mapping(target = "description", source = "description"),
-            @Mapping(target = "sku", source = "sku"),
-            @Mapping(target = "ingredientIds", expression = "java(mapIngredientListToIdList(entity.getIngredients()))"),
-            @Mapping(target = "recipeItems", source = "recipeItems"),
-            @Mapping(target = "quantity", ignore = true),
-            @Mapping(target = "warehouseId", ignore = true),
-            @Mapping(target = "companyId", source = "companyId")
-    })
-    public abstract ProductResponse toResponse(Product entity);
-
-    @Mappings({
-            @Mapping(target = "id", source = "id"),
-            @Mapping(target = "name", source = "name"),
-            @Mapping(target = "description", source = "description"),
-            @Mapping(target = "sku", source = "sku"),
-            @Mapping(target = "ingredientIds", source = "ingredientIds"),
-            @Mapping(target = "recipeItems", source = "recipeItems"),
-            @Mapping(target = "quantity", source = "quantity"),
-            @Mapping(target = "warehouseId", source = "warehouseId"),
-            @Mapping(target = "companyId", source = "companyId")
-    })
-    public abstract ProductResponse toResponse(ProductDto dto);
-
-    protected List<Long> mapIngredientListToIdList(List<Ingredient> ingredients) {
-        if (ingredients == null) return null;
-        return ingredients.stream().map(Ingredient::getId).collect(Collectors.toList());
-    }
-
-    protected List<Ingredient> mapIdListToIngredientList(List<Long> ids) {
-        if (ids == null) return null;
-        return ingredientRepository.findAllById(ids);
-    }
-
-    protected String getWarehouseName(Product entity) {
-        if (entity == null || entity.getId() == null) {
-            return null;
+            response.setExtraComponents(comps);
         }
 
-        List<InventoryItem> inventoryItems = inventoryItemRepository.findByProductId(entity.getId());
-        if (inventoryItems == null || inventoryItems.isEmpty()) {
-            return null;
+        if (product.getRecipeItem() != null) {
+            response.setRecipeItemName(product.getRecipeItem().getName());
+            response.setRecipeItemId(product.getRecipeItem().getId());
         }
 
-        InventoryItem item = inventoryItems.get(0);
-
-        // Prefer the relationship; it is the authoritative source for the name
-        if (item.getWarehouse() != null) {
-            return item.getWarehouse().getName();
+        if (product.getUnit() != null) {
+            response.setUnitId(product.getUnit().getId());
+            response.setUnitName(product.getUnit().getName());
         }
 
-        // If relation is not initialized, we cannot derive a name safely just from an ID
-        return null;
+        if (product.getProductGroup() != null) {
+            response.setProductGroupId(product.getProductGroup().getId());
+            response.setProductGroupName(product.getProductGroup().getName());
+        }
+
+        // Inventory items removed; totalQuantity will be computed via balances elsewhere
+        response.setTotalQuantity(null);
+
+        if (product.getUnitTypeConfigs() != null) {
+            List<UnitTypeConfigResponse> cfgs = product.getUnitTypeConfigs().stream().map(cfg -> {
+                UnitTypeConfigResponse r = new UnitTypeConfigResponse();
+                r.setId(cfg.getId());
+                if (cfg.getUnitType() != null) {
+                    r.setUnitTypeId(cfg.getUnitType().getId());
+                    r.setUnitTypeName(cfg.getUnitType().getName());
+                }
+                r.setBaseUnit(cfg.isBaseType());
+                r.setSize(cfg.getSize());
+                r.setCreatedAt(cfg.getCreatedAt());
+                r.setUpdatedAt(cfg.getUpdatedAt());
+                return r;
+            }).toList();
+            response.setUnitTypeConfigs(cfgs);
+        }
+
+        try {
+            if (product.getId() != null) {
+                ApiResponse<List<AttributeResponse>> apiResponse = attributeClient.getValues(product.getId(), AttributeTargetType.PRODUCT.name());
+                response.setAttributes(apiResponse.getData());
+            }
+        } catch (Exception ignored) {
+        }
+
+        return response;
     }
+
+    private List<UnitTypeCalculatedResponse> calculateExtraComponentUnits(Product product) {
+        if (product.getExtraComponents() == null) {
+            return List.of();
+        }
+
+        return product.getExtraComponents().stream()
+                .flatMap(comp -> {
+                    double baseQuantity = comp.getQuantity();
+
+                    if (comp.getChildProduct() != null) {
+                        return comp.getChildProduct().getUnitTypeConfigs().stream()
+                                .map(utc -> {
+                                    UnitTypeCalculatedResponse calculatedResponse = new UnitTypeCalculatedResponse();
+                                    calculatedResponse.setUnitTypeName(utc.getUnitType().getName());
+                                    calculatedResponse.setUnitTypeId(utc.getId());
+                                    calculatedResponse.setBaseUnit(utc.isBaseType());
+                                    if (utc.isBaseType()) {
+                                        calculatedResponse.setSize(baseQuantity);
+                                    } else {
+                                        calculatedResponse.setSize(Math.ceil(baseQuantity / utc.getSize()));
+                                    }
+                                    return calculatedResponse;
+                                });
+                    } else {
+                        return comp.getIngredient().getUnitTypeConfigs().stream()
+                                .map(utc -> {
+                                    UnitTypeCalculatedResponse calculatedResponse = new UnitTypeCalculatedResponse();
+                                    calculatedResponse.setUnitTypeName(utc.getUnitType().getName());
+                                    calculatedResponse.setUnitTypeId(utc.getId());
+                                    calculatedResponse.setBaseUnit(utc.isBaseType());
+                                    if (utc.isBaseType()) {
+                                        calculatedResponse.setSize(baseQuantity);
+                                    } else {
+                                        calculatedResponse.setSize(Math.ceil(baseQuantity / utc.getSize()));
+                                    }
+                                    return calculatedResponse;
+                                });
+                    }
+                })
+                .toList();
+    }
+
 }

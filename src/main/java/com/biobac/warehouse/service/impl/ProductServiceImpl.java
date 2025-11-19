@@ -1,29 +1,24 @@
 package com.biobac.warehouse.service.impl;
 
-import com.biobac.warehouse.dto.InventoryItemDto;
+import com.biobac.warehouse.client.AttributeClient;
 import com.biobac.warehouse.dto.PaginationMetadata;
-import com.biobac.warehouse.dto.ProductDto;
-import com.biobac.warehouse.dto.RecipeItemDto;
-import com.biobac.warehouse.entity.Ingredient;
-import com.biobac.warehouse.entity.InventoryItem;
-import com.biobac.warehouse.entity.Product;
-import com.biobac.warehouse.entity.RecipeItem;
+import com.biobac.warehouse.dto.ProductHistoryDto;
+import com.biobac.warehouse.entity.*;
+import com.biobac.warehouse.exception.DuplicateException;
 import com.biobac.warehouse.exception.InvalidDataException;
 import com.biobac.warehouse.exception.NotFoundException;
 import com.biobac.warehouse.mapper.ProductMapper;
-import com.biobac.warehouse.mapper.RecipeItemMapper;
-import com.biobac.warehouse.repository.IngredientRepository;
-import com.biobac.warehouse.repository.InventoryItemRepository;
-import com.biobac.warehouse.repository.ProductRepository;
-import com.biobac.warehouse.request.FilterCriteria;
-import com.biobac.warehouse.request.ProductCreateRequest;
-import com.biobac.warehouse.request.ProductUpdateRequest;
-import com.biobac.warehouse.response.ProductTableResponse;
-import com.biobac.warehouse.service.IngredientHistoryService;
-import com.biobac.warehouse.service.InventoryService;
+import com.biobac.warehouse.repository.*;
+import com.biobac.warehouse.request.*;
+import com.biobac.warehouse.response.ProductResponse;
+import com.biobac.warehouse.response.UnitTypeCalculatedResponse;
+import com.biobac.warehouse.service.ProductHistoryService;
 import com.biobac.warehouse.service.ProductService;
+import com.biobac.warehouse.service.UnitTypeCalculator;
+import com.biobac.warehouse.utils.GroupUtil;
 import com.biobac.warehouse.utils.specifications.ProductSpecification;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -33,52 +28,356 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
-public class ProductServiceImpl implements ProductService {
-    private final ProductRepository productRepo;
-    private final IngredientRepository ingredientRepo;
-    private final ProductMapper mapper;
-    private final RecipeItemMapper recipeItemMapper;
-    private final InventoryService inventoryService;
-    private final InventoryItemRepository inventoryItemRepo;
-    private final IngredientHistoryService historyService;
+public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
+    private final ProductComponentRepository productComponentRepository;
+    private final IngredientRepository ingredientRepository;
+    private final ProductRepository productRepository;
+    private final RecipeItemRepository recipeItemRepository;
+    private final RecipeComponentRepository recipeComponentRepository;
+    private final ProductHistoryService productHistoryService;
+    private final UnitRepository unitRepository;
+    private final UnitTypeRepository unitTypeRepository;
+    private final ProductGroupRepository productGroupRepository;
+    private final WarehouseRepository warehouseRepository;
+    private final ProductMapper productMapper;
+    private final AttributeClient attributeClient;
+    private final GroupUtil groupUtil;
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<ProductDto> getAll() {
-        List<Product> products = productRepo.findAll();
-        return products.stream()
-                .map(mapper::toDto)
-                .collect(Collectors.toList());
+    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_SIZE = 20;
+    private static final String DEFAULT_SORT_BY = "id";
+    private static final String DEFAULT_SORT_DIR = "desc";
+
+    private Pageable buildPageable(Integer page, Integer size, String sortBy, String sortDir) {
+        int safePage = (page == null || page < 0) ? DEFAULT_PAGE : page;
+        int safeSize = (size == null || size <= 0) ? DEFAULT_SIZE : size;
+        if (safeSize > 1000) safeSize = 1000;
+
+        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? DEFAULT_SORT_BY : sortBy.trim();
+        String safeSortDir = (sortDir == null || sortDir.isBlank()) ? DEFAULT_SORT_DIR : sortDir.trim();
+
+        String mappedSortBy = mapSortField(safeSortBy);
+
+        Sort sort = safeSortDir.equalsIgnoreCase("asc")
+                ? Sort.by(mappedSortBy).ascending()
+                : Sort.by(mappedSortBy).descending();
+
+        return PageRequest.of(safePage, safeSize, sort);
     }
 
-    @Transactional(readOnly = true)
+    private String mapSortField(String sortBy) {
+        return switch (sortBy) {
+            case "productGroupName" -> "productGroup.name";
+            case "unitName" -> "unit.name";
+            case "recipeItemName" -> "recipeItem.name";
+            default -> sortBy;
+        };
+    }
+
     @Override
-    public Pair<List<ProductTableResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters,
-                                                                              Integer page,
-                                                                              Integer size,
-                                                                              String sortBy,
-                                                                              String sortDir) {
-        Sort sort = sortDir.equalsIgnoreCase("asc") ?
-                Sort.by(sortBy).ascending() :
-                Sort.by(sortBy).descending();
+    @Transactional
+    public ProductResponse create(ProductCreateRequest request) {
+        Product existingProduct = productRepository.findBySku(request.getSku());
+        if (existingProduct != null) {
+            throw new DuplicateException("provided Sku already exists");
+        }
 
-        Pageable pageable = PageRequest.of(page, size, sort);
+        Product product = new Product();
+        product.setName(request.getName());
+        product.setDescription(request.getDescription());
+        product.setSku(request.getSku());
+        product.setMinimalBalance(request.getMinimalBalance() != null ? request.getMinimalBalance() : 0);
 
-        Specification<Product> spec = ProductSpecification.buildSpecification(filters);
+        if (request.getExpiration() != null) {
+            product.setExpiration(request.getExpiration());
+        }
 
-        Page<Product> productPage = productRepo.findAll(spec, pageable);
+        if (request.getRecipeItemId() != null) {
+            RecipeItem recipeItem = recipeItemRepository.findById(request.getRecipeItemId())
+                    .orElseThrow(() -> new NotFoundException("Recipe not found"));
+            product.setRecipeItem(recipeItem);
+        }
 
-        List<ProductTableResponse> content = productPage.getContent()
+        if (request.getUnitId() != null) {
+            Unit unit = unitRepository.findById(request.getUnitId())
+                    .orElseThrow(() -> new NotFoundException("Unit not found"));
+            product.setUnit(unit);
+        }
+
+        if (request.getProductGroupId() != null) {
+            ProductGroup productGroup = productGroupRepository.findById(request.getProductGroupId())
+                    .orElseThrow(() -> new NotFoundException("Product Group not found"));
+            product.setProductGroup(productGroup);
+        }
+
+        if (request.getDefaultWarehouseId() != null) {
+            Warehouse warehouse = warehouseRepository.findById(request.getDefaultWarehouseId())
+                    .orElseThrow(() -> new NotFoundException("Warehouse not found"));
+            product.setDefaultWarehouse(warehouse);
+        }
+
+        if (product.getUnit() != null) {
+            Unit unit = product.getUnit();
+
+            UnitType baseUnitType = unitTypeRepository.findByName(unit.getName())
+                    .orElseGet(() -> {
+                        UnitType newType = new UnitType();
+                        newType.setName(unit.getName());
+                        return unitTypeRepository.save(newType);
+                    });
+
+            boolean alreadyExists = product.getUnitTypeConfigs().stream()
+                    .anyMatch(link -> link.getUnitType().equals(baseUnitType));
+
+            if (!alreadyExists) {
+                ProductUnitType baseLink = new ProductUnitType();
+                baseLink.setProduct(product);
+                baseLink.setUnitType(baseUnitType);
+                baseLink.setSize(1.0);
+                baseLink.setBaseType(true);
+                product.getUnitTypeConfigs().add(baseLink);
+            }
+        }
+
+        if (request.getUnitTypeConfigs() != null) {
+            Set<UnitType> allowedTypes = product.getUnit() != null && product.getUnit().getUnitTypes() != null
+                    ? product.getUnit().getUnitTypes() : new HashSet<>();
+            for (UnitTypeConfigRequest cfgReq : request.getUnitTypeConfigs()) {
+                if (cfgReq.getUnitTypeId() == null) {
+                    throw new InvalidDataException("unitTypeId is required in unitTypeConfigs");
+                }
+                UnitType ut = unitTypeRepository.findById(cfgReq.getUnitTypeId())
+                        .orElseThrow(() -> new NotFoundException("UnitType not found"));
+                if (!allowedTypes.isEmpty() && !allowedTypes.contains(ut)) {
+                    throw new InvalidDataException("UnitType '" + ut.getName() + "' is not allowed for selected Unit");
+                }
+                ProductUnitType link = new ProductUnitType();
+                link.setProduct(product);
+                link.setUnitType(ut);
+                link.setSize(cfgReq.getSize());
+                product.getUnitTypeConfigs().add(link);
+            }
+        }
+
+        if (request.getExtraComponents() != null && !request.getExtraComponents().isEmpty()) {
+            for (ProductAdditionalComponents compReq : request.getExtraComponents()) {
+                ProductComponent component = new ProductComponent();
+                component.setProduct(product);
+
+                boolean hasIng = compReq.getIngredientId() != null;
+                boolean hasProd = compReq.getProductId() != null;
+                if (hasIng == hasProd) {
+                    throw new InvalidDataException("Extra component must reference exactly one of ingredientId or productId");
+                }
+
+                if (hasIng) {
+                    Ingredient ingredient = ingredientRepository.findById(compReq.getIngredientId())
+                            .orElseThrow(() -> new NotFoundException("Ingredient not found"));
+                    component.setIngredient(ingredient);
+                } else {
+                    Product childProduct = productRepository.findById(compReq.getProductId())
+                            .orElseThrow(() -> new NotFoundException("Product not found"));
+                    component.setChildProduct(childProduct);
+                }
+
+                component.setQuantity(compReq.getQuantity());
+
+                productComponentRepository.save(component);
+            }
+        }
+
+        Product saved = productRepository.save(product);
+
+        if (request.getAttributes() != null && !request.getAttributes().isEmpty()) {
+            attributeClient.createValues(saved.getId(), AttributeTargetType.PRODUCT.name(), request.getAttributes());
+        }
+
+        if (request.getAttributeGroupIds() != null && !request.getAttributeGroupIds().isEmpty()) {
+            saved.setAttributeGroupIds(request.getAttributeGroupIds());
+        }
+
+        return productMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional
+    public ProductResponse update(Long id, ProductUpdateRequest request) {
+        Product existing = productRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Product not found"));
+
+        if (request.getName() != null) existing.setName(request.getName());
+
+        if (request.getDescription() != null) existing.setDescription(request.getDescription());
+
+        if (request.getSku() != null) existing.setSku(request.getSku());
+
+        if (request.getExpiration() != null) {
+            existing.setExpiration(request.getExpiration());
+        }
+
+        if (request.getMinimalBalance() != null) {
+            existing.setMinimalBalance(request.getMinimalBalance());
+        }
+
+        if (request.getUnitId() != null) {
+            Unit unit = unitRepository.findById(request.getUnitId())
+                    .orElseThrow(() -> new NotFoundException("Unit not found"));
+            existing.setUnit(unit);
+        }
+
+        if (request.getProductGroupId() != null) {
+            ProductGroup productGroup = productGroupRepository.findById(request.getProductGroupId())
+                    .orElseThrow(() -> new NotFoundException("ProductGroup not found"));
+            existing.setProductGroup(productGroup);
+        }
+
+        if (request.getDefaultWarehouseId() != null) {
+            Warehouse warehouse = warehouseRepository.findById(request.getDefaultWarehouseId())
+                    .orElseThrow(() -> new NotFoundException("Warehouse not found"));
+            existing.setDefaultWarehouse(warehouse);
+        }
+
+        if (request.getRecipeItemId() != null) {
+            RecipeItem recipeItem = recipeItemRepository.findById(request.getRecipeItemId())
+                    .orElseThrow(() -> new NotFoundException("Recipe not found"));
+            existing.setRecipeItem(recipeItem);
+        }
+
+        if (request.getUnitTypeConfigs() != null) {
+            Set<UnitType> allowedTypes = existing.getUnit() != null && existing.getUnit().getUnitTypes() != null
+                    ? existing.getUnit().getUnitTypes() : new HashSet<>();
+
+            existing.getUnitTypeConfigs().clear();
+
+            UnitType baseUnitType = null;
+            if (existing.getUnit() != null) {
+                Unit unit = existing.getUnit();
+                baseUnitType = unitTypeRepository.findByName(unit.getName())
+                        .orElseGet(() -> {
+                            UnitType newType = new UnitType();
+                            newType.setName(unit.getName());
+                            return unitTypeRepository.save(newType);
+                        });
+                ProductUnitType baseLink = new ProductUnitType();
+                baseLink.setProduct(existing);
+                baseLink.setUnitType(baseUnitType);
+                baseLink.setSize(1.0);
+                baseLink.setBaseType(true);
+                existing.getUnitTypeConfigs().add(baseLink);
+            }
+
+            for (UnitTypeConfigRequest cfgReq : request.getUnitTypeConfigs()) {
+                if (cfgReq.getUnitTypeId() == null) {
+                    throw new InvalidDataException("unitTypeId is required in unitTypeConfigs");
+                }
+                UnitType ut = unitTypeRepository.findById(cfgReq.getUnitTypeId())
+                        .orElseThrow(() -> new NotFoundException("UnitType not found"));
+
+                if (ut.equals(baseUnitType)) {
+                    continue;
+                }
+
+                if (!allowedTypes.isEmpty() && !allowedTypes.contains(ut)) {
+                    throw new InvalidDataException("UnitType '" + ut.getName() + "' is not allowed for selected Unit");
+                }
+                ProductUnitType link = new ProductUnitType();
+                link.setProduct(existing);
+                link.setUnitType(ut);
+                link.setSize(cfgReq.getSize());
+                link.setBaseType(false);
+                existing.getUnitTypeConfigs().add(link);
+            }
+        }
+        if (request.getAttributeGroupIds() != null) {
+            existing.setAttributeGroupIds(request.getAttributeGroupIds());
+        }
+
+        if (request.getExtraComponents() != null) {
+            List<ProductComponent> current = existing.getExtraComponents();
+            if (current != null && !current.isEmpty()) {
+                productComponentRepository.deleteAll(current);
+                current.clear();
+            }
+            if (!request.getExtraComponents().isEmpty()) {
+                for (ProductAdditionalComponents compReq : request.getExtraComponents()) {
+                    ProductComponent component = new ProductComponent();
+                    component.setProduct(existing);
+
+                    boolean hasIng = compReq.getIngredientId() != null;
+                    boolean hasProd = compReq.getProductId() != null;
+                    if (hasIng == hasProd) {
+                        throw new InvalidDataException("Extra component must reference exactly one of ingredientId or productId");
+                    }
+
+                    if (hasIng) {
+                        Ingredient ingredient = ingredientRepository.findById(compReq.getIngredientId())
+                                .orElseThrow(() -> new NotFoundException("Ingredient not found"));
+                        component.setIngredient(ingredient);
+                    } else {
+                        Product childProduct = productRepository.findById(compReq.getProductId())
+                                .orElseThrow(() -> new NotFoundException("Product not found"));
+                        if (Objects.equals(existing.getId(), childProduct.getId())) {
+                            throw new DuplicateException("Parent product can't be part of extra component");
+                        }
+                        component.setChildProduct(childProduct);
+                    }
+
+                    component.setQuantity(compReq.getQuantity());
+
+                    productComponentRepository.save(component);
+                }
+            }
+        }
+
+        Product saved = productRepository.save(existing);
+
+        List<AttributeUpsertRequest> attributes = request.getAttributeGroupIds() == null || request.getAttributeGroupIds().isEmpty() ? Collections.emptyList() : request.getAttributes();
+
+        attributeClient.updateValues(saved.getId(), AttributeTargetType.PRODUCT.name(), request.getAttributeGroupIds(), attributes);
+
+        return productMapper.toResponse(saved);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProductResponse getById(Long id) {
+        Product product = productRepository.findByIdAndDeletedFalse(id)
+                .orElseThrow(() -> new NotFoundException("Product not found"));
+        return productMapper.toResponse(product);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ProductResponse> getAll() {
+        List<Long> groupIds = groupUtil.getAccessibleProductGroupIds();
+
+        Specification<Product> spec = ProductSpecification.belongsToGroups(groupIds)
+                .and(ProductSpecification.isDeleted());
+        return productRepository.findAll(spec).stream().map(productMapper::toResponse).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Pair<List<ProductResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters,
+                                                                         Integer page,
+                                                                         Integer size,
+                                                                         String sortBy,
+                                                                         String sortDir) {
+        List<Long> groupIds = groupUtil.getAccessibleProductGroupIds();
+        Pageable pageable = buildPageable(page, size, sortBy, sortDir);
+        Specification<Product> spec = ProductSpecification.buildSpecification(filters)
+                .and(ProductSpecification.belongsToGroups(groupIds));
+        Page<Product> productPage = productRepository.findAll(spec, pageable);
+
+        List<ProductResponse> content = productPage.getContent()
                 .stream()
-                .map(mapper::toTableResponse)
+                .map(productMapper::toResponse)
                 .collect(Collectors.toList());
 
         PaginationMetadata metadata = new PaginationMetadata(
@@ -88,541 +387,65 @@ public class ProductServiceImpl implements ProductService {
                 productPage.getTotalPages(),
                 productPage.isLast(),
                 filters,
-                sortDir,
-                sortBy,
+                pageable.getSort().toString().contains("ASC") ? "asc" : "desc",
+                pageable.getSort().stream().findFirst().map(Sort.Order::getProperty).orElse(DEFAULT_SORT_BY),
                 "productTable"
         );
 
         return Pair.of(content, metadata);
     }
 
-    @Transactional(readOnly = true)
     @Override
-    public ProductDto getById(Long id) {
-        return mapper.toDto(productRepo.findById(id).orElseThrow(() -> new NotFoundException("Product not found with id: " + id)));
-    }
-
     @Transactional
-    @Override
-    public ProductDto create(ProductCreateRequest dto) {
-        // Ensure quantity is not null for calculations
-        if (dto.getQuantity() == null) {
-            dto.setQuantity(1.0); // Default to 1 if not specified
-        }
-        System.out.println("[DEBUG_LOG] Creating product with name: " + dto.getName() +
-                ", quantity: " + dto.getQuantity() +
-                ", warehouseId: " + dto.getWarehouseId());
-
-        Product product = mapper.toEntity(dto);
-
-        // Check if there are enough ingredients before creating the product
-        if (dto.getRecipeItems() != null && !dto.getRecipeItems().isEmpty() && dto.getWarehouseId() != null) {
-            System.out.println("[DEBUG_LOG] Checking ingredient availability for " + dto.getRecipeItems().size() + " recipe items");
-
-            for (RecipeItemDto recipeItemDto : dto.getRecipeItems()) {
-                Long ingredientId = recipeItemDto.getIngredientId();
-                double requiredQuantity = recipeItemDto.getQuantity() * dto.getQuantity();
-
-                // Find inventory items for this ingredient in the specified warehouse
-                List<InventoryItem> inventoryItems = inventoryItemRepo.findByIngredientIdAndWarehouseId(
-                        ingredientId, dto.getWarehouseId());
-
-                if (inventoryItems.isEmpty()) {
-                    throw new NotFoundException("Ingredient with ID " + ingredientId + " not found in warehouse " + dto.getWarehouseId());
-                }
-
-                // Check if there's enough quantity available
-                int availableQuantity = 0;
-                for (InventoryItem item : inventoryItems) {
-                    availableQuantity += item.getQuantity() != null ? item.getQuantity() : 0;
-                }
-
-                if (availableQuantity < requiredQuantity) {
-                    throw new InvalidDataException("Not enough quantity for ingredient with ID " + ingredientId +
-                            ". Required: " + requiredQuantity + ", Available: " + availableQuantity);
-                }
-
-                System.out.println("[DEBUG_LOG] Sufficient quantity available for ingredient ID: " + ingredientId +
-                        ". Required: " + requiredQuantity + ", Available: " + availableQuantity);
-            }
-        }
-
-        // Save the product first to get its ID
-        Product savedProduct = productRepo.save(product);
-
-        // Process recipe items if provided
-        if (dto.getRecipeItems() != null && !dto.getRecipeItems().isEmpty()) {
-            List<RecipeItem> recipeItems = new ArrayList<>();
-            for (RecipeItemDto recipeItemDto : dto.getRecipeItems()) {
-                RecipeItem recipeItem = recipeItemMapper.toEntity(recipeItemDto);
-                recipeItem.setProduct(savedProduct);
-
-                // Set the ingredient
-                Ingredient ingredient = ingredientRepo.findById(recipeItemDto.getIngredientId())
-                        .orElseThrow(() -> new NotFoundException("Ingredient not found with id: " + recipeItemDto.getIngredientId()));
-                recipeItem.setIngredient(ingredient);
-
-                recipeItems.add(recipeItem);
-            }
-            savedProduct.setRecipeItems(recipeItems);
-            savedProduct = productRepo.save(savedProduct);
-        }
-
-        // Create inventory item if quantity and warehouseId are provided
-        if (dto.getQuantity() != null && dto.getWarehouseId() != null) {
-            InventoryItemDto inventoryItemDto = new InventoryItemDto();
-            inventoryItemDto.setProductId(savedProduct.getId());
-            inventoryItemDto.setWarehouseId(dto.getWarehouseId());
-            inventoryItemDto.setQuantity(dto.getQuantity() != null ? dto.getQuantity().intValue() : 0);
-            inventoryItemDto.setLastUpdated(LocalDate.now());
-
-            // Set the ingredient count based on the number of recipe items
-            int ingredientCount = 0;
-            if (savedProduct.getRecipeItems() != null && !savedProduct.getRecipeItems().isEmpty()) {
-                ingredientCount = savedProduct.getRecipeItems().size();
-            }
-            inventoryItemDto.setIngredientCount(ingredientCount);
-
-            inventoryService.create(inventoryItemDto);
-
-            // Update ingredient counts in inventory for all recipe items
-            System.out.println("[DEBUG_LOG] Checking recipe items for product: " + savedProduct.getId() +
-                    ", warehouseId: " + dto.getWarehouseId());
-
-            if (savedProduct.getRecipeItems() != null && !savedProduct.getRecipeItems().isEmpty()) {
-                System.out.println("[DEBUG_LOG] Product has " + savedProduct.getRecipeItems().size() + " recipe items");
-
-                // Use the new method to update ingredient counts
-                updateIngredientCounts(savedProduct.getRecipeItems(), dto.getWarehouseId());
-
-                for (RecipeItem recipeItem : savedProduct.getRecipeItems()) {
-                    Long ingredientId = recipeItem.getIngredient().getId();
-                    System.out.println("[DEBUG_LOG] Processing recipe item with ingredient ID: " + ingredientId);
-
-                    if (dto.getWarehouseId() != null) {
-                        // Reduce the ingredient quantity in inventory
-                        List<InventoryItem> inventoryItems = inventoryItemRepo.findByIngredientIdAndWarehouseId(
-                                ingredientId, dto.getWarehouseId());
-
-                        if (!inventoryItems.isEmpty()) {
-                            for (InventoryItem item : inventoryItems) {
-                                // Calculate the amount to decrease based on recipe item quantity AND product quantity
-                                // This ensures quantity changes every time a product is created
-                                int amountToDecrease = (int) Math.ceil(recipeItem.getQuantity() * dto.getQuantity());
-
-                                System.out.println("[DEBUG_LOG] Reducing inventory for ingredient ID: " + ingredientId +
-                                        " by " + amountToDecrease + " units");
-
-                                // Use the repository method to decrement the quantity
-                                int updatedRows = inventoryItemRepo.decrementIngredientQuantity(ingredientId, dto.getWarehouseId(), amountToDecrease);
-
-                                if (updatedRows > 0) {
-                                    System.out.println("[DEBUG_LOG] Successfully updated " + updatedRows + " inventory items");
-
-                                    // Record history for ingredient quantity change with actual quantities
-                                    Ingredient ingredient = recipeItem.getIngredient();
-                                    if (ingredient != null) {
-                                        // Get the current quantity from inventory
-                                        int currentQuantity = item.getQuantity() != null ? item.getQuantity() : 0;
-                                        int previousQuantity = currentQuantity + amountToDecrease;
-
-                                        // Record history for ingredient quantity change with actual values
-                                        historyService.recordQuantityChange(
-                                                ingredient,
-                                                (double) previousQuantity,
-                                                (double) currentQuantity,
-                                                "USED_IN_PRODUCT",
-                                                "Used in product: " + savedProduct.getName()
-                                        );
-                                    }
-
-                                    // Refresh the item to get the updated quantity
-                                    item = inventoryItemRepo.findById(item.getId()).orElse(item);
-                                    System.out.println("[DEBUG_LOG] Updated inventory quantity to: " + item.getQuantity());
-                                } else {
-                                    System.out.println("[DEBUG_LOG] Warning: Not enough inventory for ingredient ID: " +
-                                            ingredientId + ". Required: " + amountToDecrease + ", Available: " + item.getQuantity());
-                                }
-                            }
-                        }
-                    } else {
-                        System.out.println("[DEBUG_LOG] Warehouse ID is null, cannot update ingredient count");
-                    }
-
-                    // Check if there are any inventory items for this ingredient in this warehouse
-                    List<InventoryItem> checkItems = inventoryItemRepo.findByIngredientIdAndWarehouseId(
-                            ingredientId, dto.getWarehouseId());
-                    if (checkItems.isEmpty()) {
-                        System.out.println("[DEBUG_LOG] No inventory items found for ingredient in this warehouse");
-                    }
-                }
-            } else {
-                System.out.println("[DEBUG_LOG] Product has no recipe items");
-            }
-        }
-
-        // Create the response DTO and set the quantity and warehouseId
-        ProductDto responseDto = mapper.toDto(savedProduct);
-        System.out.println("[DEBUG_LOG] Setting quantity in response: " + dto.getQuantity());
-        System.out.println("[DEBUG_LOG] Setting warehouseId in response: " + dto.getWarehouseId());
-        responseDto.setQuantity(dto.getQuantity());
-        responseDto.setWarehouseId(dto.getWarehouseId());
-        System.out.println("[DEBUG_LOG] Response after setting values - quantity: " + responseDto.getQuantity() + ", warehouseId: " + responseDto.getWarehouseId());
-
-        return responseDto;
-    }
-
-    @Transactional
-    @Override
-    public ProductDto update(Long id, ProductDto dto) {
-        // existing DTO-based update retained for backward compatibility
-        // Ensure quantity is not null for calculations
-        if (dto.getQuantity() == null) {
-            dto.setQuantity(1.0); // Default to 1 if not specified
-        }
-
-        System.out.println("[DEBUG_LOG] Updating product with ID: " + id +
-                ", name: " + dto.getName() +
-                ", quantity: " + dto.getQuantity() +
-                ", warehouseId: " + dto.getWarehouseId());
-
-        Product product = productRepo.findById(id).orElseThrow(() -> new NotFoundException("Product not found with id: " + id));
-        // Apply DTO fields to entity using mapper (nulls are ignored)
-        mapper.updateEntityFromDto(dto, product);
-        // Store the quantity and warehouseId for later use in the response
-        Double quantity = dto.getQuantity();
-        Long warehouseId = dto.getWarehouseId();
-
-
-        // Update recipe items if provided
-        if (dto.getRecipeItems() != null) {
-            // Clear existing recipe items
-            if (product.getRecipeItems() != null) {
-                product.getRecipeItems().clear();
-            } else {
-                product.setRecipeItems(new ArrayList<>());
-            }
-
-            // Add new recipe items
-            for (RecipeItemDto recipeItemDto : dto.getRecipeItems()) {
-                RecipeItem recipeItem = recipeItemMapper.toEntity(recipeItemDto);
-                recipeItem.setProduct(product);
-
-                // Set the ingredient
-                Ingredient ingredient = ingredientRepo.findById(recipeItemDto.getIngredientId())
-                        .orElseThrow(() -> new NotFoundException("Ingredient not found with id: " + recipeItemDto.getIngredientId()));
-                recipeItem.setIngredient(ingredient);
-
-                product.getRecipeItems().add(recipeItem);
-            }
-        }
-
-        Product savedProduct = productRepo.save(product);
-
-        // Update inventory item if quantity and warehouseId are provided
-        if (dto.getQuantity() != null && dto.getWarehouseId() != null) {
-            System.out.println("[DEBUG_LOG] Updating inventory for product ID: " + id +
-                    ", quantity: " + dto.getQuantity() +
-                    ", warehouseId: " + dto.getWarehouseId());
-
-            // Check if inventory item exists for this product and warehouse
-            List<InventoryItem> existingItems = inventoryItemRepo.findByProductId(savedProduct.getId());
-            InventoryItem inventoryItem = null;
-
-            for (InventoryItem item : existingItems) {
-                if (item.getWarehouseId() != null && item.getWarehouseId().equals(dto.getWarehouseId())) {
-                    inventoryItem = item;
-                    break;
-                }
-            }
-
-            if (inventoryItem != null) {
-                // Update existing inventory item
-                System.out.println("[DEBUG_LOG] Updating existing inventory item ID: " + inventoryItem.getId());
-                InventoryItemDto inventoryItemDto = new InventoryItemDto();
-                inventoryItemDto.setId(inventoryItem.getId());
-                inventoryItemDto.setProductId(savedProduct.getId());
-                inventoryItemDto.setWarehouseId(dto.getWarehouseId());
-                inventoryItemDto.setQuantity(dto.getQuantity() != null ? dto.getQuantity().intValue() : 0);
-                inventoryItemDto.setLastUpdated(LocalDate.now());
-
-                // Set the ingredient count based on the number of recipe items
-                int ingredientCount = 0;
-                if (savedProduct.getRecipeItems() != null && !savedProduct.getRecipeItems().isEmpty()) {
-                    ingredientCount = savedProduct.getRecipeItems().size();
-                }
-                inventoryItemDto.setIngredientCount(ingredientCount);
-
-                inventoryService.update(inventoryItem.getId(), inventoryItemDto);
-            } else {
-                // Create new inventory item
-                System.out.println("[DEBUG_LOG] Creating new inventory item for product ID: " + savedProduct.getId());
-                InventoryItemDto inventoryItemDto = new InventoryItemDto();
-                inventoryItemDto.setProductId(savedProduct.getId());
-                inventoryItemDto.setWarehouseId(dto.getWarehouseId());
-                inventoryItemDto.setQuantity(dto.getQuantity() != null ? dto.getQuantity().intValue() : 0);
-                inventoryItemDto.setLastUpdated(LocalDate.now());
-
-                // Set the ingredient count based on the number of recipe items
-                int ingredientCount = 0;
-                if (savedProduct.getRecipeItems() != null && !savedProduct.getRecipeItems().isEmpty()) {
-                    ingredientCount = savedProduct.getRecipeItems().size();
-                }
-                inventoryItemDto.setIngredientCount(ingredientCount);
-
-                inventoryService.create(inventoryItemDto);
-            }
-
-            // Update ingredient counts in inventory for all recipe items
-            System.out.println("[DEBUG_LOG] Checking recipe items for product: " + savedProduct.getId() +
-                    ", warehouseId: " + dto.getWarehouseId());
-
-            if (savedProduct.getRecipeItems() != null && !savedProduct.getRecipeItems().isEmpty()) {
-                System.out.println("[DEBUG_LOG] Product has " + savedProduct.getRecipeItems().size() + " recipe items");
-
-                // Use the new method to update ingredient counts
-                updateIngredientCounts(savedProduct.getRecipeItems(), dto.getWarehouseId());
-
-                for (RecipeItem recipeItem : savedProduct.getRecipeItems()) {
-                    Long ingredientId = recipeItem.getIngredient().getId();
-                    System.out.println("[DEBUG_LOG] Processing recipe item with ingredient ID: " + ingredientId);
-
-                    if (dto.getWarehouseId() != null) {
-                        // Reduce the ingredient quantity in inventory
-                        List<InventoryItem> inventoryItems = inventoryItemRepo.findByIngredientIdAndWarehouseId(
-                                ingredientId, dto.getWarehouseId());
-
-                        if (!inventoryItems.isEmpty()) {
-                            for (InventoryItem item : inventoryItems) {
-                                // Calculate the amount to decrease based on recipe item quantity AND product quantity
-                                // This ensures quantity changes every time a product is updated
-                                int amountToDecrease = (int) Math.ceil(recipeItem.getQuantity() * dto.getQuantity());
-
-                                System.out.println("[DEBUG_LOG] Reducing inventory for ingredient ID: " + ingredientId +
-                                        " by " + amountToDecrease + " units");
-
-                                // Use the repository method to decrement the quantity
-                                int updatedRows = inventoryItemRepo.decrementIngredientQuantity(ingredientId, dto.getWarehouseId(), amountToDecrease);
-
-                                if (updatedRows > 0) {
-                                    System.out.println("[DEBUG_LOG] Successfully updated " + updatedRows + " inventory items");
-
-                                    // Record history for ingredient quantity change without updating ingredient quantity
-                                    Ingredient ingredient = recipeItem.getIngredient();
-                                    if (ingredient != null) {
-                                        // Record history for ingredient quantity change
-                                        historyService.recordQuantityChange(
-                                                ingredient,
-                                                0.0,
-                                                0.0,
-                                                "USED_IN_PRODUCT",
-                                                "Used in product update: " + savedProduct.getName()
-                                        );
-                                    }
-
-                                    // Refresh the item to get the updated quantity
-                                    item = inventoryItemRepo.findById(item.getId()).orElse(item);
-                                    System.out.println("[DEBUG_LOG] Updated inventory quantity to: " + item.getQuantity());
-                                } else {
-                                    System.out.println("[DEBUG_LOG] Warning: Not enough inventory for ingredient ID: " +
-                                            ingredientId + ". Required: " + amountToDecrease + ", Available: " + item.getQuantity());
-                                }
-                            }
-                        }
-                    } else {
-                        System.out.println("[DEBUG_LOG] Warehouse ID is null, cannot update ingredient count");
-                    }
-
-                    // Check if there are any inventory items for this ingredient in this warehouse
-                    List<InventoryItem> checkItems = inventoryItemRepo.findByIngredientIdAndWarehouseId(
-                            ingredientId, dto.getWarehouseId());
-                    if (checkItems.isEmpty()) {
-                        System.out.println("[DEBUG_LOG] No inventory items found for ingredient in this warehouse");
-                    }
-                }
-            } else {
-                System.out.println("[DEBUG_LOG] Product has no recipe items");
-            }
-        }
-
-        // Create the response DTO and set the quantity and warehouseId
-        ProductDto responseDto = mapper.toDto(savedProduct);
-        responseDto.setQuantity(quantity);
-        responseDto.setWarehouseId(warehouseId);
-
-        return responseDto;
-    }
-
-    @Transactional
-    @Override
     public void delete(Long id) {
-        if (!productRepo.existsById(id)) {
-            throw new NotFoundException("Product not found with id: " + id);
-        }
-        productRepo.deleteById(id);
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Product not found"));
+
+        product.setDeleted(true);
+        productRepository.save(product);
+
+        ProductHistoryDto phDelete = new ProductHistoryDto();
+        phDelete.setProduct(product);
+        phDelete.setWarehouse(product.getDefaultWarehouse());
+        phDelete.setQuantityChange(0.0);
+        phDelete.setNotes("Soft deleted");
+        productHistoryService.recordQuantityChange(phDelete);
     }
 
-    @Transactional
     @Override
-    public ProductDto update(Long id, ProductUpdateRequest dto) {
-        if (dto.getQuantity() == null) {
-            dto.setQuantity(1.0);
-        }
+    @Transactional(readOnly = true)
+    public List<ProductResponse> getAllExcludeRecipeIngredient(Long recipeItemId) {
+        List<Product> products = productRepository.findAllByDeletedFalseExcludeRecipe(recipeItemId);
 
-        Product product = productRepo.findById(id).orElseThrow(() -> new NotFoundException("Product not found with id: " + id));
-
-        // Apply fields from update request (ignores nulls)
-        mapper.updateEntityFromUpdateRequest(dto, product);
-
-        Double quantity = dto.getQuantity();
-        Long warehouseId = dto.getWarehouseId();
-
-        // Update recipe items if provided
-        if (dto.getRecipeItems() != null) {
-            if (product.getRecipeItems() != null) {
-                product.getRecipeItems().clear();
-            } else {
-                product.setRecipeItems(new java.util.ArrayList<>());
-            }
-
-            for (RecipeItemDto recipeItemDto : dto.getRecipeItems()) {
-                RecipeItem recipeItem = recipeItemMapper.toEntity(recipeItemDto);
-                recipeItem.setProduct(product);
-                Ingredient ingredient = ingredientRepo.findById(recipeItemDto.getIngredientId())
-                        .orElseThrow(() -> new NotFoundException("Ingredient not found with id: " + recipeItemDto.getIngredientId()));
-                recipeItem.setIngredient(ingredient);
-                product.getRecipeItems().add(recipeItem);
-            }
-        }
-
-        Product savedProduct = productRepo.save(product);
-
-        // Update or create inventory item
-        if (dto.getQuantity() != null && dto.getWarehouseId() != null) {
-            List<InventoryItem> existingItems = inventoryItemRepo.findByProductId(savedProduct.getId());
-            InventoryItem inventoryItem = null;
-            for (InventoryItem item : existingItems) {
-                if (item.getWarehouseId() != null && item.getWarehouseId().equals(dto.getWarehouseId())) {
-                    inventoryItem = item;
-                    break;
-                }
-            }
-
-            if (inventoryItem != null) {
-                InventoryItemDto inventoryItemDto = new InventoryItemDto();
-                inventoryItemDto.setId(inventoryItem.getId());
-                inventoryItemDto.setProductId(savedProduct.getId());
-                inventoryItemDto.setWarehouseId(dto.getWarehouseId());
-                inventoryItemDto.setQuantity(dto.getQuantity() != null ? dto.getQuantity().intValue() : 0);
-                inventoryItemDto.setLastUpdated(LocalDate.now());
-                int ingredientCount = 0;
-                if (savedProduct.getRecipeItems() != null && !savedProduct.getRecipeItems().isEmpty()) {
-                    ingredientCount = savedProduct.getRecipeItems().size();
-                }
-                inventoryItemDto.setIngredientCount(ingredientCount);
-                inventoryService.update(inventoryItem.getId(), inventoryItemDto);
-            } else {
-                InventoryItemDto inventoryItemDto = new InventoryItemDto();
-                inventoryItemDto.setProductId(savedProduct.getId());
-                inventoryItemDto.setWarehouseId(dto.getWarehouseId());
-                inventoryItemDto.setQuantity(dto.getQuantity() != null ? dto.getQuantity().intValue() : 0);
-                inventoryItemDto.setLastUpdated(LocalDate.now());
-                int ingredientCount = 0;
-                if (savedProduct.getRecipeItems() != null && !savedProduct.getRecipeItems().isEmpty()) {
-                    ingredientCount = savedProduct.getRecipeItems().size();
-                }
-                inventoryItemDto.setIngredientCount(ingredientCount);
-                inventoryService.create(inventoryItemDto);
-            }
-
-            // Update ingredient counts (and decrement) as in original method
-            if (savedProduct.getRecipeItems() != null && !savedProduct.getRecipeItems().isEmpty()) {
-                updateIngredientCounts(savedProduct.getRecipeItems(), dto.getWarehouseId());
-                for (RecipeItem recipeItem : savedProduct.getRecipeItems()) {
-                    Long ingredientId = recipeItem.getIngredient().getId();
-                    if (dto.getWarehouseId() != null) {
-                        List<InventoryItem> inventoryItems = inventoryItemRepo.findByIngredientIdAndWarehouseId(
-                                ingredientId, dto.getWarehouseId());
-                        if (!inventoryItems.isEmpty()) {
-                            for (InventoryItem item : inventoryItems) {
-                                int amountToDecrease = (int) Math.ceil(recipeItem.getQuantity() * dto.getQuantity());
-                                int updatedRows = inventoryItemRepo.decrementIngredientQuantity(ingredientId, dto.getWarehouseId(), amountToDecrease);
-                                if (updatedRows > 0) {
-                                    Ingredient ingredient = recipeItem.getIngredient();
-                                    if (ingredient != null) {
-                                        historyService.recordQuantityChange(
-                                                ingredient,
-                                                0.0,
-                                                0.0,
-                                                "USED_IN_PRODUCT",
-                                                "Used in product update: " + savedProduct.getName()
-                                        );
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        ProductDto responseDto = mapper.toDto(savedProduct);
-        responseDto.setQuantity(quantity);
-        responseDto.setWarehouseId(warehouseId);
-        return responseDto;
+        return products.stream()
+                .map(productMapper::toResponse)
+                .toList();
     }
 
-    /**
-     * Updates ingredient counts for all ingredients in a recipe.
-     * This ensures that the ingredient count is set to the total number of recipe items,
-     * rather than incrementing for each recipe item.
-     *
-     * @param recipeItems the list of recipe items
-     * @param warehouseId the warehouse ID
-     */
-    private void updateIngredientCounts(List<RecipeItem> recipeItems, Long warehouseId) {
-        if (recipeItems == null || recipeItems.isEmpty() || warehouseId == null) {
-            return;
-        }
+    @Override
+    @Transactional(readOnly = true)
+    public List<UnitTypeCalculatedResponse> calculateUnitTypes(Long id, InventoryUnitTypeRequest request) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Product not found"));
 
-        // Get the total number of recipe items
-        int recipeItemCount = recipeItems.size();
-        System.out.println("[DEBUG_LOG] Setting ingredient count to " + recipeItemCount + " for all ingredients in recipe");
+        ProductUnitType config = product.getUnitTypeConfigs().stream()
+                .filter(c -> c.getId().equals(request.getId()))
+                .findFirst()
+                .orElseThrow(() -> new NotFoundException("Unit Type Config not found for this product"));
 
-        // Process each recipe item
-        for (RecipeItem recipeItem : recipeItems) {
-            Long ingredientId = recipeItem.getIngredient().getId();
+        Double total = config.isBaseType() ? request.getCount() : config.getSize() * request.getCount();
 
-            // Check if the ingredient already has inventory items with a product
-            List<InventoryItem> existingItems = inventoryItemRepo.findByIngredientIdAndWarehouseId(
-                    ingredientId, warehouseId);
-
-            boolean hasProductAlready = false;
-            for (InventoryItem item : existingItems) {
-                if (item.getProduct() != null) {
-                    hasProductAlready = true;
-                    System.out.println("[DEBUG_LOG] Ingredient ID: " + ingredientId + " already has a product associated with it");
-                    break;
-                }
-            }
-
-            // Only update the ingredient count if it doesn't already have a product
-            if (!hasProductAlready) {
-                // Use the direct update method to set the ingredient count
-                int updatedCount = inventoryItemRepo.setIngredientCount(ingredientId, warehouseId, recipeItemCount);
-                System.out.println("[DEBUG_LOG] Updated " + updatedCount + " inventory items for ingredient ID: " + ingredientId);
-
-                // If no rows were updated, it might be because the inventory item doesn't exist
-                if (updatedCount == 0) {
-                    for (InventoryItem item : existingItems) {
-                        System.out.println("[DEBUG_LOG] Setting ingredient count to " + recipeItemCount + " for item ID: " + item.getId());
-                        item.setIngredientCount(recipeItemCount);
-                        inventoryItemRepo.save(item);
-                    }
-                }
+        return product.getUnitTypeConfigs().stream().map(utc -> {
+            UnitTypeCalculatedResponse calculatedResponse = new UnitTypeCalculatedResponse();
+            calculatedResponse.setUnitTypeName(utc.getUnitType().getName());
+            calculatedResponse.setUnitTypeId(utc.getId());
+            calculatedResponse.setBaseUnit(utc.isBaseType());
+            if (utc.isBaseType()) {
+                calculatedResponse.setSize(total);
             } else {
-                System.out.println("[DEBUG_LOG] Skipping ingredient count update for ingredient ID: " + ingredientId + " as it already has a product");
+                calculatedResponse.setSize(Math.ceil(total / utc.getSize()));
             }
-        }
+            return calculatedResponse;
+        }).toList();
     }
 }

@@ -9,16 +9,13 @@ import java.util.List;
 @Entity
 @Getter
 @Setter
-public class IngredientGroup {
+public class IngredientGroup extends BaseAuditable {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     private String name;
-    
-    @OneToMany(mappedBy = "group")
-    private List<Ingredient> ingredients;
-    
+
     @OneToMany(mappedBy = "ingredientGroup")
-    private List<InventoryItem> inventoryItems;
+    private List<Ingredient> ingredients;
 }

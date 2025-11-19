@@ -1,20 +1,18 @@
-
 package com.biobac.warehouse.service.impl;
 
-import com.biobac.warehouse.dto.InventoryItemDto;
+import com.biobac.warehouse.dto.ChangeComponentDto;
+import com.biobac.warehouse.dto.IngredientHistoryDto;
 import com.biobac.warehouse.dto.PaginationMetadata;
-import com.biobac.warehouse.entity.Ingredient;
-import com.biobac.warehouse.entity.InventoryItem;
+import com.biobac.warehouse.dto.ProductHistoryDto;
+import com.biobac.warehouse.entity.*;
 import com.biobac.warehouse.exception.NotFoundException;
-import com.biobac.warehouse.mapper.InventoryMapper;
 import com.biobac.warehouse.repository.*;
 import com.biobac.warehouse.request.FilterCriteria;
-import com.biobac.warehouse.request.InventoryItemCreateRequest;
-import com.biobac.warehouse.request.InventoryItemUpdateRequest;
-import com.biobac.warehouse.response.InventoryItemTableResponse;
+import com.biobac.warehouse.response.InventoryResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.service.InventoryService;
-import com.biobac.warehouse.utils.specifications.InventoryItemSpecification;
+import com.biobac.warehouse.service.ProductHistoryService;
+import com.biobac.warehouse.utils.specifications.InventorySpecification;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -25,310 +23,253 @@ import org.springframework.data.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
 public class InventoryServiceImpl implements InventoryService {
-    private final InventoryItemRepository repo;
-    private final ProductRepository productRepo;
-    private final IngredientRepository ingredientRepo;
-    private final IngredientGroupRepository ingredientGroupRepo;
-    private final WarehouseRepository warehouseRepo;
-    private final InventoryMapper mapper;
-    private final IngredientHistoryService historyService;
+    private final IngredientBalanceRepository ingredientBalanceRepository;
+    private final ProductBalanceRepository productBalanceRepository;
+    private final WarehouseRepository warehouseRepository;
+    private final IngredientRepository ingredientRepository;
+    private final ProductRepository productRepository;
+    private final IngredientHistoryService ingredientHistoryService;
+    private final ProductHistoryService productHistoryService;
+    private final IngredientDetailRepository ingredientDetailRepository;
+    private final ProductDetailRepository productDetailRepository;
+    private final InventoryRepository inventoryRepository;
+
+    private static final int DEFAULT_PAGE = 0;
+    private static final int DEFAULT_SIZE = 20;
+    private static final String DEFAULT_SORT_BY = "date";
+    private static final String DEFAULT_SORT_DIR = "desc";
+    private final HistoryActionRepository historyActionRepository;
+
+    private Pageable buildPageable(Integer page, Integer size, String sortBy, String sortDir) {
+        int safePage = (page == null || page < 0) ? DEFAULT_PAGE : page;
+        int safeSize = (size == null || size <= 0) ? DEFAULT_SIZE : size;
+        if (safeSize > 1000) safeSize = 1000;
+
+        String safeSortBy = (sortBy == null || sortBy.isBlank()) ? DEFAULT_SORT_BY : sortBy.trim();
+        String safeSortDir = (sortDir == null || sortDir.isBlank()) ? DEFAULT_SORT_DIR : sortDir.trim();
+
+        Sort sort = safeSortDir.equalsIgnoreCase("asc")
+                ? Sort.by(safeSortBy).ascending()
+                : Sort.by(safeSortBy).descending();
+
+        return PageRequest.of(safePage, safeSize, sort);
+    }
 
     @Override
-    @Transactional(readOnly = true)
-    public List<InventoryItemDto> getAll() {
-        return repo.findAll().stream()
-                .map(mapper::toDto)
-                .collect(Collectors.toList());
+    @Transactional
+    public void changeProduct(List<ChangeComponentDto> request) {
+        if (request == null || request.isEmpty()) return;
+
+        for (ChangeComponentDto c : request) {
+            Product product = productRepository.findById(c.getComponentId())
+                    .orElseThrow(() -> new NotFoundException("Product not found"));
+            Warehouse warehouse = warehouseRepository.findById(c.getWarehouseId())
+                    .orElseThrow(() -> new NotFoundException("Warehouse not found"));
+
+            ProductBalance balance = productBalanceRepository
+                    .findByWarehouseAndProduct(warehouse, product)
+                    .orElseGet(() -> {
+                        ProductBalance newBalance = new ProductBalance();
+                        newBalance.setBalance(0.0);
+                        newBalance.setWarehouse(warehouse);
+                        newBalance.setProduct(product);
+                        return productBalanceRepository.save(newBalance);
+                    });
+
+            double before = Optional.ofNullable(balance.getBalance()).orElse(0.0);
+            double change = Optional.ofNullable(c.getQuantity()).orElse(0.0);
+            double after = before + change;
+
+            balance.setBalance(after);
+            productBalanceRepository.save(balance);
+
+            Inventory inventory = new Inventory();
+            inventory.setComponentId(c.getComponentId());
+            inventory.setWarehouse(warehouse);
+            inventory.setType(ComponentType.PRODUCT);
+            inventory.setDate(c.getDate());
+            inventory.setQuantity(change);
+            inventoryRepository.save(inventory);
+
+            String productName = product.getName() != null ? product.getName() : ("#" + product.getId());
+            String whName = warehouse.getName() != null ? warehouse.getName() : ("#" + warehouse.getId());
+
+            String note;
+            if (change > 0) {
+                note = String.format(
+                        "Инвентаризация: увеличено количество продукта \"%s\" на складе \"%s\" на %.2f (итог: %.2f)",
+                        productName, whName, change, after
+                );
+            } else if (change < 0) {
+                note = String.format(
+                        "Инвентаризация: уменьшено количество продукта \"%s\" на складе \"%s\" на %.2f (итог: %.2f)",
+                        productName, whName, Math.abs(change), after
+                );
+            } else {
+                note = String.format(
+                        "Инвентаризация продукта \"%s\" на складе \"%s\" — количество не изменилось (итог: %.2f)",
+                        productName, whName, after
+                );
+            }
+
+            HistoryAction action = historyActionRepository.findById(2L)
+                    .orElseThrow(() -> new NotFoundException("Action not found"));
+
+            ProductHistoryDto dto = new ProductHistoryDto();
+            dto.setProduct(product);
+            dto.setWarehouse(warehouse);
+            dto.setTimestamp(c.getDate());
+            dto.setQuantityChange(change);
+            dto.setNotes(note);
+            dto.setAction(action);
+            productHistoryService.recordQuantityChange(dto);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void changeIngredient(List<ChangeComponentDto> request) {
+        if (request == null || request.isEmpty()) return;
+
+        for (ChangeComponentDto c : request) {
+            Ingredient ingredient = ingredientRepository.findById(c.getComponentId())
+                    .orElseThrow(() -> new NotFoundException("Ingredient not found"));
+            Warehouse warehouse = warehouseRepository.findById(c.getWarehouseId())
+                    .orElseThrow(() -> new NotFoundException("Warehouse not found"));
+
+            IngredientBalance balance = ingredientBalanceRepository
+                    .findByWarehouseAndIngredient(warehouse, ingredient)
+                    .orElseGet(() -> {
+                        IngredientBalance newBalance = new IngredientBalance();
+                        newBalance.setBalance(0.0);
+                        newBalance.setWarehouse(warehouse);
+                        newBalance.setIngredient(ingredient);
+                        return ingredientBalanceRepository.save(newBalance);
+                    });
+
+            double before = Optional.ofNullable(balance.getBalance()).orElse(0.0);
+            double change = Optional.ofNullable(c.getQuantity()).orElse(0.0);
+            double after = before + change;
+
+            balance.setBalance(after);
+
+            ingredientBalanceRepository.save(balance);
+
+            Inventory inventory = new Inventory();
+            inventory.setComponentId(c.getComponentId());
+            inventory.setWarehouse(warehouse);
+            inventory.setType(ComponentType.INGREDIENT);
+            inventory.setDate(c.getDate());
+            inventory.setQuantity(c.getQuantity());
+            inventoryRepository.save(inventory);
+
+            String ingredientName = ingredient.getName() != null ? ingredient.getName() : ("#" + ingredient.getId());
+            String whName = warehouse.getName() != null ? warehouse.getName() : ("#" + warehouse.getId());
+
+            String note;
+            if (change > 0) {
+                note = String.format(
+                        "Инвентаризация: увеличено количество ингредиента \"%s\" на складе \"%s\" на %.2f (итог: %.2f)",
+                        ingredientName, whName, change, after
+                );
+            } else if (change < 0) {
+                note = String.format(
+                        "Инвентаризация: уменьшено количество ингредиента \"%s\" на складе \"%s\" на %.2f (итог: %.2f)",
+                        ingredientName, whName, Math.abs(change), after
+                );
+            } else {
+                note = String.format(
+                        "Инвентаризация ингредиента \"%s\" на складе \"%s\" — количество не изменилось (итог: %.2f)",
+                        ingredientName, whName, after
+                );
+            }
+
+            HistoryAction action = historyActionRepository.findById(2L)
+                    .orElseThrow(() -> new NotFoundException("Action not found"));
+
+            IngredientHistoryDto dto = new IngredientHistoryDto();
+            dto.setIngredient(ingredient);
+            dto.setWarehouse(warehouse);
+            dto.setTimestamp(c.getDate());
+            dto.setQuantityChange(change);
+            dto.setNotes(note);
+            dto.setAction(action);
+            ingredientHistoryService.recordQuantityChange(dto);
+        }
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Pair<List<InventoryItemTableResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters,
-                                                                                    Integer page,
-                                                                                    Integer size,
-                                                                                    String sortBy,
-                                                                                    String sortDir) {
-        Sort sort = sortDir.equalsIgnoreCase("asc") ?
-                Sort.by(sortBy).ascending() :
-                Sort.by(sortBy).descending();
+    public Pair<List<InventoryResponse>, PaginationMetadata> getPagination(
+            Map<String, FilterCriteria> filters,
+            Integer page,
+            Integer size,
+            String sortBy,
+            String sortDir,
+            ComponentType type
+    ) {
+        Pageable pageable = buildPageable(page, size, sortBy, sortDir);
 
-        Pageable pageable = PageRequest.of(page, size, sort);
+        Specification<Inventory> spec = Specification
+                .where(InventorySpecification.hasType(type))
+                .and(InventorySpecification.buildSpecification(filters, type));
 
-        Specification<InventoryItem> spec = InventoryItemSpecification.buildSpecification(filters);
+        Page<Inventory> inventoryPage = inventoryRepository.findAll(spec, pageable);
 
-        Page<InventoryItem> inventoryItemPage = repo.findAll(spec, pageable);
-
-        List<InventoryItemTableResponse> content = inventoryItemPage.getContent()
-                .stream()
-                .map(mapper::toTableResponse)
-                .collect(Collectors.toList());
-
-        PaginationMetadata metadata = new PaginationMetadata(
-                inventoryItemPage.getNumber(),
-                inventoryItemPage.getSize(),
-                inventoryItemPage.getTotalElements(),
-                inventoryItemPage.getTotalPages(),
-                inventoryItemPage.isLast(),
-                filters,
-                sortDir,
-                sortBy,
-                "inventoryItemTable"
-        );
+        List<InventoryResponse> content = mapInventoriesToResponses(inventoryPage.getContent(), type);
+        PaginationMetadata metadata = buildPaginationMetadata(inventoryPage, filters, pageable);
 
         return Pair.of(content, metadata);
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public InventoryItemDto getById(Long id) {
-        return mapper.toDto(repo.findById(id).orElseThrow());
+    private List<InventoryResponse> mapInventoriesToResponses(List<Inventory> inventories, ComponentType type) {
+        List<InventoryResponse> responses = new ArrayList<>();
+        for (Inventory i : inventories) {
+            InventoryResponse r = new InventoryResponse();
+            r.setDate(i.getDate());
+            r.setWarehouseName(i.getWarehouse() != null ? i.getWarehouse().getName() : null);
+            r.setQuantity(i.getQuantity());
+            r.setComponentName(fetchComponentName(i.getComponentId(), type));
+            responses.add(r);
+        }
+        return responses;
     }
 
-    @Override
-    @Transactional
-    public InventoryItemDto create(InventoryItemDto dto) {
-        InventoryItem entity = mapper.toEntity(dto);
-
-        // Set references
-        if (dto.getProductId() != null) {
-            entity.setProduct(productRepo.findById(dto.getProductId()).orElse(null));
-        }
-
-        Ingredient ingredient = null;
-        if (dto.getIngredientId() != null) {
-            ingredient = ingredientRepo.findById(dto.getIngredientId()).orElse(null);
-            entity.setIngredient(ingredient);
-        }
-
-        if (dto.getIngredientGroupId() != null) {
-            entity.setIngredientGroup(ingredientGroupRepo.findById(dto.getIngredientGroupId()).orElse(null));
-            entity.setGroupId(dto.getIngredientGroupId());
-        }
-
-        if (dto.getWarehouseId() != null) {
-            entity.setWarehouse(warehouseRepo.findById(dto.getWarehouseId()).orElse(null));
-            entity.setWarehouseId(dto.getWarehouseId());
-        }
-
-        // Save the entity
-        InventoryItem savedEntity = repo.save(entity);
-
-        // Record history if this is an ingredient with quantity
-        if (ingredient != null && dto.getQuantity() != null) {
-            // Record the history for inventory creation
-            historyService.recordQuantityChange(
-                    ingredient,
-                    0.0,
-                    dto.getQuantity().doubleValue(),
-                    "INVENTORY_CREATED",
-                    "New inventory item created"
-            );
-        }
-
-        return mapper.toDto(savedEntity);
+    private String fetchComponentName(Long componentId, ComponentType type) {
+        if (componentId == null) return null;
+        return switch (type) {
+            case INGREDIENT -> ingredientRepository.findById(componentId)
+                    .map(Ingredient::getName)
+                    .orElse(null);
+            case PRODUCT -> productRepository.findById(componentId)
+                    .map(Product::getName)
+                    .orElse(null);
+            default -> null;
+        };
     }
 
-    @Override
-    @Transactional
-    public InventoryItemDto create(InventoryItemCreateRequest dto) {
-        InventoryItem entity = mapper.toEntity(dto);
-
-        // Set references
-        if (dto.getProductId() != null) {
-            entity.setProduct(productRepo.findById(dto.getProductId()).orElse(null));
-        }
-
-        Ingredient ingredient = null;
-        if (dto.getIngredientId() != null) {
-            ingredient = ingredientRepo.findById(dto.getIngredientId()).orElse(null);
-            entity.setIngredient(ingredient);
-        }
-
-        if (dto.getIngredientGroupId() != null) {
-            entity.setIngredientGroup(ingredientGroupRepo.findById(dto.getIngredientGroupId()).orElse(null));
-            entity.setGroupId(dto.getIngredientGroupId());
-        }
-
-        if (dto.getWarehouseId() != null) {
-            entity.setWarehouse(warehouseRepo.findById(dto.getWarehouseId()).orElse(null));
-            entity.setWarehouseId(dto.getWarehouseId());
-        }
-
-        // Save the entity
-        InventoryItem savedEntity = repo.save(entity);
-
-        // Record history if this is an ingredient with quantity
-        if (ingredient != null && dto.getQuantity() != null) {
-            historyService.recordQuantityChange(
-                    ingredient,
-                    0.0,
-                    dto.getQuantity().doubleValue(),
-                    "INVENTORY_CREATED",
-                    "New inventory item created"
-            );
-        }
-
-        return mapper.toDto(savedEntity);
-    }
-
-    @Override
-    @Transactional
-    public InventoryItemDto update(Long id, InventoryItemDto dto) {
-        InventoryItem item = repo.findById(id).orElseThrow();
-
-        // Store original quantity for history tracking
-        Integer originalQuantity = item.getQuantity();
-
-        item.setQuantity(dto.getQuantity());
-        item.setLastUpdated(dto.getLastUpdated());
-
-        // Update ingredient count if provided
-        if (dto.getIngredientCount() != null) {
-            item.setIngredientCount(dto.getIngredientCount());
-        }
-
-        if (dto.getProductId() != null) {
-            item.setProduct(productRepo.findById(dto.getProductId()).orElse(null));
-        }
-        if (dto.getIngredientId() != null) {
-            item.setIngredient(ingredientRepo.findById(dto.getIngredientId()).orElse(null));
-        }
-        if (dto.getIngredientGroupId() != null) {
-            item.setIngredientGroup(ingredientGroupRepo.findById(dto.getIngredientGroupId()).orElse(null));
-            item.setGroupId(dto.getIngredientGroupId());
-        }
-        if (dto.getWarehouseId() != null) {
-            item.setWarehouse(warehouseRepo.findById(dto.getWarehouseId()).orElse(null));
-            item.setWarehouseId(dto.getWarehouseId());
-        }
-
-        // Save the updated item
-        InventoryItem savedItem = repo.save(item);
-
-        // Record history if this is an ingredient and quantity changed
-        if (savedItem.getIngredient() != null &&
-                (originalQuantity == null && dto.getQuantity() != null ||
-                        originalQuantity != null && !originalQuantity.equals(dto.getQuantity()))) {
-
-            Ingredient ingredient = savedItem.getIngredient();
-
-            // Record the history for inventory update
-            historyService.recordQuantityChange(
-                    ingredient,
-                    originalQuantity != null ? originalQuantity.doubleValue() : 0.0,
-                    dto.getQuantity().doubleValue(),
-                    "INVENTORY_UPDATE",
-                    "Inventory quantity updated"
-            );
-        }
-
-        return mapper.toDto(savedItem);
-    }
-
-    @Override
-    @Transactional
-    public InventoryItemDto update(Long id, InventoryItemUpdateRequest dto) {
-        InventoryItem item = repo.findById(id).orElseThrow();
-
-        Integer originalQuantity = item.getQuantity();
-
-        // Map non-null fields from request onto entity
-        mapper.updateEntityFromRequest(dto, item);
-
-        // Relationships based on IDs
-        if (dto.getProductId() != null) {
-            item.setProduct(productRepo.findById(dto.getProductId()).orElse(null));
-        }
-        if (dto.getIngredientId() != null) {
-            item.setIngredient(ingredientRepo.findById(dto.getIngredientId()).orElse(null));
-        }
-        if (dto.getIngredientGroupId() != null) {
-            item.setIngredientGroup(ingredientGroupRepo.findById(dto.getIngredientGroupId()).orElse(null));
-            item.setGroupId(dto.getIngredientGroupId());
-        }
-        if (dto.getWarehouseId() != null) {
-            item.setWarehouse(warehouseRepo.findById(dto.getWarehouseId()).orElse(null));
-            item.setWarehouseId(dto.getWarehouseId());
-        }
-
-        InventoryItem savedItem = repo.save(item);
-
-        if (savedItem.getIngredient() != null &&
-                (originalQuantity == null && dto.getQuantity() != null ||
-                        originalQuantity != null && !originalQuantity.equals(dto.getQuantity()))) {
-            Ingredient ingredient = savedItem.getIngredient();
-            historyService.recordQuantityChange(
-                    ingredient,
-                    originalQuantity != null ? originalQuantity.doubleValue() : 0.0,
-                    dto.getQuantity() != null ? dto.getQuantity().doubleValue() : (savedItem.getQuantity() != null ? savedItem.getQuantity().doubleValue() : 0.0),
-                    "INVENTORY_UPDATE",
-                    "Inventory quantity updated"
-            );
-        }
-
-        return mapper.toDto(savedItem);
-    }
-
-    @Override
-    @Transactional
-    public void delete(Long id) {
-        // Load the inventory item or throw 404 if not found
-        InventoryItem item = repo.findById(id)
-                .orElseThrow(() -> new NotFoundException("InventoryItem not found with id: " + id));
-
-        if (item.getIngredient() != null && item.getQuantity() != null) {
-            Ingredient ingredient = item.getIngredient();
-
-            // Record the history before deleting
-            historyService.recordQuantityChange(
-                    ingredient,
-                    item.getQuantity().doubleValue(),
-                    0.0, // Quantity after deletion is 0
-                    "INVENTORY_DELETED",
-                    "Inventory item deleted"
-            );
-        }
-
-        // Delete the inventory item
-        repo.deleteById(id);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<InventoryItemDto> findByProductId(Long productId) {
-        return repo.findByProductId(productId).stream()
-                .map(mapper::toDto)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<InventoryItemDto> findByIngredientId(Long ingredientId) {
-        return repo.findByIngredientId(ingredientId).stream()
-                .map(mapper::toDto)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<InventoryItemDto> findByWarehouseId(Long warehouseId) {
-        return repo.findByWarehouseId(warehouseId).stream()
-                .map(mapper::toDto)
-                .collect(Collectors.toList());
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<InventoryItemDto> findByGroupId(Long groupId) {
-        return repo.findByGroupId(groupId).stream()
-                .map(mapper::toDto)
-                .collect(Collectors.toList());
+    private <T> PaginationMetadata buildPaginationMetadata(Page<T> page, Map<String, FilterCriteria> filters, Pageable pageable) {
+        return new PaginationMetadata(
+                page.getNumber(),
+                page.getSize(),
+                page.getTotalElements(),
+                page.getTotalPages(),
+                page.isLast(),
+                filters,
+                pageable.getSort().toString().contains("ASC") ? "asc" : "desc",
+                pageable.getSort().stream()
+                        .findFirst()
+                        .map(Sort.Order::getProperty)
+                        .orElse(DEFAULT_SORT_BY),
+                "inventoryTable"
+        );
     }
 }

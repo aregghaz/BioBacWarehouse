@@ -2,6 +2,10 @@ package com.biobac.warehouse.exception;
 
 import com.biobac.warehouse.response.ApiResponse;
 import com.biobac.warehouse.utils.ResponseUtil;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import feign.FeignException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -68,8 +72,18 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.CONFLICT).body(ResponseUtil.error(ex.getMessage()));
     }
 
+    @ExceptionHandler(DeleteException.class)
+    public ResponseEntity<ApiResponse<Object>> handleDeleteException(DeleteException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ResponseUtil.error(ex.getMessage()));
+    }
+
     @ExceptionHandler({HttpMessageNotReadableException.class, MissingServletRequestParameterException.class})
     public ResponseEntity<ApiResponse<Object>> handleBadRequest(Exception ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ResponseUtil.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(NotEnoughException.class)
+    public ResponseEntity<ApiResponse<Object>> handleNotEnoughException(NotEnoughException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ResponseUtil.error(ex.getMessage()));
     }
 
@@ -83,9 +97,33 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status((HttpStatus.INTERNAL_SERVER_ERROR)).body(ResponseUtil.error(ex.getMessage()));
     }
 
+    @ExceptionHandler(FeignException.class)
+    public ResponseEntity<ApiResponse<Object>> handleFeignException(FeignException ex) {
+        String errorMessage = "Internal Server Error";
+
+        try {
+            String body = ex.contentUTF8();
+
+            ObjectMapper mapper = new ObjectMapper();
+            JsonNode node = mapper.readTree(body);
+
+            if (node.has("message")) {
+                errorMessage = node.get("message").asText();
+            } else {
+                errorMessage = body;
+            }
+        } catch (Exception parseEx) {
+            errorMessage = ex.getMessage();
+        }
+
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ResponseUtil.error(errorMessage));
+    }
+
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Object>> handleGeneric(Exception ex) {
+        String message = ex.getMessage() != null && !ex.getMessage().isBlank() ? ex.getMessage() : "Internal server error";
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ResponseUtil.error("Internal server error"));
+                .body(ResponseUtil.error(message));
     }
 }
