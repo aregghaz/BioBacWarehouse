@@ -1,5 +1,6 @@
 package com.biobac.warehouse.service.impl;
 
+import com.biobac.warehouse.client.UserClient;
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.dto.ProductHistoryDto;
 import com.biobac.warehouse.entity.Product;
@@ -9,8 +10,10 @@ import com.biobac.warehouse.repository.HistoryActionRepository;
 import com.biobac.warehouse.repository.ProductBalanceRepository;
 import com.biobac.warehouse.repository.ProductHistoryRepository;
 import com.biobac.warehouse.request.FilterCriteria;
+import com.biobac.warehouse.response.ApiResponse;
 import com.biobac.warehouse.response.ProductHistoryResponse;
 import com.biobac.warehouse.response.ProductHistorySingleResponse;
+import com.biobac.warehouse.response.UserResponse;
 import com.biobac.warehouse.service.ProductHistoryService;
 import com.biobac.warehouse.utils.GroupUtil;
 import com.biobac.warehouse.utils.specifications.ProductHistorySpecification;
@@ -36,6 +39,8 @@ import static com.biobac.warehouse.utils.DateUtil.parseDates;
 @Service
 @RequiredArgsConstructor
 public class ProductHistoryServiceImpl implements ProductHistoryService {
+
+    private final UserClient userClient;
 
     private final ProductHistoryRepository productHistoryRepository;
     private final ProductHistoryMapper productHistoryMapper;
@@ -120,7 +125,32 @@ public class ProductHistoryServiceImpl implements ProductHistoryService {
 
         List<ProductHistorySingleResponse> content = pageResult.getContent()
                 .stream()
-                .map(productHistoryMapper::toSingleResponse)
+                .map(entity -> {
+                    ProductHistorySingleResponse resp = productHistoryMapper.toSingleResponse(entity);
+                    try {
+                        if (entity.getUserId() != null) {
+                            ApiResponse<UserResponse> ur = userClient.getUser(entity.getUserId());
+                            if (ur != null && Boolean.TRUE.equals(ur.getSuccess()) && ur.getData() != null) {
+                                String fn = ur.getData().getFirstname();
+                                String ln = ur.getData().getLastname();
+                                String un = ur.getData().getUsername();
+                                StringBuilder sb = new StringBuilder();
+                                if (fn != null && !fn.isBlank()) sb.append(fn);
+                                if (ln != null && !ln.isBlank()) {
+                                    if (!sb.isEmpty()) sb.append(' ');
+                                    sb.append(ln);
+                                }
+                                if (un != null && !un.isBlank()) {
+                                    if (!sb.isEmpty()) sb.append(' ');
+                                    sb.append('(').append(un).append(')');
+                                }
+                                resp.setUsername(sb.toString());
+                            }
+                        }
+                    } catch (Exception ignored) {
+                    }
+                    return resp;
+                })
                 .collect(Collectors.toList());
 
         String metaSortDir = pageable.getSort().toString().contains("ASC") ? "asc" : "desc";
@@ -151,7 +181,33 @@ public class ProductHistoryServiceImpl implements ProductHistoryService {
 
         List<ProductHistorySingleResponse> content = pageResult.getContent()
                 .stream()
-                .map(productHistoryMapper::toSingleResponse)
+                .map(entity -> {
+                    ProductHistorySingleResponse resp = productHistoryMapper.toSingleResponse(entity);
+                    try {
+                        if (entity.getUserId() != null) {
+                            ApiResponse<UserResponse> ur = userClient.getUser(entity.getUserId());
+                            if (ur != null && Boolean.TRUE.equals(ur.getSuccess()) && ur.getData() != null) {
+                                String fn = ur.getData().getFirstname();
+                                String ln = ur.getData().getLastname();
+                                String un = ur.getData().getUsername();
+                                StringBuilder sb = new StringBuilder();
+                                if (fn != null && !fn.isBlank()) sb.append(fn);
+                                if (ln != null && !ln.isBlank()) {
+                                    if (!sb.isEmpty()) sb.append(' ');
+                                    sb.append(ln);
+                                }
+                                if (un != null && !un.isBlank()) {
+                                    if (!sb.isEmpty()) sb.append(' ');
+                                    sb.append('(').append(un).append(')');
+                                }
+                                resp.setUsername(sb.toString());
+                            }
+                        }
+                    } catch (Exception ignored) {
+                        // ignore user service failures
+                    }
+                    return resp;
+                })
                 .collect(Collectors.toList());
 
         PaginationMetadata metadata = new PaginationMetadata(

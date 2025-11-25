@@ -1,5 +1,6 @@
 package com.biobac.warehouse.service.impl;
 
+import com.biobac.warehouse.client.UserClient;
 import com.biobac.warehouse.dto.IngredientHistoryDto;
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.entity.Ingredient;
@@ -8,8 +9,10 @@ import com.biobac.warehouse.mapper.IngredientHistoryMapper;
 import com.biobac.warehouse.repository.IngredientBalanceRepository;
 import com.biobac.warehouse.repository.IngredientHistoryRepository;
 import com.biobac.warehouse.request.FilterCriteria;
+import com.biobac.warehouse.response.ApiResponse;
 import com.biobac.warehouse.response.IngredientHistoryResponse;
 import com.biobac.warehouse.response.IngredientHistorySingleResponse;
+import com.biobac.warehouse.response.UserResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.utils.GroupUtil;
 import com.biobac.warehouse.utils.specifications.IngredientHistorySpecification;
@@ -34,6 +37,8 @@ import static com.biobac.warehouse.utils.DateUtil.parseDates;
 @Service
 @RequiredArgsConstructor
 public class IngredientHistoryServiceImpl implements IngredientHistoryService {
+
+    private final UserClient userClient;
 
     private final IngredientHistoryRepository ingredientHistoryRepository;
     private final IngredientHistoryMapper ingredientHistoryMapper;
@@ -126,7 +131,32 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
 
         List<IngredientHistorySingleResponse> content = ingredientHistoryPage.getContent()
                 .stream()
-                .map(ingredientHistoryMapper::toSingleResponse)
+                .map(entity -> {
+                    IngredientHistorySingleResponse resp = ingredientHistoryMapper.toSingleResponse(entity);
+                    try {
+                        if (entity.getUserId() != null) {
+                            ApiResponse<UserResponse> ur = userClient.getUser(entity.getUserId());
+                            if (ur != null && Boolean.TRUE.equals(ur.getSuccess()) && ur.getData() != null) {
+                                String fn = ur.getData().getFirstname();
+                                String ln = ur.getData().getLastname();
+                                String un = ur.getData().getUsername();
+                                StringBuilder sb = new StringBuilder();
+                                if (fn != null && !fn.isBlank()) sb.append(fn);
+                                if (ln != null && !ln.isBlank()) {
+                                    if (!sb.isEmpty()) sb.append(' ');
+                                    sb.append(ln);
+                                }
+                                if (un != null && !un.isBlank()) {
+                                    if (!sb.isEmpty()) sb.append(' ');
+                                    sb.append('(').append(un).append(')');
+                                }
+                                resp.setUsername(sb.toString());
+                            }
+                        }
+                    } catch (Exception ignored) {
+                    }
+                    return resp;
+                })
                 .collect(Collectors.toList());
 
         String metaSortDir = pageable.getSort().toString().contains("ASC") ? "asc" : "desc";
@@ -283,7 +313,32 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
 
         List<IngredientHistorySingleResponse> content = ingredientHistoryPage.getContent()
                 .stream()
-                .map(ingredientHistoryMapper::toSingleResponse)
+                .map(entity -> {
+                    IngredientHistorySingleResponse resp = ingredientHistoryMapper.toSingleResponse(entity);
+                    try {
+                        if (entity.getUserId() != null) {
+                            ApiResponse<UserResponse> ur = userClient.getUser(entity.getUserId());
+                            if (ur != null && Boolean.TRUE.equals(ur.getSuccess()) && ur.getData() != null) {
+                                String fn = ur.getData().getFirstname();
+                                String ln = ur.getData().getLastname();
+                                String un = ur.getData().getUsername();
+                                StringBuilder sb = new StringBuilder();
+                                if (fn != null && !fn.isBlank()) sb.append(fn);
+                                if (ln != null && !ln.isBlank()) {
+                                    if (!sb.isEmpty()) sb.append(' ');
+                                    sb.append(ln);
+                                }
+                                if (un != null && !un.isBlank()) {
+                                    if (!sb.isEmpty()) sb.append(' ');
+                                    sb.append('(').append(un).append(')');
+                                }
+                                resp.setUsername(sb.toString());
+                            }
+                        }
+                    } catch (Exception ignored) {
+                    }
+                    return resp;
+                })
                 .collect(Collectors.toList());
 
         String metaSortDir = pageable.getSort().toString().contains("ASC") ? "asc" : "desc";
