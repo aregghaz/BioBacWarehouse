@@ -85,6 +85,10 @@ public class AssetImprovementServiceImpl implements AssetImprovementService {
         }
         BigDecimal changedAmount = request.getAmount().subtract(asset.getCurrentCost());
 
+        final Integer monthExtended = request.getMonthsExtended() != null
+                ? request.getMonthsExtended() - asset.getUsefulLifeMonths()
+                : 0;
+
         AssetImprovement improvement = new AssetImprovement();
         improvement.setAsset(asset);
         improvement.setAction(action);
@@ -92,7 +96,7 @@ public class AssetImprovementServiceImpl implements AssetImprovementService {
         improvement.setExtendLife(request.getMonthsExtended() > asset.getUsefulLifeMonths());
         improvement.setDate(request.getDate()!= null ? request.getDate() : LocalDateTime.now());
         improvement.setComment(request.getComment());
-        improvement.setMonthsExtended(request.getMonthsExtended() - asset.getUsefulLifeMonths());
+        improvement.setMonthsExtended(monthExtended);
         asset.setCurrentCost(request.getAmount());
         asset.setUsefulLifeMonths(request.getMonthsExtended());
         asset.recalcResidual();
