@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -89,7 +90,7 @@ public class AssetImprovementServiceImpl implements AssetImprovementService {
         improvement.setAction(action);
         improvement.setAmount(changedAmount);
         improvement.setExtendLife(request.getMonthsExtended() > asset.getUsefulLifeMonths());
-        improvement.setDate(request.getDate() != null ? request.getDate() : LocalDate.now());
+        improvement.setDate(request.getDate()!= null ? request.getDate() : LocalDateTime.now());
         improvement.setComment(request.getComment());
         improvement.setMonthsExtended(request.getMonthsExtended() - asset.getUsefulLifeMonths());
         asset.setCurrentCost(request.getAmount());
