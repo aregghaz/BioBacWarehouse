@@ -6,6 +6,7 @@ import lombok.Setter;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Getter
@@ -17,7 +18,7 @@ public class Asset extends BaseAuditable {
 
     private String name;
 
-    private LocalDate startDate;
+    private LocalDateTime startDate;
     private BigDecimal originalCost;
     private BigDecimal currentCost;
     private BigDecimal accumulatedDepreciation;
