@@ -210,8 +210,7 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
 
             ManufactureCalculateResponse tmp = new ManufactureCalculateResponse();
             tmp.setProductId(product.getId());
-            BigDecimal unitPriceForProduct = fetchUnitPrice(tmp);
-            if (unitPriceForProduct == null) unitPriceForProduct = BigDecimal.ZERO;
+            BigDecimal unitPriceForProduct = calculateUnitPriceFromComponents(product, new HashSet<>());
             ManufactureCalculateMetadata md = new ManufactureCalculateMetadata();
             md.setProductId(product.getId());
             md.setProductName(product.getName());
@@ -256,8 +255,8 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
             resp.setAvailablePrice(availableTotal);
 
             double required = resp.getRequiredQuantity() != null ? resp.getRequiredQuantity() : 0.0;
-            double diff = required - balance;
-            resp.setDifferenceQuantity(diff > 0 ? diff : 0.0);
+            double diff = balance - required;
+            resp.setDifferenceQuantity(diff);
         }
 
         List<ManufactureCalculateResponse> responses =
@@ -326,7 +325,6 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
     }
 
     private BigDecimal fetchUnitPrice(ManufactureCalculateResponse resp) {
-
         if (resp.getIngredientId() != null) {
             Ingredient ingredient = ingredientRepository.findById(resp.getIngredientId()).orElse(null);
             if (ingredient != null && ingredient.getDefaultWarehouse() != null) {
@@ -352,6 +350,101 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
         }
 
         return BigDecimal.ZERO;
+    }
+
+    private BigDecimal getIngredientUnitPrice(Ingredient ingredient) {
+        if (ingredient == null) return BigDecimal.ZERO;
+        Warehouse defWh = ingredient.getDefaultWarehouse();
+        if (defWh != null) {
+            IngredientBalance bal = ingredientBalanceRepository
+                    .findByWarehouseAndIngredient(defWh, ingredient)
+                    .orElse(null);
+            if (bal != null) {
+                BigDecimal price = SelfWorthPriceUtil.calculateIngredientPrice(bal);
+                return price != null ? price : BigDecimal.ZERO;
+            }
+        }
+        BigDecimal ownPrice = ingredient.getPrice();
+        return ownPrice != null ? ownPrice : BigDecimal.ZERO;
+    }
+
+    private BigDecimal getProductUnitPrice(Product product) {
+        if (product == null) return BigDecimal.ZERO;
+        Warehouse defWh = product.getDefaultWarehouse();
+        if (defWh != null) {
+            ProductBalance bal = productBalanceRepository
+                    .findByWarehouseAndProduct(defWh, product)
+                    .orElse(null);
+            if (bal != null) {
+                BigDecimal price = SelfWorthPriceUtil.calculateProductPrice(bal);
+                return price != null ? price : BigDecimal.ZERO;
+            }
+        }
+        return BigDecimal.ZERO;
+    }
+
+    private BigDecimal calculateUnitPriceFromComponents(Product product, Set<Long> visitingProductIds) {
+        if (product == null) return BigDecimal.ZERO;
+        Long pid = product.getId();
+        if (pid != null) {
+            if (visitingProductIds.contains(pid)) {
+                throw new InvalidDataException("Cyclic recipe detected for product " + product.getName());
+            }
+            visitingProductIds.add(pid);
+        }
+        try {
+            BigDecimal total = BigDecimal.ZERO;
+
+            RecipeItem ri = product.getRecipeItem();
+            if (ri != null && ri.getComponents() != null) {
+                for (RecipeComponent rc : ri.getComponents()) {
+                    double perUnit = rc.getQuantity() != null ? rc.getQuantity() : 0.0;
+                    if (perUnit <= 0) continue;
+                    Ingredient compIng = rc.getIngredient();
+                    Product compProd = rc.getProduct();
+
+                    BigDecimal unitPrice = BigDecimal.ZERO;
+                    if (compIng != null && compProd == null) {
+                        unitPrice = getIngredientUnitPrice(compIng);
+                    } else if (compProd != null && compIng == null) {
+                        unitPrice = getProductUnitPrice(compProd);
+                        if (unitPrice == null || unitPrice.compareTo(BigDecimal.ZERO) == 0) {
+                            unitPrice = calculateUnitPriceFromComponents(compProd, visitingProductIds);
+                        }
+                    } else {
+                        throw new InvalidDataException("Recipe component must be either ingredient or product");
+                    }
+                    total = total.add(unitPrice.multiply(BigDecimal.valueOf(perUnit)));
+                }
+            }
+
+            List<ProductComponent> extras = product.getExtraComponents();
+            if (extras != null) {
+                for (ProductComponent pc : extras) {
+                    double perUnit = pc.getQuantity() != null ? pc.getQuantity() : 0.0;
+                    if (perUnit <= 0) continue;
+                    Ingredient compIng = pc.getIngredient();
+                    Product compProd = pc.getChildProduct();
+
+                    BigDecimal unitPrice = BigDecimal.ZERO;
+                    if (compIng != null && compProd == null) {
+                        unitPrice = getIngredientUnitPrice(compIng);
+                    } else if (compProd != null && compIng == null) {
+                        unitPrice = getProductUnitPrice(compProd);
+                        if (unitPrice == null || unitPrice.compareTo(BigDecimal.ZERO) == 0) {
+                            unitPrice = calculateUnitPriceFromComponents(compProd, visitingProductIds);
+                        }
+                    } else {
+                        throw new InvalidDataException("Extra component must be either ingredient or product");
+                    }
+                    total = total.add(unitPrice.multiply(BigDecimal.valueOf(perUnit)));
+                }
+            }
+
+            return total.setScale(2, RoundingMode.HALF_UP);
+        } finally {
+            if (pid != null) visitingProductIds.remove(pid);
+        }
     }
 
     private IngredientBalance getOrCreateIngredientBalance(Warehouse warehouse, Ingredient ingredient) {
