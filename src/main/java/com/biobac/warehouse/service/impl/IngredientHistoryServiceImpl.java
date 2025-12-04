@@ -15,6 +15,7 @@ import com.biobac.warehouse.response.IngredientHistorySingleResponse;
 import com.biobac.warehouse.response.UserResponse;
 import com.biobac.warehouse.service.IngredientHistoryService;
 import com.biobac.warehouse.utils.GroupUtil;
+import com.biobac.warehouse.utils.SecurityUtil;
 import com.biobac.warehouse.utils.specifications.IngredientHistorySpecification;
 import jakarta.persistence.criteria.JoinType;
 import lombok.RequiredArgsConstructor;
@@ -44,6 +45,7 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
     private final IngredientHistoryMapper ingredientHistoryMapper;
     private final IngredientBalanceRepository ingredientBalanceRepository;
     private final GroupUtil groupUtil;
+    private final SecurityUtil securityUtil;
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
@@ -82,6 +84,7 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
         if (dto == null || dto.getIngredient() == null) {
             throw new IllegalArgumentException("Ingredient and dto are required");
         }
+        Long userId = securityUtil.getCurrentUserId();
         double quantityResult = ingredientHistoryRepository
                 .findFirstByWarehouseAndIngredientOrderByTimestampDescIdDesc(dto.getWarehouse(), dto.getIngredient())
                 .map(IngredientHistory::getQuantityResult)
@@ -98,6 +101,7 @@ public class IngredientHistoryServiceImpl implements IngredientHistoryService {
         history.setCompanyId(dto.getLastCompanyId());
         history.setLastPrice(dto.getLastPrice());
         history.setTimestamp(dto.getTimestamp() != null ? dto.getTimestamp() : LocalDateTime.now());
+        history.setUserId(userId);
         if (dto.getAction() != null) {
             history.setAction(dto.getAction());
         }

@@ -16,6 +16,7 @@ import com.biobac.warehouse.response.ProductHistorySingleResponse;
 import com.biobac.warehouse.response.UserResponse;
 import com.biobac.warehouse.service.ProductHistoryService;
 import com.biobac.warehouse.utils.GroupUtil;
+import com.biobac.warehouse.utils.SecurityUtil;
 import com.biobac.warehouse.utils.specifications.ProductHistorySpecification;
 import jakarta.persistence.criteria.JoinType;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +48,7 @@ public class ProductHistoryServiceImpl implements ProductHistoryService {
     private final GroupUtil groupUtil;
     private final HistoryActionRepository historyActionRepository;
     private final ProductBalanceRepository productBalanceRepository;
+    private final SecurityUtil securityUtil;
 
     private static final int DEFAULT_PAGE = 0;
     private static final int DEFAULT_SIZE = 20;
@@ -74,6 +76,7 @@ public class ProductHistoryServiceImpl implements ProductHistoryService {
         if (dto == null || dto.getProduct() == null) {
             throw new IllegalArgumentException("Product and dto are required");
         }
+        Long userId = securityUtil.getCurrentUserId();
         Product product = dto.getProduct();
         double quantityResult = productHistoryRepository
                 .findFirstByWarehouseAndProductOrderByTimestampDescIdDesc(dto.getWarehouse(), dto.getProduct())
@@ -92,7 +95,7 @@ public class ProductHistoryServiceImpl implements ProductHistoryService {
         history.setCompanyId(dto.getCompanyId());
         history.setLastPrice(dto.getLastPrice());
         history.setTimestamp(dto.getTimestamp() != null ? dto.getTimestamp() : LocalDateTime.now());
-
+        history.setUserId(userId);
         if (dto.getAction() != null) {
             history.setAction(dto.getAction());
         }

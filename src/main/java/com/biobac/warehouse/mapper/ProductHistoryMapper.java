@@ -28,7 +28,6 @@ public interface ProductHistoryMapper {
     @Mapping(source = "product.productGroup.name", target = "productGroupName")
     ProductHistoryResponse toResponse(ProductHistory entity);
 
-    // Legacy DTO mappings if still needed somewhere
     ProductHistoryDto toDto(ProductHistory entity);
     List<ProductHistoryDto> toDtoList(List<ProductHistory> entities);
 
