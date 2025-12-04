@@ -210,6 +210,7 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
 
             ManufactureCalculateResponse tmp = new ManufactureCalculateResponse();
             tmp.setProductId(product.getId());
+
             BigDecimal unitPriceForProduct = calculateUnitPriceFromComponents(product, new HashSet<>());
             ManufactureCalculateMetadata md = new ManufactureCalculateMetadata();
             md.setProductId(product.getId());
@@ -252,7 +253,7 @@ public class ManufactureProductServiceImpl implements ManufactureProductService 
                     .setScale(2, RoundingMode.HALF_UP);
 
             resp.setRequiredPrice(requiredTotal);
-            resp.setAvailablePrice(availableTotal);
+            resp.setAvailablePrice(availableTotal.abs());
 
             double required = resp.getRequiredQuantity() != null ? resp.getRequiredQuantity() : 0.0;
             double diff = balance - required;
