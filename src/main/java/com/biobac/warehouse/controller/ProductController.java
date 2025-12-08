@@ -2,6 +2,7 @@ package com.biobac.warehouse.controller;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.request.FilterCriteria;
+import com.biobac.warehouse.request.ProductConsumeSaleRequest;
 import com.biobac.warehouse.request.ProductCreateRequest;
 import com.biobac.warehouse.request.ProductUpdateRequest;
 import com.biobac.warehouse.response.ApiResponse;
@@ -66,5 +67,11 @@ public class ProductController {
     public ApiResponse<List<ProductResponse>> getAllExcludeRecipe(@PathVariable Long id) {
         List<ProductResponse> responses = productService.getAllExcludeRecipeIngredient(id);
         return ResponseUtil.success("Products retrieved successfully", responses);
+    }
+
+    @PostMapping("/sale/consume")
+    public ApiResponse<String> consumeProductForSale(@RequestBody List<ProductConsumeSaleRequest> request) {
+        productService.consumeProductsForSale(request);
+        return ResponseUtil.success("Products consumed successfully");
     }
 }

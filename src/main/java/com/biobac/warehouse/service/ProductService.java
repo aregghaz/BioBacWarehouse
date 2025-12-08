@@ -2,6 +2,7 @@ package com.biobac.warehouse.service;
 
 import com.biobac.warehouse.dto.PaginationMetadata;
 import com.biobac.warehouse.request.FilterCriteria;
+import com.biobac.warehouse.request.ProductConsumeSaleRequest;
 import com.biobac.warehouse.request.ProductCreateRequest;
 import com.biobac.warehouse.request.ProductUpdateRequest;
 import com.biobac.warehouse.response.ProductResponse;
@@ -24,4 +25,6 @@ public interface ProductService extends UnitTypeCalculator {
     void delete(Long id);
 
     List<ProductResponse> getAllExcludeRecipeIngredient(Long recipeItemId);
+
+    void consumeProductsForSale(List<ProductConsumeSaleRequest> request);
 }

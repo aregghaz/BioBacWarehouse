@@ -45,6 +45,8 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
     private final UnitTypeRepository unitTypeRepository;
     private final ProductGroupRepository productGroupRepository;
     private final WarehouseRepository warehouseRepository;
+    private final ProductBalanceRepository productBalanceRepository;
+    private final HistoryActionRepository historyActionRepository;
     private final ProductMapper productMapper;
     private final AttributeClient attributeClient;
     private final GroupUtil groupUtil;
@@ -447,5 +449,53 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
             }
             return calculatedResponse;
         }).toList();
+    }
+
+    @Override
+    @Transactional
+    public void consumeProductsForSale(List<ProductConsumeSaleRequest> request) {
+        if (request == null || request.isEmpty()) {
+            return;
+        }
+
+        for (ProductConsumeSaleRequest r : request) {
+            if (r == null) continue;
+            double qty = Optional.ofNullable(r.getQuantity()).orElse(0.0);
+            if (qty <= 0) continue;
+
+            Product product = productRepository.findById(r.getProductId())
+                    .orElseThrow(() -> new NotFoundException("Product not found"));
+
+            Warehouse defWh = product.getDefaultWarehouse();
+            if (defWh == null || defWh.getId() == null) {
+                throw new InvalidDataException("Default warehouse is not set for product " + product.getName());
+            }
+
+            ProductBalance balance = productBalanceRepository.findByWarehouseAndProduct(defWh, product)
+                    .orElseThrow(() -> new NotFoundException("Product not found on that warehouse"));
+
+            double before = Optional.ofNullable(balance.getBalance()).orElse(0.0);
+            double after = before - qty;
+            balance.setBalance(after);
+            productBalanceRepository.save(balance);
+
+            HistoryAction action = historyActionRepository.findById(4L)
+                    .orElseThrow(() -> new NotFoundException("Action not found"));
+
+            String productName = product.getName() != null ? product.getName() : ("#" + product.getId());
+            String whName = defWh.getName() != null ? defWh.getName() : ("#" + defWh.getId());
+            String note = String.format(
+                    "Продажа: списано %.2f единиц продукта \"%s\" со склада \"%s\" (итог: %.2f)",
+                    qty, productName, whName, after
+            );
+
+            ProductHistoryDto dto = new ProductHistoryDto();
+            dto.setAction(action);
+            dto.setProduct(product);
+            dto.setWarehouse(defWh);
+            dto.setQuantityChange(after - before);
+            dto.setNotes(note);
+            productHistoryService.recordQuantityChange(dto);
+        }
     }
 }
