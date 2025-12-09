@@ -41,6 +41,12 @@ public class ProductController {
         return ResponseUtil.success("Products retrieved successfully", responses);
     }
 
+    @PostMapping("/by-ids")
+    public ApiResponse<List<ProductResponse>> getByIds(@RequestBody List<Long> productIds) {
+        List<ProductResponse> responses = productService.getProductsByIds(productIds);
+        return ResponseUtil.success("Products retrieved successfully", responses);
+    }
+
     @PostMapping("/all")
     public ApiResponse<List<ProductResponse>> getAllProducts(@RequestParam(required = false, defaultValue = "0") Integer page,
                                                              @RequestParam(required = false, defaultValue = "10") Integer size,

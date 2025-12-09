@@ -18,6 +18,8 @@ public interface ProductService extends UnitTypeCalculator {
 
     List<ProductResponse> getAll();
 
+    List<ProductResponse> getProductsByIds(List<Long> productIds);
+
     Pair<List<ProductResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters, Integer page, Integer size, String sortBy, String sortDir);
 
     ProductResponse update(Long id, ProductUpdateRequest request);

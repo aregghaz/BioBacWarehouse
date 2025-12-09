@@ -366,6 +366,17 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
 
     @Override
     @Transactional(readOnly = true)
+    public List<ProductResponse> getProductsByIds(List<Long> productIds) {
+        List<Long> groupIds = groupUtil.getAccessibleProductGroupIds();
+
+        Specification<Product> spec = ProductSpecification.belongsToGroups(groupIds)
+                .and(ProductSpecification.isDeleted())
+                .and(ProductSpecification.hasIds(productIds));
+        return productRepository.findAll(spec).stream().map(productMapper::toResponse).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Pair<List<ProductResponse>, PaginationMetadata> getPagination(Map<String, FilterCriteria> filters,
                                                                          Integer page,
                                                                          Integer size,

@@ -92,6 +92,10 @@ public class ProductSpecification {
         };
     }
 
+    public static Specification<Product> hasIds(List<Long> ids) {
+        return ((root, query, criteriaBuilder) -> root.get("id").in(ids));
+    }
+
     public static Specification<Product> isDeleted() {
         return ((root, query, criteriaBuilder) -> criteriaBuilder.isFalse(root.get("deleted")));
     }
