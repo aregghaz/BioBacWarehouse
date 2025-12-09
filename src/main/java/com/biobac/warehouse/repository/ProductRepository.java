@@ -16,6 +16,8 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
 
     Product findBySku(String sku);
 
+    boolean existsBySkuOrName(String sku, String name);
+
     @Query("""
             SELECT p
             FROM Product p

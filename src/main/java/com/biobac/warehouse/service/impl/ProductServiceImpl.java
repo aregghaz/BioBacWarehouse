@@ -85,8 +85,8 @@ public class ProductServiceImpl implements ProductService, UnitTypeCalculator {
     @Override
     @Transactional
     public ProductResponse create(ProductCreateRequest request) {
-        Product existingProduct = productRepository.findBySku(request.getSku());
-        if (existingProduct != null) {
+        boolean existingProduct = productRepository.existsBySkuOrName(request.getSku(), request.getName());
+        if (existingProduct) {
             throw new DuplicateException("provided Sku already exists");
         }
 
