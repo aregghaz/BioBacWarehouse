@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/asset-category")
+@RequestMapping("/api/warehouse/asset-category")
 @RequiredArgsConstructor
 public class AssetCategoryController {
     private final AssetCategoryService assetCategoryService;

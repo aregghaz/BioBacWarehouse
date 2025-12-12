@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/unit-type")
+@RequestMapping("/api/warehouse/unit-type")
 @RequiredArgsConstructor
 public class UnitTypeController {
     private final UnitTypeService unitTypeService;

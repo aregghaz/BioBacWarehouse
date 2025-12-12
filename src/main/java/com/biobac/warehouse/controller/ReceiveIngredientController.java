@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/receive-ingredient")
+@RequestMapping("/api/warehouse/receive-ingredient")
 @RequiredArgsConstructor
 public class ReceiveIngredientController {
     private final ReceiveIngredientService receiveIngredientService;

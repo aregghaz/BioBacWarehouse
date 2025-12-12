@@ -22,7 +22,7 @@ import java.util.Map;
 import static com.biobac.warehouse.utils.DateUtil.parseDates;
 
 @RestController
-@RequestMapping("/api/ingredient-history")
+@RequestMapping("/api/warehouse/ingredient-history")
 @RequiredArgsConstructor
 public class IngredientHistoryController {
 

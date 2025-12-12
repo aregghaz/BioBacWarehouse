@@ -17,7 +17,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/product-groups")
+@RequestMapping("/api/warehouse/product-groups")
 @RequiredArgsConstructor
 public class ProductGroupController extends BaseController {
     private final AuditLogService auditLogService;

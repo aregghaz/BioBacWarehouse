@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/recipe-items")
+@RequestMapping("/api/warehouse/recipe-items")
 @RequiredArgsConstructor
 public class RecipeItemController extends BaseController {
     private final AuditLogService auditLogService;

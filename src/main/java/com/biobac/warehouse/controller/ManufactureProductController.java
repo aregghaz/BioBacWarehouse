@@ -18,7 +18,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/manufacture-product")
+@RequestMapping("/api/warehouse/manufacture-product")
 @RequiredArgsConstructor
 public class ManufactureProductController {
     private final ManufactureProductService manufactureProductService;

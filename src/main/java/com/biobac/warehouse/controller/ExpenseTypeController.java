@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/expense-types")
+@RequestMapping("/api/warehouse/expense-types")
 @RequiredArgsConstructor
 public class ExpenseTypeController {
     private final ExpenseTypeService service;

@@ -16,7 +16,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/component-balance")
+@RequestMapping("/api/warehouse/component-balance")
 @RequiredArgsConstructor
 public class ComponentBalanceController {
     private final ComponentBalanceService componentBalanceService;

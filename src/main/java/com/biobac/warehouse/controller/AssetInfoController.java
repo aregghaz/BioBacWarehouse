@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/asset-info")
+@RequestMapping("/api/warehouse/asset-info")
 @RequiredArgsConstructor
 public class AssetInfoController {
     private final AssetInfoService assetInfoService;

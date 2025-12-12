@@ -15,7 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/unit")
+@RequestMapping("/api/warehouse/unit")
 @RequiredArgsConstructor
 public class UnitController {
     private final UnitService unitService;
