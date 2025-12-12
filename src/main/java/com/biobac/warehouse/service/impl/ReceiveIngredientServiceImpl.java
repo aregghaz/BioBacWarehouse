@@ -667,8 +667,12 @@ public class ReceiveIngredientServiceImpl implements ReceiveIngredientService {
     @Transactional(readOnly = true)
     public ReceiveIngredientsPriceCalcResponse calcIngredientPrices(List<ReceiveIngredientsPriceCalcRequest> ingredients, List<IngredientExpenseRequest> expenses) {
         if (ingredients == null || ingredients.isEmpty()) {
-            throw new InvalidDataException("Ingredients list cannot be empty");
-        }
+            ReceiveIngredientsPriceCalcResponse response = new ReceiveIngredientsPriceCalcResponse();
+            response.setIngredients(new ArrayList<>());
+            response.setExpenses(new ArrayList<>());
+            response.setPriceWithoutExpense(BigDecimal.ZERO);
+            response.setTotalPrice(BigDecimal.ZERO);
+            return response;        }
 
         BigDecimal totalBase = BigDecimal.ZERO;
         BigDecimal totalWithoutExpense;
