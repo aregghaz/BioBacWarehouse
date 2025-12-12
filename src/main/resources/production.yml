@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: warehouseProd
+  datasource:
+    url: jdbc:mysql://localhost:3306/production
+    username: root
+    password: gagulik014A!
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    database-platform: org.hibernate.dialect.MySQLDialect
+
+server:
+  port: 8082

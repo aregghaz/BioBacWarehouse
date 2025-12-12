@@ -1,0 +1,62 @@
+name: Deploy warehouse Service
+
+on:
+  push:
+    branches: [ "demo" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: corretto
+          java-version: '17'
+          cache: maven
+
+      - name: Build JAR
+        run: mvn clean package -DskipTests
+
+      # 🔐 Prepare SSH (DEPLOY KEY)
+      - name: Prepare SSH
+        env:
+          SSH_DEPLOY_KEY_B64: ${{ secrets.SSH_DEPLOY_KEY_B64 }}
+        run: |
+          mkdir -p ~/.ssh
+          
+          echo "$SSH_DEPLOY_KEY_B64" \
+          | tr -d '\n' \
+          | base64 -d \
+          | tr -d '\r' \
+          > ~/.ssh/id_ed25519_deploy
+          
+          chmod 600 ~/.ssh/id_ed25519_deploy
+          
+          ssh-keyscan -H ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+          
+          # 🔍 sanity check — если ключ битый, job упадёт ЗДЕСЬ
+          ssh-keygen -l -f ~/.ssh/id_ed25519_deploy
+          
+          # 📦 Copy JAR
+      - name: Copy JAR to server
+        run: |
+          scp \
+            -i ~/.ssh/id_ed25519_deploy \
+            -o IdentitiesOnly=yes \
+            target/warehouse-0.0.1-SNAPSHOT.jar \
+            deploy@${{ secrets.SERVER_IP }}:/home/springapp/production/
+
+      # 🔄 Restart systemd service
+      - name: Restart warehouse service
+        run: |
+          ssh \
+            -i ~/.ssh/id_ed25519_deploy \
+            -o IdentitiesOnly=yes \
+            deploy@${{ secrets.SERVER_IP }} \
+            "sudo -n /usr/bin/systemctl restart warehouseDemo.service"
