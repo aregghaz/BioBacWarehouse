@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @Setter
+@Table(name = "transfer_components")
 public class Transfer {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
