@@ -78,7 +78,13 @@ public class TransferServiceImpl implements TransferService {
                     .orElseThrow(() -> new NotFoundException("Warehouse not found"));
 
             ProductBalance fromBalance = productBalanceRepository.findByWarehouseAndProduct(from, product)
-                    .orElseThrow(() -> new NotFoundException("Product not found on that warehouse"));
+                    .orElseGet(() -> {
+                        ProductBalance newBalance = new ProductBalance();
+                        newBalance.setBalance(0.0);
+                        newBalance.setWarehouse(from);
+                        newBalance.setProduct(product);
+                        return productBalanceRepository.save(newBalance);
+                    });
 
             ProductBalance toBalance = productBalanceRepository
                     .findByWarehouseAndProduct(to, product)
@@ -93,8 +99,8 @@ public class TransferServiceImpl implements TransferService {
             double requiredQty = Optional.ofNullable(c.getQuantity()).orElse(0.0);
             if (requiredQty <= 0) continue;
 
-            fromBalance.setBalance(Optional.ofNullable(fromBalance.getBalance()).orElse(0.0) - requiredQty);
-            toBalance.setBalance(Optional.ofNullable(toBalance.getBalance()).orElse(0.0) + requiredQty);
+            fromBalance.setBalance(fromBalance.getBalance() - requiredQty);
+            toBalance.setBalance(toBalance.getBalance() + requiredQty);
             productBalanceRepository.saveAll(List.of(fromBalance, toBalance));
 
             List<ProductDetail> fromDetails = productDetailRepository
@@ -190,7 +196,13 @@ public class TransferServiceImpl implements TransferService {
                     .orElseThrow(() -> new NotFoundException("Warehouse not found"));
 
             IngredientBalance fromBalance = ingredientBalanceRepository.findByWarehouseAndIngredient(from, ingredient)
-                    .orElseThrow(() -> new NotFoundException("Ingredient not found on that warehouse"));
+                    .orElseGet(() -> {
+                        IngredientBalance newBalance = new IngredientBalance();
+                        newBalance.setBalance(0.0);
+                        newBalance.setWarehouse(from);
+                        newBalance.setIngredient(ingredient);
+                        return ingredientBalanceRepository.save(newBalance);
+                    });
 
             IngredientBalance toBalance = ingredientBalanceRepository
                     .findByWarehouseAndIngredient(to, ingredient)
@@ -205,8 +217,8 @@ public class TransferServiceImpl implements TransferService {
             double requiredQty = Optional.ofNullable(c.getQuantity()).orElse(0.0);
             if (requiredQty <= 0) continue;
 
-            fromBalance.setBalance(Optional.ofNullable(fromBalance.getBalance()).orElse(0.0) - requiredQty);
-            toBalance.setBalance(Optional.ofNullable(toBalance.getBalance()).orElse(0.0) + requiredQty);
+            fromBalance.setBalance(fromBalance.getBalance() - requiredQty);
+            toBalance.setBalance(toBalance.getBalance() + requiredQty);
             ingredientBalanceRepository.saveAll(List.of(fromBalance, toBalance));
 
             List<IngredientDetail> fromDetails = ingredientDetailRepository
