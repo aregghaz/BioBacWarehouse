@@ -19,6 +19,6 @@ public interface UserClient {
     @GetMapping("/roles/product-groups/{userId}")
     ApiResponse<List<Long>> getProductGroupIds(@PathVariable Long userId);
 
-    @GetMapping("/admin/users/{userId}")
+    @GetMapping("/users/admin/{userId}")
     ApiResponse<UserResponse> getUser(@PathVariable Long userId);
 }
